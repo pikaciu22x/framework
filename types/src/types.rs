@@ -206,6 +206,76 @@ pub struct Validator {
     pub withdrawable_epoch: Epoch,
 }
 
+impl Validator {
+    pub fn is_slashable_validator(&self, epoch: Epoch) -> bool {
+        !self.slashed && self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
+    }
+}
+
+impl Default for Validator {
+    fn default() -> Self {
+        Self {
+            pubkey: PublicKey::default(),
+            withdrawal_credentials: H256::default(),
+            effective_balance: 0,
+            slashed: false,
+            activation_eligibility_epoch: 0,
+            activation_epoch: 0,
+            exit_epoch: 0,
+            withdrawable_epoch: 0,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_slashable_validator() {
+        let v = Validator {
+            slashed: false,
+            activation_epoch: 0,
+            withdrawable_epoch: 1,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_slashable_validator(0), true);
+    }
+
+    #[test]
+    fn is_slashable_validator_already_slashed() {
+        let v = Validator {
+            slashed: true,
+            activation_epoch: 0,
+            withdrawable_epoch: 1,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_slashable_validator(0), false);
+    }
+
+    #[test]
+    fn is_slashable_validator_activation_epoch_greater_than_epoch() {
+        let v = Validator {
+            slashed: false,
+            activation_epoch: 1,
+            withdrawable_epoch: 2,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_slashable_validator(0), false);
+    }
+
+    #[test]
+    fn is_slashable_validator_withdrawable_epoch_equals_epoch() {
+        let v = Validator {
+            slashed: false,
+            activation_epoch: 0,
+            withdrawable_epoch: 1,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_slashable_validator(1), false);
+    }
+}
+
 #[derive(
     Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
 )]
