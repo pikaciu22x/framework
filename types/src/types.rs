@@ -210,6 +210,10 @@ impl Validator {
     pub fn is_slashable_validator(&self, epoch: Epoch) -> bool {
         !self.slashed && self.activation_epoch <= epoch && epoch < self.withdrawable_epoch
     }
+
+    pub fn is_active_validator(&self, epoch: Epoch) -> bool {
+        self.activation_epoch <= epoch && epoch < self.exit_epoch
+    }
 }
 
 impl Default for Validator {
@@ -273,6 +277,36 @@ mod tests {
             ..Validator::default()
         };
         assert_eq!(v.is_slashable_validator(1), false);
+    }
+
+    #[test]
+    fn is_active_validator() {
+        let v = Validator {
+            activation_epoch: 0,
+            exit_epoch: 1,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_active_validator(0), true);
+    }
+
+    #[test]
+    fn is_active_validator_activation_epoch_greater_than_epoch() {
+        let v = Validator {
+            activation_epoch: 1,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_active_validator(0), false);
+    }
+
+    #[test]
+    fn is_active_validator_exit_epoch_equals_epoch() {
+        let v = Validator {
+            activation_epoch: 0,
+            exit_epoch: 1,
+            ..Validator::default()
+        };
+        assert_eq!(v.is_active_validator(1), false);
     }
 }
 
