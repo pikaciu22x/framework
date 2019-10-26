@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{BitVector, FixedVector, VariableList};
 use tree_hash_derive::TreeHash;
+use typenum::marker_traits::Unsigned;
 
-use crate::{config::*, consts, primitives::*, types::*};
+use crate::{config::*, consts, primitives::*, types::*, error::Error};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Default)]
 pub struct BeaconState<C: Config> {
@@ -56,12 +57,12 @@ impl<C: Config> BeaconState<C> {
         epoch + 1 + C::activation_exit_delay()
     }
 
-    // pub fn get_block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
-    //     if !(slot < self.slot && self.slot <= slot + C::SlotsPerHistoricalRoot) {
-    //         return Err(Error::SlotOutOfRange)
-    //     }
-    //     Ok(self.block_roots[slot % C::SlotsPerHistoricalRoot])
-    // }
+    pub fn get_block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
+        if !(slot < self.slot && self.slot <= slot + C::SlotsPerHistoricalRoot::to_u64()) {
+            return Err(Error::SlotOutOfRange)
+        }
+        Ok(self.block_roots[(slot % C::SlotsPerHistoricalRoot::to_u64()) as usize])
+    }
 
     pub fn get_active_validator_indices(&self, epoch: Epoch) -> Vec<ValidatorIndex> {
         let mut active_validator_indices = Vec::new();
@@ -76,6 +77,10 @@ impl<C: Config> BeaconState<C> {
     pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
         self.balances[index as usize] += delta
     }
+
+    // pub fn get_current_epoch(&self) -> Epoch {
+    //     compute_epoch_of_slot(self.slot)
+    // }
 }
 
 #[cfg(test)]
@@ -86,6 +91,25 @@ mod tests {
     fn compute_activation_exit_epoch() {
         let bs: BeaconState<MainnetConfig> = BeaconState::default();
         assert_eq!(bs.compute_activation_exit_epoch(0), 5);
+    }
+
+    #[test]
+    fn get_block_root_at_slot() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 2,
+            block_roots: FixedVector::from(vec![H256::from([0; 32]), H256::from([1; 32])]),
+            ..BeaconState::default()
+        };
+        assert_eq!(bs.get_block_root_at_slot(1), Ok(H256::from([1; 32])));
+    }
+
+    #[test]
+    fn get_block_root_at_slot_slot_equals_beacon_state_slot() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 0,
+            ..BeaconState::default()
+        };
+        assert_eq!(bs.get_block_root_at_slot(0).err(), Some(Error::SlotOutOfRange));
     }
 
     #[test]
