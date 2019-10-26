@@ -88,7 +88,7 @@ pub struct BeaconBlockBody<C: Config> {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default
 )]
 pub struct BeaconBlockHeader {
     pub slot: Slot,
@@ -142,7 +142,7 @@ pub struct Eth1Data {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default
 )]
 pub struct Fork {
     pub previous_version: Version,
@@ -194,7 +194,7 @@ pub struct Transfer {
     pub signature: Signature,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, Default)]
 pub struct Validator {
     pub pubkey: PublicKey,
     pub withdrawal_credentials: H256,
@@ -213,21 +213,6 @@ impl Validator {
 
     pub fn is_active_validator(&self, epoch: Epoch) -> bool {
         self.activation_epoch <= epoch && epoch < self.exit_epoch
-    }
-}
-
-impl Default for Validator {
-    fn default() -> Self {
-        Self {
-            pubkey: PublicKey::default(),
-            withdrawal_credentials: H256::default(),
-            effective_balance: 0,
-            slashed: false,
-            activation_eligibility_epoch: 0,
-            activation_epoch: 0,
-            exit_epoch: 0,
-            withdrawable_epoch: 0,
-        }
     }
 }
 
