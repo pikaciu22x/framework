@@ -64,6 +64,11 @@ impl<C: Config> BeaconState<C> {
         Ok(self.block_roots[(slot % C::SlotsPerHistoricalRoot::to_u64()) as usize])
     }
 
+    pub fn get_block_root(&self, epoch: Epoch) -> Result<H256, Error> {
+        // todo: change to compute start slot of epoch when implemented
+        self.get_block_root_at_slot(Slot::from(epoch * C::SlotsPerEpoch::to_u64()))
+    }
+
     pub fn get_active_validator_indices(&self, epoch: Epoch) -> Vec<ValidatorIndex> {
         let mut active_validator_indices = Vec::new();
         for (i, v) in self.validators.iter().enumerate() {
@@ -118,6 +123,23 @@ mod tests {
             ..BeaconState::default()
         };
         assert_eq!(bs.get_block_root_at_slot(0).err(), Some(Error::SlotOutOfRange));
+    }
+
+    #[test]
+    fn test_get_block_root() {
+        let mut block_roots_vec = Vec::new();
+
+        for x in 0..32 {
+            block_roots_vec.push(H256::from([x; 32]));
+        }
+
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 32,
+            block_roots: FixedVector::from(block_roots_vec),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_block_root(3), Ok(H256::from([24; 32])));
     }
 
     #[test]
