@@ -3,6 +3,7 @@ use ssz_derive::{Decode, Encode};
 use ssz_types::{BitVector, FixedVector, VariableList};
 use tree_hash_derive::TreeHash;
 use typenum::marker_traits::Unsigned;
+use std::cmp;
 
 use crate::{config::*, consts, error::Error, primitives::*, types::*};
 
@@ -104,6 +105,40 @@ impl<C: Config> BeaconState<C> {
         } else {
             genesis_epoch
         }
+    }
+
+    pub fn get_randao_mix(&self, epoch: Epoch) -> Result<H256, Error> {
+        Ok(self.randao_mixes[(epoch as usize) % C::EpochsPerHistoricalVector::to_usize()])
+    }
+
+    pub fn get_validator_churn_limit(&self) -> Result<u64, Error> {
+        let active_validator_indices = self.get_active_validator_indices(self.get_current_epoch());
+
+        Ok(
+            cmp::max(
+                C::min_per_epoch_churn_limit(),
+                active_validator_indices.len() as u64 / C::churn_limit_quotient()
+            )
+         )
+    }
+
+    pub fn get_committee_count(&self, epoch: Epoch) -> Result<u64, Error> {
+        let committees_per_slot = cmp::min(C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
+                                            self.get_active_validator_indices(epoch).len() as u64);
+
+        Ok(cmp::max(1, committees_per_slot)*C::SlotsPerEpoch::to_u64())
+    }
+
+    pub fn get_total_balance(&self, indices: Vec<ValidatorIndex>) -> Result<u64, Error> {
+        let mut sum = 0;
+        for (_i, index) in indices.iter().enumerate() {
+            sum += self.validators[*index as usize].effective_balance
+        }
+        Ok(sum)
+    }
+
+    pub fn get_total_active_balance(&self) -> Result<u64, Error> {
+        self.get_total_balance(self.get_active_validator_indices(self.get_current_epoch()))
     }
 }
 
