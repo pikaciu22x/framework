@@ -94,6 +94,17 @@ impl<C: Config> BeaconState<C> {
     pub fn get_current_epoch(&self) -> Epoch {
         Epoch::from(self.slot / C::SlotsPerEpoch::to_u64())
     }
+
+    pub fn get_previous_epoch(&self) -> Epoch {
+        let current_epoch = self.get_current_epoch();
+        let genesis_epoch = C::genesis_epoch();
+
+        if current_epoch > genesis_epoch {
+            Epoch::from(current_epoch - 1)
+        } else {
+            genesis_epoch
+        }
+    }
 }
 
 #[cfg(test)]
@@ -189,5 +200,23 @@ mod tests {
         };
         bs.decrease_balance(0, 1);
         assert_eq!(bs.balances[0], 0);
+    }
+
+    #[test]
+    fn test_get_previous_epoch() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 17,
+            ..BeaconState::default()
+        };
+        assert_eq!(bs.get_previous_epoch(), 1);
+    }
+
+    #[test]
+    fn test_get_previous_epoch_genesis() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 0,
+            ..BeaconState::default()
+        };
+        assert_eq!(bs.get_previous_epoch(), MainnetConfig::genesis_epoch());
     }
 }
