@@ -20,13 +20,22 @@ pub struct Attestation<C: Config> {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Hash, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Hash, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
 )]
 pub struct AttestationData {
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
     pub crosslink: Crosslink,
+}
+
+impl AttestationData {
+    pub fn is_slashable_attestation_data(&self, data: &Self) -> bool {
+        // Double vote
+        (self != data && self.target.epoch == data.target.epoch) ||
+        // Surround vote
+        (self.source.epoch < data.source.epoch && data.target.epoch < self.target.epoch)
+    }
 }
 
 #[derive(
@@ -292,6 +301,71 @@ mod tests {
             ..Validator::default()
         };
         assert_eq!(v.is_active_validator(1), false);
+    }
+
+    #[test]
+    fn test_is_slashable_attestation_data_double_vote_false() {
+        let attestation_data_1 = AttestationData {
+            target: Checkpoint {
+                epoch: 1,
+                root: H256::from([0; 32])
+            },
+            ..AttestationData::default()
+        };
+        let attestation_data_2 = AttestationData {
+            target: Checkpoint {
+                epoch: 1,
+                root: H256::from([0; 32])
+            },
+            ..AttestationData::default()
+        };
+        assert_eq!(attestation_data_1.is_slashable_attestation_data(&attestation_data_2), false);
+    }
+
+    #[test]
+    fn test_is_slashable_attestation_data_double_vote_true() {
+        let attestation_data_1 = AttestationData {
+            target: Checkpoint {
+                epoch: 1,
+                root: H256::from([0; 32])
+            },
+            ..AttestationData::default()
+        };
+        let attestation_data_2 = AttestationData {
+            target: Checkpoint {
+                epoch: 1,
+                root: H256::from([1; 32])
+            },
+            ..AttestationData::default()
+        };
+        assert_eq!(attestation_data_1.is_slashable_attestation_data(&attestation_data_2), true);
+    }
+
+     #[test]
+    fn test_is_slashable_attestation_data_surround_vote_true() {
+        let attestation_data_1 = AttestationData {
+            source: Checkpoint {
+                epoch: 0,
+                root: H256::from([0; 32])
+            },
+            target: Checkpoint {
+                epoch: 3,
+                root: H256::from([0; 32])
+            },
+            ..AttestationData::default()
+        };
+        let attestation_data_2 = AttestationData {
+            source: Checkpoint {
+                epoch: 1,
+                root: H256::from([1; 32])
+            },
+            target: Checkpoint {
+                epoch: 2,
+                root: H256::from([0; 32])
+            },
+            ..AttestationData::default()
+        };
+        assert_eq!(attestation_data_1.is_slashable_attestation_data(&attestation_data_2), true);
     }
 }
 
