@@ -4,7 +4,7 @@ use ssz_types::{BitVector, FixedVector, VariableList};
 use tree_hash_derive::TreeHash;
 use typenum::marker_traits::Unsigned;
 
-use crate::{config::*, consts, primitives::*, types::*, error::Error};
+use crate::{config::*, consts, error::Error, primitives::*, types::*};
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Default)]
 pub struct BeaconState<C: Config> {
@@ -59,7 +59,7 @@ impl<C: Config> BeaconState<C> {
 
     pub fn get_block_root_at_slot(&self, slot: Slot) -> Result<H256, Error> {
         if !(slot < self.slot && self.slot <= slot + C::SlotsPerHistoricalRoot::to_u64()) {
-            return Err(Error::SlotOutOfRange)
+            return Err(Error::SlotOutOfRange);
         }
         Ok(self.block_roots[(slot % C::SlotsPerHistoricalRoot::to_u64()) as usize])
     }
@@ -76,6 +76,14 @@ impl<C: Config> BeaconState<C> {
 
     pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
         self.balances[index as usize] += delta
+    }
+
+    pub fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
+        self.balances[index as usize] = if delta > self.balances[index as usize] {
+            0
+        } else {
+            self.balances[index as usize] - delta
+        }
     }
 
     // pub fn get_current_epoch(&self) -> Epoch {
@@ -139,5 +147,25 @@ mod tests {
         };
         bs.increase_balance(0, 1);
         assert_eq!(bs.balances[0], 1);
+    }
+
+    #[test]
+    fn test_decrease_balance() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            balances: VariableList::from(vec![5]),
+            ..BeaconState::default()
+        };
+        bs.decrease_balance(0, 3);
+        assert_eq!(bs.balances[0], 2);
+    }
+
+    #[test]
+    fn test_decrease_balance_to_negative() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            balances: VariableList::from(vec![0]),
+            ..BeaconState::default()
+        };
+        bs.decrease_balance(0, 1);
+        assert_eq!(bs.balances[0], 0);
     }
 }
