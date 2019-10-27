@@ -203,6 +203,15 @@ mod tests {
     }
 
     #[test]
+    fn get_current_epoch() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 9,
+            ..BeaconState::default()
+        };
+        assert_eq!(bs.get_current_epoch(), 1);
+    }
+
+    #[test]
     fn test_get_previous_epoch() {
         let bs: BeaconState<MainnetConfig> = BeaconState {
             slot: 17,
