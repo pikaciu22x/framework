@@ -3,6 +3,7 @@ members = [
     'types',
     'utils/bls',
     'utils/eth2_hashing',
+    'utils/eth2_hashing_new',
     'utils/serde_hex',
     'utils/ssz',
     'utils/ssz_types',

@@ -1,0 +1,8 @@
+[package]
+name = "eth2_hashing_new"
+version = "0.1.0"
+authors = ["Vytautas Krivickas <vytautas1996@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ring = "0.14.6"
