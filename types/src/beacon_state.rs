@@ -91,9 +91,9 @@ impl<C: Config> BeaconState<C> {
         }
     }
 
-    // pub fn get_current_epoch(&self) -> Epoch {
-    //     compute_epoch_of_slot(self.slot)
-    // }
+    pub fn get_current_epoch(&self) -> Epoch {
+        Epoch::from(self.slot / C::SlotsPerEpoch::to_u64())
+    }
 }
 
 #[cfg(test)]
