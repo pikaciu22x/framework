@@ -512,6 +512,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "misc"
+version = "0.1.0"
+dependencies = [
+ "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
+]
+
+[[package]]
 name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
