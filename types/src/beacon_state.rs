@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{BitVector, FixedVector, VariableList};
 use std::cmp;
+use std::convert::TryFrom;
 use tree_hash_derive::TreeHash;
 use typenum::marker_traits::Unsigned;
 
@@ -62,7 +63,11 @@ impl<C: Config> BeaconState<C> {
         if !(slot < self.slot && self.slot <= slot + C::SlotsPerHistoricalRoot::to_u64()) {
             return Err(Error::SlotOutOfRange);
         }
-        Ok(self.block_roots[(slot % C::SlotsPerHistoricalRoot::to_u64()) as usize])
+
+        match usize::try_from(slot % C::SlotsPerHistoricalRoot::to_u64()) {
+            Err(_err) => Err(Error::IndexOutOfRange),
+            Ok(id) => Ok(self.block_roots[id]),
+        }
     }
 
     pub fn get_block_root(&self, epoch: Epoch) -> Result<H256, Error> {
@@ -81,14 +86,22 @@ impl<C: Config> BeaconState<C> {
     }
 
     pub fn increase_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
-        self.balances[index as usize] += delta
+        match usize::try_from(index) {
+            Err(_err) => {}
+            Ok(id) => self.balances[id] += delta,
+        }
     }
 
     pub fn decrease_balance(&mut self, index: ValidatorIndex, delta: Gwei) {
-        self.balances[index as usize] = if delta > self.balances[index as usize] {
-            0
-        } else {
-            self.balances[index as usize] - delta
+        match usize::try_from(index) {
+            Err(_err) => {}
+            Ok(id) => {
+                self.balances[id] = if delta > self.balances[id] {
+                    0
+                } else {
+                    self.balances[id] - delta
+                }
+            }
         }
     }
 
@@ -108,7 +121,10 @@ impl<C: Config> BeaconState<C> {
     }
 
     pub fn get_randao_mix(&self, epoch: Epoch) -> Result<H256, Error> {
-        Ok(self.randao_mixes[(epoch as usize) % C::EpochsPerHistoricalVector::to_usize()])
+        match usize::try_from(epoch) {
+            Err(_err) => Err(Error::IndexOutOfRange),
+            Ok(id) => Ok(self.randao_mixes[id % C::EpochsPerHistoricalVector::to_usize()]),
+        }
     }
 
     pub fn get_validator_churn_limit(&self) -> Result<u64, Error> {
@@ -132,7 +148,10 @@ impl<C: Config> BeaconState<C> {
     pub fn get_total_balance(&self, indices: &[ValidatorIndex]) -> Result<u64, Error> {
         let mut sum = 0;
         for (_i, index) in indices.iter().enumerate() {
-            sum += self.validators[*index as usize].effective_balance
+            match usize::try_from(*index) {
+                Err(_err) => return Err(Error::IndexOutOfRange),
+                Ok(id) => sum += self.validators[id].effective_balance,
+            }
         }
         Ok(sum)
     }
