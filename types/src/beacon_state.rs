@@ -298,7 +298,8 @@ mod tests {
         };
         assert_eq!(
             bs.compute_start_slot_of_epoch(10_u64),
-            <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64)
+            <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64
+        )
     }
 
     #[test]
@@ -364,7 +365,10 @@ mod tests {
             ..BeaconState::default()
         };
 
-        assert_eq!(bs.get_committee_count(0_u64), Ok(<MainnetConfig as Config>::ShardCount::to_u64()))
+        assert_eq!(
+            bs.get_committee_count(0_u64),
+            Ok(<MainnetConfig as Config>::ShardCount::to_u64())
+        )
     }
 
     #[test]
@@ -380,13 +384,20 @@ mod tests {
             ..BeaconState::default()
         };
 
-        assert_eq!(bs.get_validator_churn_limit(), Ok(MainnetConfig::min_per_epoch_churn_limit()))
+        assert_eq!(
+            bs.get_validator_churn_limit(),
+            Ok(MainnetConfig::min_per_epoch_churn_limit())
+        )
     }
 
     #[test]
     fn test_get_randao_mix() {
         let bs: BeaconState<MainnetConfig> = BeaconState {
-            randao_mixes: FixedVector::from(vec![H256::from([5; 32]), H256::from([5; 32]), H256::from([5; 32])]),
+            randao_mixes: FixedVector::from(vec![
+                H256::from([5; 32]),
+                H256::from([5; 32]),
+                H256::from([5; 32]),
+            ]),
             ..BeaconState::default()
         };
 
