@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{BitVector, FixedVector, VariableList};
+use std::cmp;
 use tree_hash_derive::TreeHash;
 use typenum::marker_traits::Unsigned;
-use std::cmp;
 
 use crate::{config::*, consts, error::Error, primitives::*, types::*};
 
@@ -67,7 +67,7 @@ impl<C: Config> BeaconState<C> {
 
     pub fn get_block_root(&self, epoch: Epoch) -> Result<H256, Error> {
         // todo: change to compute start slot of epoch when implemented
-        self.get_block_root_at_slot(Slot::from(epoch * C::SlotsPerEpoch::to_u64()))
+        self.get_block_root_at_slot(epoch * C::SlotsPerEpoch::to_u64())
     }
 
     pub fn get_active_validator_indices(&self, epoch: Epoch) -> Vec<ValidatorIndex> {
@@ -93,7 +93,7 @@ impl<C: Config> BeaconState<C> {
     }
 
     pub fn get_current_epoch(&self) -> Epoch {
-        Epoch::from(self.slot / C::SlotsPerEpoch::to_u64())
+        self.slot / C::SlotsPerEpoch::to_u64()
     }
 
     pub fn get_previous_epoch(&self) -> Epoch {
@@ -101,7 +101,7 @@ impl<C: Config> BeaconState<C> {
         let genesis_epoch = C::genesis_epoch();
 
         if current_epoch > genesis_epoch {
-            Epoch::from(current_epoch - 1)
+            current_epoch - 1
         } else {
             genesis_epoch
         }
@@ -114,22 +114,22 @@ impl<C: Config> BeaconState<C> {
     pub fn get_validator_churn_limit(&self) -> Result<u64, Error> {
         let active_validator_indices = self.get_active_validator_indices(self.get_current_epoch());
 
-        Ok(
-            cmp::max(
-                C::min_per_epoch_churn_limit(),
-                active_validator_indices.len() as u64 / C::churn_limit_quotient()
-            )
-         )
+        Ok(cmp::max(
+            C::min_per_epoch_churn_limit(),
+            active_validator_indices.len() as u64 / C::churn_limit_quotient(),
+        ))
     }
 
     pub fn get_committee_count(&self, epoch: Epoch) -> Result<u64, Error> {
-        let committees_per_slot = cmp::min(C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
-                                            self.get_active_validator_indices(epoch).len() as u64);
+        let committees_per_slot = cmp::min(
+            C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
+            self.get_active_validator_indices(epoch).len() as u64,
+        );
 
-        Ok(cmp::max(1, committees_per_slot)*C::SlotsPerEpoch::to_u64())
+        Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
     }
 
-    pub fn get_total_balance(&self, indices: Vec<ValidatorIndex>) -> Result<u64, Error> {
+    pub fn get_total_balance(&self, indices: &[ValidatorIndex]) -> Result<u64, Error> {
         let mut sum = 0;
         for (_i, index) in indices.iter().enumerate() {
             sum += self.validators[*index as usize].effective_balance
@@ -138,7 +138,7 @@ impl<C: Config> BeaconState<C> {
     }
 
     pub fn get_total_active_balance(&self) -> Result<u64, Error> {
-        self.get_total_balance(self.get_active_validator_indices(self.get_current_epoch()))
+        self.get_total_balance(&self.get_active_validator_indices(self.get_current_epoch()))
     }
 }
 
@@ -168,7 +168,10 @@ mod tests {
             slot: 0,
             ..BeaconState::default()
         };
-        assert_eq!(bs.get_block_root_at_slot(0).err(), Some(Error::SlotOutOfRange));
+        assert_eq!(
+            bs.get_block_root_at_slot(0).err(),
+            Some(Error::SlotOutOfRange),
+        );
     }
 
     #[test]
