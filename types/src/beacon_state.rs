@@ -300,4 +300,96 @@ mod tests {
             bs.compute_start_slot_of_epoch(10_u64),
             <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64)
     }
+
+    #[test]
+    fn test_get_total_active_balance() {
+        let v1 = Validator {
+            effective_balance: 10,
+            activation_epoch: 0,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let v2 = Validator {
+            effective_balance: 2,
+            activation_epoch: 0,
+            exit_epoch: 1,
+            ..Validator::default()
+        };
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1, v2]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_total_active_balance(), Ok(12_u64))
+    }
+
+    #[test]
+    fn test_get_active_balance() {
+        let v1 = Validator {
+            effective_balance: 11,
+            activation_epoch: 0,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let v2 = Validator {
+            effective_balance: 7,
+            activation_epoch: 0,
+            exit_epoch: 1,
+            ..Validator::default()
+        };
+        let v3 = Validator {
+            effective_balance: 5,
+            activation_epoch: 0,
+            exit_epoch: 1,
+            ..Validator::default()
+        };
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1, v2, v3]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_total_balance(&[0, 2]), Ok(16_u64))
+    }
+
+    #[test]
+    fn test_get_committee_count() {
+        let v1 = Validator {
+            effective_balance: 11,
+            activation_epoch: 0,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_committee_count(0_u64), Ok(<MainnetConfig as Config>::ShardCount::to_u64()))
+    }
+
+    #[test]
+    fn test_get_validator_churn_limit() {
+        let v1 = Validator {
+            effective_balance: 11,
+            activation_epoch: 0,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_validator_churn_limit(), Ok(MainnetConfig::min_per_epoch_churn_limit()))
+    }
+
+    #[test]
+    fn test_get_randao_mix() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            randao_mixes: FixedVector::from(vec![H256::from([5; 32]), H256::from([5; 32]), H256::from([5; 32])]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(bs.get_randao_mix(2), Ok(H256::from([5; 32])))
+    }
 }
