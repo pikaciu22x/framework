@@ -30,6 +30,5 @@
 pub mod beacon_state;
 pub mod config;
 pub mod consts;
-mod error;
 pub mod primitives;
 pub mod types;

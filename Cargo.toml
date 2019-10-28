@@ -1,15 +1,14 @@
 [workspace]
 members = [
+    'helper_functions',
     'types',
     'utils/bls',
     'utils/eth2_hashing',
-    'utils/eth2_hashing_new',
     'utils/serde_hex',
     'utils/ssz',
     'utils/ssz_types',
     'utils/tree_hash',
-    'utils/tree_hash_derive',
-    'utils/misc'
+    'utils/tree_hash_derive'
 ]
 
 [profile.release]
