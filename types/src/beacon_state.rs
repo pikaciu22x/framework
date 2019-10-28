@@ -159,6 +159,10 @@ impl<C: Config> BeaconState<C> {
     pub fn get_total_active_balance(&self) -> Result<u64, Error> {
         self.get_total_balance(&self.get_active_validator_indices(self.get_current_epoch()))
     }
+
+    pub fn compute_start_slot_of_epoch(&self, epoch: Epoch) -> Slot {
+        epoch * C::SlotsPerEpoch::to_u64()
+    }
 }
 
 #[cfg(test)]
@@ -284,5 +288,16 @@ mod tests {
             ..BeaconState::default()
         };
         assert_eq!(bs.get_previous_epoch(), MainnetConfig::genesis_epoch());
+    }
+
+    #[test]
+    fn test_compute_start_slot_of_epoch() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 0,
+            ..BeaconState::default()
+        };
+        assert_eq!(
+            bs.compute_start_slot_of_epoch(10_u64),
+            <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64)
     }
 }
