@@ -3,10 +3,10 @@ use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
 use types::{beacon_state::BeaconState, config::Config, primitives::*};
 
-use crate::{error::Error, misc::compute_epoch_of_slot, predicates::is_active_validator};
+use crate::{error::Error, misc::compute_epoch_at_slot, predicates::is_active_validator};
 
 pub fn get_current_epoch<C: Config>(state: &BeaconState<C>) -> Epoch {
-    compute_epoch_of_slot::<C>(state.slot)
+    compute_epoch_at_slot::<C>(state.slot)
 }
 
 pub fn get_previous_epoch<C: Config>(state: &BeaconState<C>) -> Epoch {
