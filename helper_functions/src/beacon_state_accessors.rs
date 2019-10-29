@@ -1,9 +1,9 @@
 use std::cmp;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
-use types::{beacon_state::{BeaconState}, config::{Config}, primitives::*};
+use types::{beacon_state::BeaconState, config::Config, primitives::*};
 
-use crate::{error::Error, misc::{epoch_of_slot}, predicates::{is_active_validator}};
+use crate::{error::Error, misc::epoch_of_slot, predicates::is_active_validator};
 
 pub fn get_current_epoch<C: Config>(state: &BeaconState<C>) -> Epoch {
     epoch_of_slot::<C>(state.slot)
@@ -25,7 +25,10 @@ pub fn get_block_root<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result
     get_block_root_at_slot(state, epoch * C::SlotsPerEpoch::to_u64())
 }
 
-pub fn get_block_root_at_slot<C: Config>(state: &BeaconState<C>, slot: Slot) -> Result<H256, Error> {
+pub fn get_block_root_at_slot<C: Config>(
+    state: &BeaconState<C>,
+    slot: Slot,
+) -> Result<H256, Error> {
     if !(slot < state.slot && state.slot <= slot + C::SlotsPerHistoricalRoot::to_u64()) {
         return Err(Error::SlotOutOfRange);
     }
@@ -43,7 +46,10 @@ pub fn get_randao_mix<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result
     }
 }
 
-pub fn get_active_validator_indices<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Vec<ValidatorIndex> {
+pub fn get_active_validator_indices<C: Config>(
+    state: &BeaconState<C>,
+    epoch: Epoch,
+) -> Vec<ValidatorIndex> {
     let mut active_validator_indices = Vec::new();
     for (i, v) in state.validators.iter().enumerate() {
         if is_active_validator(v, epoch) {
@@ -71,7 +77,10 @@ pub fn get_committee_count<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> R
     Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
 }
 
-pub fn get_total_balance<C: Config>(state: &BeaconState<C>, indices: &[ValidatorIndex]) -> Result<u64, Error> {
+pub fn get_total_balance<C: Config>(
+    state: &BeaconState<C>,
+    indices: &[ValidatorIndex],
+) -> Result<u64, Error> {
     let mut sum = 0;
     for (_i, index) in indices.iter().enumerate() {
         match usize::try_from(*index) {
@@ -83,15 +92,18 @@ pub fn get_total_balance<C: Config>(state: &BeaconState<C>, indices: &[Validator
 }
 
 pub fn get_total_active_balance<C: Config>(state: &BeaconState<C>) -> Result<u64, Error> {
-    get_total_balance::<C>(state, &get_active_validator_indices::<C>(state, get_current_epoch::<C>(state)))
+    get_total_balance::<C>(
+        state,
+        &get_active_validator_indices::<C>(state, get_current_epoch::<C>(state)),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use ssz_types::{FixedVector, VariableList};
-    use types::types::Validator;
     use types::config::MainnetConfig;
+    use types::types::Validator;
 
     #[test]
     fn test_get_current_epoch() {
@@ -210,7 +222,6 @@ mod tests {
             Ok(MainnetConfig::min_per_epoch_churn_limit())
         )
     }
-
 
     #[test]
     fn test_get_committee_count() {

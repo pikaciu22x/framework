@@ -1,7 +1,7 @@
-use types::beacon_state::BeaconState;
-use types::primitives::{Gwei, ValidatorIndex};
-use types::config::Config;
 use std::convert::TryFrom;
+use types::beacon_state::BeaconState;
+use types::config::Config;
+use types::primitives::{Gwei, ValidatorIndex};
 
 pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
     match usize::try_from(index) {

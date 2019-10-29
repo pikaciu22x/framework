@@ -1,7 +1,12 @@
-use types::{primitives::{Epoch}, types::{AttestationData, Validator}};
+use types::{
+    primitives::Epoch,
+    types::{AttestationData, Validator},
+};
 
 pub fn is_slashable_validator(validator: &Validator, epoch: Epoch) -> bool {
-    !validator.slashed && validator.activation_epoch <= epoch && epoch < validator.withdrawable_epoch
+    !validator.slashed
+        && validator.activation_epoch <= epoch
+        && epoch < validator.withdrawable_epoch
 }
 
 pub fn is_active_validator(validator: &Validator, epoch: Epoch) -> bool {
