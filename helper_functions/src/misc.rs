@@ -2,7 +2,7 @@ use typenum::marker_traits::Unsigned;
 use types::config::Config;
 use types::primitives::{Epoch, Slot};
 
-pub fn epoch_of_slot<C: Config>(slot: Slot) -> Epoch {
+pub fn compute_epoch_of_slot<C: Config>(slot: Slot) -> Epoch {
     slot / C::SlotsPerEpoch::to_u64()
 }
 
@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn test_epoch_of_slot() {
         let expected_epoch = 2 as u64;
-        let calculated_epoch = epoch_of_slot::<MainnetConfig>(17 as u64);
+        let calculated_epoch = compute_epoch_of_slot::<MainnetConfig>(17 as u64);
         assert_eq!(calculated_epoch, expected_epoch);
     }
 
