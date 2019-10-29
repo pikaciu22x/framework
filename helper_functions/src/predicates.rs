@@ -1,3 +1,5 @@
+use types::{primitives::{Epoch}, types::{AttestationData, Validator}};
+
 pub fn is_slashable_validator(validator: &Validator, epoch: Epoch) -> bool {
     !validator.slashed && validator.activation_epoch <= epoch && epoch < validator.withdrawable_epoch
 }
@@ -16,9 +18,11 @@ pub fn is_slashable_attestation_data(data_1: &AttestationData, data_2: &Attestat
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::primitives::*;
+    use types::types::Checkpoint;
 
     #[test]
-    fn is_slashable_validator() {
+    fn test_is_slashable_validator() {
         let v = Validator {
             slashed: false,
             activation_epoch: 0,
@@ -29,7 +33,7 @@ mod tests {
     }
 
     #[test]
-    fn is_slashable_validator_already_slashed() {
+    fn test_is_slashable_validator_already_slashed() {
         let v = Validator {
             slashed: true,
             activation_epoch: 0,
@@ -40,7 +44,7 @@ mod tests {
     }
 
     #[test]
-    fn is_slashable_validator_activation_epoch_greater_than_epoch() {
+    fn test_is_slashable_validator_activation_epoch_greater_than_epoch() {
         let v = Validator {
             slashed: false,
             activation_epoch: 1,
@@ -51,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn is_slashable_validator_withdrawable_epoch_equals_epoch() {
+    fn test_is_slashable_validator_withdrawable_epoch_equals_epoch() {
         let v = Validator {
             slashed: false,
             activation_epoch: 0,
@@ -62,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn is_active_validator() {
+    fn test_is_active_validator() {
         let v = Validator {
             activation_epoch: 0,
             exit_epoch: 1,
@@ -72,7 +76,7 @@ mod tests {
     }
 
     #[test]
-    fn is_active_validator_activation_epoch_greater_than_epoch() {
+    fn test_is_active_validator_activation_epoch_greater_than_epoch() {
         let v = Validator {
             activation_epoch: 1,
             exit_epoch: 2,
@@ -82,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn is_active_validator_exit_epoch_equals_epoch() {
+    fn test_is_active_validator_exit_epoch_equals_epoch() {
         let v = Validator {
             activation_epoch: 0,
             exit_epoch: 1,

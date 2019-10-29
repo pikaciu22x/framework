@@ -270,13 +270,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eth2_hashing_new"
-version = "0.1.0"
-dependencies = [
- "ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "eth2_ssz"
 version = "0.1.2"
 dependencies = [
@@ -409,6 +402,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "helper_functions"
+version = "0.1.0"
+dependencies = [
+ "eth2_ssz_types 0.2.0",
+ "ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "types 0.1.0",
+]
+
+[[package]]
 name = "hex"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -509,14 +512,6 @@ dependencies = [
  "ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaml-rust 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "zeroize 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "misc"
-version = "0.1.0"
-dependencies = [
- "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "types 0.1.0",
 ]
 
 [[package]]

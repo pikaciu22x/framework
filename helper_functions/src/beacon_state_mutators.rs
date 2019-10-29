@@ -1,11 +1,16 @@
-pub fn increase_balance(state: &mut BeaconState, index: ValidatorIndex, delta: Gwei) {
+use types::beacon_state::BeaconState;
+use types::primitives::{Gwei, ValidatorIndex};
+use types::config::Config;
+use std::convert::TryFrom;
+
+pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
     match usize::try_from(index) {
         Err(_err) => {}
         Ok(id) => state.balances[id] += delta,
     }
 }
 
-pub fn decrease_balance(state: &mut BeaconState, index: ValidatorIndex, delta: Gwei) {
+pub fn decrease_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
     match usize::try_from(index) {
         Err(_err) => {}
         Ok(id) => {
@@ -21,14 +26,16 @@ pub fn decrease_balance(state: &mut BeaconState, index: ValidatorIndex, delta: G
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ssz_types::VariableList;
+    use types::config::MainnetConfig;
 
     #[test]
-    fn increase_balance() {
+    fn test_increase_balance() {
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
             balances: VariableList::from(vec![0]),
             ..BeaconState::default()
         };
-        increase_balance(&bs, 0, 1);
+        increase_balance::<MainnetConfig>(&mut bs, 0, 1);
         assert_eq!(bs.balances[0], 1);
     }
 
@@ -38,7 +45,7 @@ mod tests {
             balances: VariableList::from(vec![5]),
             ..BeaconState::default()
         };
-        decrease_balance(&bs, 0, 3);
+        decrease_balance::<MainnetConfig>(&mut bs, 0, 3);
         assert_eq!(bs.balances[0], 2);
     }
 
@@ -48,7 +55,7 @@ mod tests {
             balances: VariableList::from(vec![0]),
             ..BeaconState::default()
         };
-        decrease_balance(&bs, 0, 1);
+        decrease_balance::<MainnetConfig>(&mut bs, 0, 1);
         assert_eq!(bs.balances[0], 0);
     }
 }

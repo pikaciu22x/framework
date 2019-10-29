@@ -28,18 +28,14 @@ mod tests {
 
     #[test]
     fn test_compute_start_slot_of_epoch() {
-        let bs: BeaconState<MainnetConfig> = BeaconState {
-            slot: 0,
-            ..BeaconState::default()
-        };
         assert_eq!(
-            compute_start_slot_of_epoch<MainnetConfig>(&bs, 10_u64),
+            compute_start_slot_of_epoch::<MainnetConfig>(10_u64),
             <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64
-        )
+        );
     }
 
     #[test]
-    fn compute_activation_exit_epoch() {
-        assert_eq!(compute_activation_exit_epoch<MainnetConfig>(0), 5);
+    fn test_compute_activation_exit_epoch() {
+        assert_eq!(compute_activation_exit_epoch::<MainnetConfig>(0), 5);
     }
 }
