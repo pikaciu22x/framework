@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn test_int_to_bytes_value4294967295_length_8() {
         let expected_bytes = [0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00];
-        let output = int_to_bytes(4_294_967_295, 8);
+        let output = int_to_bytes(0xFFFF_FFFF, 8);
         let calculated_bytes = output.as_ref();
 
         assert_eq!(expected_bytes, calculated_bytes);
@@ -84,7 +84,7 @@ mod tests {
         );
         assert_eq!(
             bytes_to_int([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]),
-            72_057_594_037_927_936_u64
+            0x0100_0000_0000_0000
         );
     }
 }
