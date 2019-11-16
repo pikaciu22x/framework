@@ -34,10 +34,11 @@ pub struct Attestation<C: Config> {
     Default,
 )]
 pub struct AttestationData {
+    pub slot: Slot,
+    pub index: CommitteeIndex,
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
-    pub crosslink: Crosslink,
 }
 
 #[derive(

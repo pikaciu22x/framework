@@ -1,7 +1,10 @@
+// use ssz_types::BitList;
 use std::cmp;
+// use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
 use types::{beacon_state::BeaconState, config::Config, primitives::*};
+// use types::types::AttestationData;
 
 use crate::{error::Error, misc::compute_epoch_at_slot, predicates::is_active_validator};
 
@@ -77,6 +80,21 @@ pub fn get_committee_count<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> R
     Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
 }
 
+// pub fn get_beacon_committee<C: Config>(
+//     state: &BeaconState<C>,
+//     slot: Slot,
+//     index: CommitteeIndex,
+// ) -> Result<Vec<ValidatorIndex>, Error> {
+//     let epoch = compute_epoch_at_slot(slot);
+//     let committees_per_slot = get_committee_count_at_slot(state, slot);
+//     compute_committee(
+//         &get_active_validator_indices(state, epoch),
+//         get_seed(state, epoch, C::domain_attestation()),
+//         (slot % C::SlotsPerEpoch::to_u64()) * committees_per_slot + index,
+//         committees_per_slot * C::SlotsPerEpoch::to_u64(),
+//     )
+// }
+
 pub fn get_total_balance<C: Config>(
     state: &BeaconState<C>,
     indices: &[ValidatorIndex],
@@ -97,6 +115,39 @@ pub fn get_total_active_balance<C: Config>(state: &BeaconState<C>) -> Result<u64
         &get_active_validator_indices::<C>(state, get_current_epoch::<C>(state)),
     )
 }
+
+// pub fn get_domain<C: Config>(
+//     state: &BeaconState<C>,
+//     domain_type: DomainType,
+//     message_epoch: Option<Epoch>,
+// ) -> Domain {
+//     let epoch = message_epoch.unwrap_or(get_current_epoch(state));
+//     let fork_version = if epoch < state.fork.epoch {
+//         state.fork.previous_version
+//     } else {
+//         state.fork.current_version
+//     };
+//     compute_domain(domain_type, fork_version)
+// }
+
+// pub fn get_attesting_indices<C: Config>(
+//     state: &BeaconState<C>,
+//     data: &AttestationData,
+//     bits: &BitList<C::MaxValidatorsPerCommittee>,
+// ) -> Result<BTreeSet<ValidatorIndex>, Error> {
+//     let committee = get_beacon_committee(state, data.slot, data.index)?;
+//     if bits.len() != committee.len() {
+//         return Err(Error::AttestationBitsInvalid);
+//     }
+//     Ok(committee
+//         .iter()
+//         .enumerate()
+//         .filter_map(|(i, index)| match bits.get(i) {
+//             Ok(true) => Some(*index),
+//             _ => None,
+//         })
+//         .collect())
+// }
 
 #[cfg(test)]
 mod tests {

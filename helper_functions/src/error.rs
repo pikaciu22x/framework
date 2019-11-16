@@ -2,4 +2,5 @@
 pub enum Error {
     SlotOutOfRange,
     IndexOutOfRange,
+    AttestationBitsInvalid,
 }
