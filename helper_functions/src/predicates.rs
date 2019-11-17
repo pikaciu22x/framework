@@ -1,12 +1,12 @@
+use crate::error::Error;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use crate::error::Error;
 use typenum::marker_traits::Unsigned;
 use types::{
+    beacon_state::BeaconState,
     config::Config,
     primitives::Epoch,
     types::{AttestationData, IndexedAttestation, Validator},
-    beacon_state::BeaconState,
 };
 
 pub fn is_slashable_validator(validator: &Validator, epoch: Epoch) -> bool {
@@ -44,16 +44,18 @@ pub fn is_valid_indexed_attestation<C: Config>(
     }
 
     // Verify index sets are disjoint
-    let is_disjoint = HashSet::<&u64>::from_iter(bit_0_indices.iter()).is_disjoint(&HashSet::<&u64>::from_iter(bit_1_indices.iter()));
+    let is_disjoint = HashSet::<&u64>::from_iter(bit_0_indices.iter())
+        .is_disjoint(&HashSet::<&u64>::from_iter(bit_1_indices.iter()));
     if !is_disjoint {
         return Err(Error::CustodyBitValidatorsIntersect);
     }
 
     // Verify indices are sorted
-    let is_sorted = bit_0_indices.windows(2).all(|w| w[0] <= w[1]) && bit_1_indices.windows(2).all(|w| w[0] <= w[1]);
+    let is_sorted = bit_0_indices.windows(2).all(|w| w[0] <= w[1])
+        && bit_1_indices.windows(2).all(|w| w[0] <= w[1]);
     if !is_sorted {
-		return Err(Error::BadValidatorIndicesOrdering);
-	}
+        return Err(Error::BadValidatorIndicesOrdering);
+    }
 
     //     # Verify aggregate signature
     //     if not bls_verify_multiple(
@@ -76,10 +78,10 @@ pub fn is_valid_indexed_attestation<C: Config>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ssz_types::VariableList;
     use types::config::MainnetConfig;
     use types::primitives::*;
     use types::types::Checkpoint;
-    use ssz_types::{VariableList};
 
     #[test]
     fn test_is_slashable_validator() {
@@ -245,7 +247,7 @@ mod tests {
     #[test]
     fn test_is_valid_indexed_attestation_max_indices_exceeded() {
         let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-        let bit_0_indices: Vec<u64> = (0u64..4096u64).collect();
+        let bit_0_indices: Vec<u64> = (0_u64..4096_u64).collect();
         let bit_1_indices: Vec<u64> = vec![1];
         let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
             custody_bit_0_indices: VariableList::from(bit_0_indices),
@@ -261,8 +263,8 @@ mod tests {
     #[test]
     fn test_is_valid_indexed_attestation_custody_bit_validators_intersect() {
         let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-        let bit_0_indices: Vec<u64> = (0u64..64u64).collect();
-        let bit_1_indices: Vec<u64> = vec![1u64];
+        let bit_0_indices: Vec<u64> = (0_u64..64_u64).collect();
+        let bit_1_indices: Vec<u64> = vec![1_u64];
         let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
             custody_bit_0_indices: VariableList::from(bit_0_indices),
             custody_bit_1_indices: VariableList::from(bit_1_indices),
@@ -277,8 +279,8 @@ mod tests {
     #[test]
     fn test_is_valid_indexed_attestation_bad_validator_indices_ordering() {
         let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-        let bit_0_indices: Vec<u64> = (0u64..64u64).collect();
-        let bit_1_indices: Vec<u64> = vec![66u64, 65u64];
+        let bit_0_indices: Vec<u64> = (0_u64..64_u64).collect();
+        let bit_1_indices: Vec<u64> = vec![66_u64, 65_u64];
         let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
             custody_bit_0_indices: VariableList::from(bit_0_indices),
             custody_bit_1_indices: VariableList::from(bit_1_indices),

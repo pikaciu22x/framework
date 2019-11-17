@@ -55,6 +55,21 @@ pub fn compute_activation_exit_epoch<C: Config>(epoch: Epoch) -> Epoch {
     epoch + 1 + C::activation_exit_delay()
 }
 
+pub fn compute_domain<C: Config>(
+    domain_type: DomainType,
+    fork_version: Option<&Version>,
+) -> Domain {
+    let version: &Version = match fork_version {
+        Some(version) => version,
+        None => &[0_u8; 4],
+    };
+
+    let mut bytes = [0_u8; 8];
+    (&mut bytes[0..4]).copy_from_slice(&domain_type.to_le_bytes()[0..4]);
+    (&mut bytes[4..8]).copy_from_slice(version);
+    bytes_to_int(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,5 +108,25 @@ mod tests {
     #[test]
     fn test_compute_activation_exit_epoch() {
         assert_eq!(compute_activation_exit_epoch::<MainnetConfig>(0), 5);
+    }
+
+    #[test]
+    fn test_compute_domain() {
+        let version: Version = [0_u8, 0_u8, 0_u8, 1_u8];
+        let domain_type: DomainType = 2_u32;
+        let expected: u64 = 0x0100_0000_0000_0002_u64;
+
+        assert_eq!(
+            compute_domain::<MainnetConfig>(domain_type, Some(&version)),
+            expected
+        );
+    }
+
+    #[test]
+    fn test_compute_domain_default_version() {
+        let domain_type: DomainType = 2_u32;
+        let expected: u64 = 0x0000_0000_0000_0002_u64;
+
+        assert_eq!(compute_domain::<MainnetConfig>(domain_type, None), expected);
     }
 }
