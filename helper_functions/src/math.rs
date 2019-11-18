@@ -1,3 +1,5 @@
+use types::primitives::*;
+
 // endianness is not configurable
 pub fn int_to_bytes(int: u64, length: usize) -> Vec<u8> {
     let mut vec = int.to_le_bytes().to_vec();
@@ -20,6 +22,10 @@ pub fn integer_squareroot(n: u64) -> u64 {
         y = (x + n / x) / 2
     }
     x
+}
+
+pub fn xor(bytes_1: H256, bytes_2: H256) -> H256 {
+    bytes_1 ^ bytes_2
 }
 
 pub fn bytes_to_int(bytes: [u8; 8]) -> u64 {
@@ -94,6 +100,14 @@ mod tests {
         assert_eq!(integer_squareroot(1), 1);
         assert_eq!(integer_squareroot(25), 5);
         assert_eq!(integer_squareroot(20), 4);
+    }
+
+    #[test]
+    fn test_xor() {
+        assert_eq!(
+            xor(H256::from([1; 32]), H256::from([2; 32])),
+            H256::from([3; 32])
+        );
     }
 
     #[test]

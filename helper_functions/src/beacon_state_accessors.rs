@@ -6,7 +6,12 @@ use typenum::marker_traits::Unsigned;
 use types::{beacon_state::BeaconState, config::Config, primitives::*, types::*};
 // use types::types::AttestationData;
 
-use crate::{error::Error, math::{int_to_bytes, int_to_bytes_32}, misc::compute_epoch_at_slot, predicates::is_active_validator};
+use crate::{
+    error::Error,
+    math::{int_to_bytes, int_to_bytes_32},
+    misc::{compute_domain, compute_epoch_at_slot},
+    predicates::is_active_validator,
+};
 
 pub fn get_current_epoch<C: Config>(state: &BeaconState<C>) -> Epoch {
     compute_epoch_at_slot::<C>(state.slot)
@@ -131,19 +136,19 @@ pub fn get_total_active_balance<C: Config>(state: &BeaconState<C>) -> Result<u64
     )
 }
 
-// pub fn get_domain<C: Config>(
-//     state: &BeaconState<C>,
-//     domain_type: DomainType,
-//     message_epoch: Option<Epoch>,
-// ) -> Domain {
-//     let epoch = message_epoch.unwrap_or(get_current_epoch(state));
-//     let fork_version = if epoch < state.fork.epoch {
-//         state.fork.previous_version
-//     } else {
-//         state.fork.current_version
-//     };
-//     compute_domain(domain_type, fork_version)
-// }
+pub fn get_domain<C: Config>(
+    state: &BeaconState<C>,
+    domain_type: DomainType,
+    message_epoch: Option<Epoch>,
+) -> Domain {
+    let epoch = message_epoch.unwrap_or_else(|| get_current_epoch(state));
+    let fork_version = if epoch < state.fork.epoch {
+        &state.fork.previous_version
+    } else {
+        &state.fork.current_version
+    };
+    compute_domain::<C>(domain_type, Some(fork_version))
+}
 
 pub fn get_indexed_attestation<C: Config>(
     _state: &BeaconState<C>,
@@ -176,7 +181,7 @@ mod tests {
     use super::*;
     use ssz_types::{FixedVector, VariableList};
     use types::config::MainnetConfig;
-    use types::types::Validator;
+    use types::types::{Fork, Validator};
 
     #[test]
     fn test_get_current_epoch() {
@@ -363,5 +368,63 @@ mod tests {
         };
 
         assert_eq!(get_total_active_balance(&bs), Ok(12_u64))
+    }
+
+    #[test]
+    fn test_get_domain_previous_version() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            fork: Fork {
+                previous_version: [0_u8, 0_u8, 0_u8, 1_u8],
+                current_version: [0_u8, 0_u8, 1_u8, 0_u8],
+                epoch: 2,
+            },
+            ..BeaconState::default()
+        };
+        let domain_type: DomainType = 2_u32;
+        let expected: u64 = 0x0100_0000_0000_0002_u64;
+
+        assert_eq!(
+            get_domain::<MainnetConfig>(&bs, domain_type, Some(1)),
+            expected
+        );
+    }
+
+    #[test]
+    fn test_get_domain_current_version() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            fork: Fork {
+                previous_version: [0_u8, 0_u8, 0_u8, 1_u8],
+                current_version: [0_u8, 0_u8, 1_u8, 0_u8],
+                epoch: 1,
+            },
+            ..BeaconState::default()
+        };
+        let domain_type: DomainType = 2_u32;
+        let expected: u64 = 0x0001_0000_0000_0002_u64;
+
+        assert_eq!(
+            get_domain::<MainnetConfig>(&bs, domain_type, Some(1)),
+            expected
+        );
+    }
+
+    #[test]
+    fn test_get_domain_default_version() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 9,
+            fork: Fork {
+                previous_version: [0_u8, 0_u8, 0_u8, 1_u8],
+                current_version: [0_u8, 0_u8, 1_u8, 0_u8],
+                epoch: 2,
+            },
+            ..BeaconState::default()
+        };
+        let domain_type: DomainType = 2_u32;
+        let expected: u64 = 0x0100_0000_0000_0002_u64;
+
+        assert_eq!(
+            get_domain::<MainnetConfig>(&bs, domain_type, None),
+            expected
+        );
     }
 }
