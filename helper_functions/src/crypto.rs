@@ -1,7 +1,16 @@
+use bls::{AggregatePublicKey, PublicKey};
 use ring::digest::{digest, SHA256};
 
 pub fn hash(input: &[u8]) -> Vec<u8> {
     digest(&SHA256, input).as_ref().to_vec()
+}
+
+pub fn bls_aggregate_pubkeys(pubkeys: &[PublicKey]) -> AggregatePublicKey {
+    let mut aggregated = AggregatePublicKey::new();
+    for pubkey in pubkeys {
+        aggregated.add(pubkey);
+    }
+    aggregated
 }
 
 #[cfg(test)]
