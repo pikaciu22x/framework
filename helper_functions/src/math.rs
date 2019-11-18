@@ -5,6 +5,12 @@ pub fn int_to_bytes(int: u64, length: usize) -> Vec<u8> {
     vec
 }
 
+pub fn int_to_bytes_32(int: u32, length: usize) -> Vec<u8> {
+    let mut vec = int.to_le_bytes().to_vec();
+    vec.resize(length, 0);
+    vec
+}
+
 pub fn integer_squareroot(n: u64) -> u64 {
     let mut x = n;
     let mut y = (x + 1) / 2;
@@ -59,6 +65,24 @@ mod tests {
             0x00, 0x00, 0x00, 0x00,
         ];
         let output = int_to_bytes(88_813_769, 32);
+        let calculated_bytes = output.as_ref();
+
+        assert_eq!(expected_bytes, calculated_bytes);
+    }
+
+    #[test]
+    fn test_int_to_bytes_32_value0_length_4() {
+        let expected_bytes = [0x00, 0x00, 0x00, 0x00];
+        let output = int_to_bytes_32(0, 4);
+        let calculated_bytes = output.as_ref();
+
+        assert_eq!(expected_bytes, calculated_bytes);
+    }
+
+    #[test]
+    fn test_int_to_bytes_32_value4294967295_length_4() {
+        let expected_bytes = [0xff, 0xff, 0xff, 0xff];
+        let output = int_to_bytes_32(0xFFFF_FFFF, 4);
         let calculated_bytes = output.as_ref();
 
         assert_eq!(expected_bytes, calculated_bytes);
