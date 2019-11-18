@@ -61,13 +61,13 @@ pub fn compute_committee<'a, C: Config>(
     index: u64,
     count: u64,
 ) -> Result<Vec<ValidatorIndex>, Error> {
-    let start = count as u64 * index;
-    let end = count as u64 * (index + 1);
+    let start = count * index;
+    let end = count * (index + 1);
 
     let mut committee = Vec::new();
 
     for i in start..end {
-        match compute_shuffled_index::<C>(i, count as u64, *seed) {
+        match compute_shuffled_index::<C>(i, count, *seed) {
             Ok(id) => committee.push(indices[id as usize]),
             Err(err) => return Err(err),
         }
