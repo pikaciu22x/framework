@@ -268,6 +268,9 @@ where
     fn whistleblower_reward_quotient() -> u64 {
         512
     }
+    fn far_future_epoch() -> u64 {
+        u64::max_value()
+    }
 }
 
 #[derive(

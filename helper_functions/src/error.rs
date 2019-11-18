@@ -1,5 +1,6 @@
 #[derive(PartialEq, Debug)]
 pub enum Error {
+    ConversionToUsizeError,
     SlotOutOfRange,
     IndexOutOfRange,
     AttestationBitsInvalid,
@@ -7,4 +8,5 @@ pub enum Error {
     MaxIndicesExceeded,
     CustodyBitValidatorsIntersect,
     BadValidatorIndicesOrdering,
+    ValidatorExitAlreadyInitiated,
 }
