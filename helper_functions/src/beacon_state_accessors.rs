@@ -3,11 +3,12 @@ use std::cmp;
 // use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
-use types::{beacon_state::BeaconState, config::Config, primitives::*};
+use types::{beacon_state::BeaconState, config::Config, primitives::*, types::*};
 // use types::types::AttestationData;
 
 use crate::{
     error::Error,
+    math::{int_to_bytes, int_to_bytes_32},
     misc::{compute_domain, compute_epoch_at_slot},
     predicates::is_active_validator,
 };
@@ -75,6 +76,21 @@ pub fn get_validator_churn_limit<C: Config>(state: &BeaconState<C>) -> Result<u6
     ))
 }
 
+pub fn get_seed<C: Config>(
+    state: &BeaconState<C>,
+    epoch: Epoch,
+    domain_type: DomainType,
+) -> Result<H256, Error> {
+    let mix = get_randao_mix::<C>(state, epoch + C::EpochsPerHistoricalVector::to_u64() - C::min_seed_lookahead() - 1)?;
+
+    let mut seed = vec![];
+    seed.append(&mut int_to_bytes_32(domain_type, 4));
+    seed.append(&mut int_to_bytes(epoch, 8));
+
+    // Ok(H256::from(hash(&seed[..]))
+    Err(Error::AttestationBitsInvalid)
+}
+
 pub fn get_committee_count<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result<u64, Error> {
     let committees_per_slot = cmp::min(
         C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
@@ -132,6 +148,13 @@ pub fn get_domain<C: Config>(
         &state.fork.current_version
     };
     compute_domain::<C>(domain_type, Some(fork_version))
+}
+
+pub fn get_indexed_attestation<C: Config>(
+    _state: &BeaconState<C>,
+    _attestation: &Attestation<C>,
+) -> Result<IndexedAttestation<C>, Error> {
+    Err(Error::IndexOutOfRange)
 }
 
 // pub fn get_attesting_indices<C: Config>(
