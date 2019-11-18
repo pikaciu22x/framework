@@ -2,9 +2,11 @@ use crate::error::Error;
 use crate::misc::compute_activation_exit_epoch;
 use crate::beacon_state_accessors::{get_current_epoch, get_validator_churn_limit};
 use std::convert::TryFrom;
-use types::beacon_state::BeaconState;
-use types::config::Config;
-use types::primitives::{Gwei, ValidatorIndex};
+use types::{
+    beacon_state::BeaconState,
+    config::Config,
+    primitives::{Gwei, ValidatorIndex},
+};
 
 pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
     match usize::try_from(index) {
@@ -73,6 +75,7 @@ mod tests {
     use super::*;
     use ssz_types::VariableList;
     use types::config::MainnetConfig;
+    use types::types::Validator;
 
     #[test]
     fn test_increase_balance() {
@@ -102,5 +105,51 @@ mod tests {
         };
         decrease_balance::<MainnetConfig>(&mut bs, 0, 1);
         assert_eq!(bs.balances[0], 0);
+    }
+
+    #[test]
+    fn test_initiate_validator_exit_out_of_range() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(initiate_validator_exit::<MainnetConfig>(&mut bs, 1), Err(Error::IndexOutOfRange));
+    }
+
+    #[test]
+    fn test_initiate_validator_exit_validator_exit_already_initiated() {
+        let v1 = Validator {
+            activation_epoch: 1,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(initiate_validator_exit::<MainnetConfig>(&mut bs, 0), Err(Error::ValidatorExitAlreadyInitiated));
+    }
+
+    #[test]
+    fn test_initiate_validator_exit() {
+        let v1 = Validator {
+            activation_epoch: 1,
+            exit_epoch: 2,
+            ..Validator::default()
+        };
+        let v2 = Validator {
+            activation_epoch: 0,
+            exit_epoch: u64::max_value(),
+            ..Validator::default()
+        };
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![v1, v2]),
+            ..BeaconState::default()
+        };
+
+        assert_eq!(initiate_validator_exit::<MainnetConfig>(&mut bs, 1), Ok(()));
+        assert_eq!(bs.validators[1].exit_epoch, 5_u64);
     }
 }
