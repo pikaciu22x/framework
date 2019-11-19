@@ -12,3 +12,4 @@ ring = "0.14.6"
 typenum = '1.11.2'
 types = { path = '../types' }
 eth2_ssz_types = { path = '../utils/ssz_types' }
+eth2_ssz = { path = '../utils/ssz' }
