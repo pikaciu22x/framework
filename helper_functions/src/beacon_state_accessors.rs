@@ -216,6 +216,8 @@ pub fn get_attesting_indices<C: Config>(
     bits: &BitList<C::MaxValidatorsPerCommittee>,
 ) -> Result<BTreeSet<ValidatorIndex>, Error> {
     let committee = get_beacon_committee(state, data.slot, data.index)?;
+    println!("{length}", length = committee.len());
+    println!("{length}", length = bits.len());
     if bits.len() != committee.len() {
         return Err(Error::AttestationBitsInvalid);
     }
@@ -500,5 +502,35 @@ mod tests {
             get_domain::<MainnetConfig>(&bs, domain_type, None),
             expected
         );
+    }
+
+    #[test]
+    fn test_get_indexed_attestation() {
+        let validator = Validator {
+            activation_epoch: 0,
+            exit_epoch: u64::max_value(),
+            ..Validator::default()
+        };
+        
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            validators: VariableList::from(vec![validator; 64]),
+            randao_mixes: FixedVector::from(vec![H256::from([5; 32]); 64]),
+            ..BeaconState::<MainnetConfig>::default()
+        };
+
+        let aggregation_bits = BitList::with_capacity(64).expect("BitList creation failed");
+        let custody_bits = BitList::with_capacity(64).expect("BitList creation failed");
+
+        let attestation: Attestation<MainnetConfig> = Attestation {
+            aggregation_bits: aggregation_bits,
+            data: AttestationData::default(),
+            custody_bits: custody_bits,
+            signature: Signature::default(),
+        };
+
+        let expected: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+        let actual = get_indexed_attestation(&bs, &attestation);
+
+        assert_eq!(actual, Ok(expected));
     }
 }
