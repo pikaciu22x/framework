@@ -185,22 +185,22 @@ where
     fn churn_limit_quotient() -> u64 {
         0x0001_0000
     }
-    fn domain_attestation() -> u64 {
+    fn domain_attestation() -> u32 {
         2
     }
-    fn domain_beacon_proposer() -> u64 {
+    fn domain_beacon_proposer() -> u32 {
         0
     }
-    fn domain_deposit() -> u64 {
+    fn domain_deposit() -> u32 {
         3
     }
-    fn domain_randao() -> u64 {
+    fn domain_randao() -> u32 {
         1
     }
-    fn domain_transfer() -> u64 {
+    fn domain_transfer() -> u32 {
         5
     }
-    fn domain_voluntary_exit() -> u64 {
+    fn domain_voluntary_exit() -> u32 {
         4
     }
     fn effective_balance_increment() -> u64 {

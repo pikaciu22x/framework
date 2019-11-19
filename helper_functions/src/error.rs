@@ -1,6 +1,6 @@
 #[derive(PartialEq, Debug)]
 pub enum Error {
-    ConversionToUsizeError,
+    ConversionToUsize,
     SlotOutOfRange,
     IndexOutOfRange,
     AttestationBitsInvalid,

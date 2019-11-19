@@ -1,16 +1,15 @@
 use ring::digest::{digest, SHA256};
-// use ssz_types::BitList;
+use ssz_types::BitList;
 use std::cmp;
-// use std::collections::BTreeSet;
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
 use types::{beacon_state::BeaconState, config::Config, primitives::*, types::*};
-// use types::types::AttestationData;
 
 use crate::{
     error::Error,
     math::{int_to_bytes, int_to_bytes_32},
-    misc::{compute_domain, compute_epoch_at_slot},
+    misc::*,
     predicates::is_active_validator,
 };
 
@@ -82,7 +81,10 @@ pub fn get_seed<C: Config>(
     epoch: Epoch,
     domain_type: DomainType,
 ) -> Result<H256, Error> {
-    let mix = get_randao_mix::<C>(state, epoch + C::EpochsPerHistoricalVector::to_u64() - C::min_seed_lookahead() - 1)?;
+    let mix = get_randao_mix::<C>(
+        state,
+        epoch + C::EpochsPerHistoricalVector::to_u64() - C::min_seed_lookahead() - 1,
+    )?;
 
     let mut seed: [u8; 44] = [0; 44];
     seed[0..4].copy_from_slice(&int_to_bytes_32(domain_type, 4));
@@ -118,20 +120,20 @@ pub fn get_committee_count<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> R
     Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
 }
 
-// pub fn get_beacon_committee<C: Config>(
-//     state: &BeaconState<C>,
-//     slot: Slot,
-//     index: CommitteeIndex,
-// ) -> Result<Vec<ValidatorIndex>, Error> {
-//     let epoch = compute_epoch_at_slot(slot);
-//     let committees_per_slot = get_committee_count_at_slot(state, slot);
-//     compute_committee(
-//         &get_active_validator_indices(state, epoch),
-//         get_seed(state, epoch, C::domain_attestation()),
-//         (slot % C::SlotsPerEpoch::to_u64()) * committees_per_slot + index,
-//         committees_per_slot * C::SlotsPerEpoch::to_u64(),
-//     )
-// }
+pub fn get_beacon_committee<C: Config>(
+    state: &BeaconState<C>,
+    slot: Slot,
+    index: CommitteeIndex,
+) -> Result<Vec<ValidatorIndex>, Error> {
+    let epoch = compute_epoch_at_slot::<C>(slot);
+    let committees_per_slot = get_committee_count_at_slot(state, slot)?;
+    compute_committee::<C>(
+        &get_active_validator_indices(state, epoch),
+        &(get_seed(state, epoch, C::domain_attestation())?),
+        (slot % C::SlotsPerEpoch::to_u64()) * committees_per_slot + index,
+        committees_per_slot * C::SlotsPerEpoch::to_u64(),
+    )
+}
 
 pub fn get_total_balance<C: Config>(
     state: &BeaconState<C>,
@@ -175,24 +177,24 @@ pub fn get_indexed_attestation<C: Config>(
     Err(Error::IndexOutOfRange)
 }
 
-// pub fn get_attesting_indices<C: Config>(
-//     state: &BeaconState<C>,
-//     data: &AttestationData,
-//     bits: &BitList<C::MaxValidatorsPerCommittee>,
-// ) -> Result<BTreeSet<ValidatorIndex>, Error> {
-//     let committee = get_beacon_committee(state, data.slot, data.index)?;
-//     if bits.len() != committee.len() {
-//         return Err(Error::AttestationBitsInvalid);
-//     }
-//     Ok(committee
-//         .iter()
-//         .enumerate()
-//         .filter_map(|(i, index)| match bits.get(i) {
-//             Ok(true) => Some(*index),
-//             _ => None,
-//         })
-//         .collect())
-// }
+pub fn get_attesting_indices<C: Config>(
+    state: &BeaconState<C>,
+    data: &AttestationData,
+    bits: &BitList<C::MaxValidatorsPerCommittee>,
+) -> Result<BTreeSet<ValidatorIndex>, Error> {
+    let committee = get_beacon_committee(state, data.slot, data.index)?;
+    if bits.len() != committee.len() {
+        return Err(Error::AttestationBitsInvalid);
+    }
+    Ok(committee
+        .iter()
+        .enumerate()
+        .filter_map(|(i, index)| match bits.get(i) {
+            Ok(true) => Some(*index),
+            _ => None,
+        })
+        .collect())
+}
 
 #[cfg(test)]
 mod tests {

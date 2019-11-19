@@ -1,6 +1,6 @@
+use crate::beacon_state_accessors::{get_current_epoch, get_validator_churn_limit};
 use crate::error::Error;
 use crate::misc::compute_activation_exit_epoch;
-use crate::beacon_state_accessors::{get_current_epoch, get_validator_churn_limit};
 use std::convert::TryFrom;
 use types::{
     beacon_state::BeaconState,
@@ -33,7 +33,7 @@ pub fn initiate_validator_exit<C: Config>(
     index: ValidatorIndex,
 ) -> Result<(), Error> {
     match usize::try_from(index) {
-        Err(_err) => Err(Error::ConversionToUsizeError),
+        Err(_err) => Err(Error::ConversionToUsize),
         Ok(id) => {
             if id >= state.validators.len() {
                 return Err(Error::IndexOutOfRange);
@@ -43,27 +43,32 @@ pub fn initiate_validator_exit<C: Config>(
                 return Err(Error::ValidatorExitAlreadyInitiated);
             }
 
-            let max_exit_epoch = state.validators.into_iter()
+            let max_exit_epoch = state
+                .validators
+                .into_iter()
                 .filter(|v| v.exit_epoch != C::far_future_epoch())
                 .map(|v| v.exit_epoch)
                 .fold(0, |a, b| a.max(b));
 
-            let mut exit_queue_epoch = max_exit_epoch.max(compute_activation_exit_epoch::<C>(get_current_epoch::<C>(state)));
-            let exit_queue_churn = state.validators.into_iter()
+            let mut exit_queue_epoch = max_exit_epoch.max(compute_activation_exit_epoch::<C>(
+                get_current_epoch::<C>(state),
+            ));
+            let exit_queue_churn = state
+                .validators
+                .into_iter()
                 .filter(|v| v.exit_epoch == exit_queue_epoch)
-                .count();   
-            
+                .count();
             match usize::try_from(get_validator_churn_limit(state)?) {
-                Err(_err) => Err(Error::ConversionToUsizeError),
+                Err(_err) => Err(Error::ConversionToUsize),
                 Ok(validator_churn_limit) => {
                     if exit_queue_churn >= validator_churn_limit {
                         exit_queue_epoch += 1;
                     }
-                        
                     state.validators[id].exit_epoch = exit_queue_epoch;
-                    state.validators[id].withdrawable_epoch = state.validators[id].exit_epoch + C::min_validator_withdrawability_delay();
+                    state.validators[id].withdrawable_epoch =
+                        state.validators[id].exit_epoch + C::min_validator_withdrawability_delay();
 
-                    return Ok(());
+                    Ok(())
                 }
             }
         }
@@ -114,7 +119,10 @@ mod tests {
             ..BeaconState::default()
         };
 
-        assert_eq!(initiate_validator_exit::<MainnetConfig>(&mut bs, 1), Err(Error::IndexOutOfRange));
+        assert_eq!(
+            initiate_validator_exit::<MainnetConfig>(&mut bs, 1),
+            Err(Error::IndexOutOfRange)
+        );
     }
 
     #[test]
@@ -129,7 +137,10 @@ mod tests {
             ..BeaconState::default()
         };
 
-        assert_eq!(initiate_validator_exit::<MainnetConfig>(&mut bs, 0), Err(Error::ValidatorExitAlreadyInitiated));
+        assert_eq!(
+            initiate_validator_exit::<MainnetConfig>(&mut bs, 0),
+            Err(Error::ValidatorExitAlreadyInitiated)
+        );
     }
 
     #[test]

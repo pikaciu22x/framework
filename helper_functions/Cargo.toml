@@ -11,6 +11,4 @@ bls = { path = '../utils/bls' }
 ring = "0.14.6"
 typenum = '1.11.2'
 types = { path = '../types' }
-
-[dev-dependencies]
 eth2_ssz_types = { path = '../utils/ssz_types' }
