@@ -33,11 +33,6 @@ pub fn is_valid_indexed_attestation<C: Config>(
     let bit_0_indices = &indexed_attestation.custody_bit_0_indices;
     let bit_1_indices = &indexed_attestation.custody_bit_1_indices;
 
-    // Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    // if bit_1_indices.len() != 0 {
-    //     return Err(Error::CustodyBitSet);
-    // }
-
     // Verify max number of indices
     if (bit_0_indices.len() + bit_1_indices.len()) > C::MaxValidatorsPerCommittee::to_usize() {
         return Err(Error::MaxIndicesExceeded);
@@ -56,21 +51,6 @@ pub fn is_valid_indexed_attestation<C: Config>(
     if !is_sorted {
         return Err(Error::BadValidatorIndicesOrdering);
     }
-
-    //     # Verify aggregate signature
-    //     if not bls_verify_multiple(
-    //         pubkeys=[
-    //             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-    //             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
-    //         ],
-    //         message_hashes=[
-    //             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-    //             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-    //         ],
-    //         signature=indexed_attestation.signature,
-    //         domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
-    //     ):
-    //         return False
 
     Ok(())
 }

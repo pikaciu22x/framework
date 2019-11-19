@@ -48,7 +48,7 @@ pub fn initiate_validator_exit<C: Config>(
                 .into_iter()
                 .filter(|v| v.exit_epoch != C::far_future_epoch())
                 .map(|v| v.exit_epoch)
-                .fold(0, |a, b| a.max(b));
+                .fold(0, std::cmp::Ord::max);
 
             let mut exit_queue_epoch = max_exit_epoch.max(compute_activation_exit_epoch::<C>(
                 get_current_epoch::<C>(state),

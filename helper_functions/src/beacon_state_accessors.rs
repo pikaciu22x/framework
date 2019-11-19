@@ -182,25 +182,17 @@ pub fn get_indexed_attestation<C: Config>(
 
     let custody_bit_0_indices = &attesting_indices - &custody_bit_1_indices;
 
-    let custody_bit_0_indices_list = match VariableList::new(
-        custody_bit_0_indices
-            .into_iter()
-            .map(|x| x as u64)
-            .collect(),
-    ) {
-        Err(_err) => return Err(Error::ConversionToVariableList),
-        Ok(list) => list,
-    };
+    let custody_bit_0_indices_list =
+        match VariableList::new(custody_bit_0_indices.into_iter().collect()) {
+            Err(_err) => return Err(Error::ConversionToVariableList),
+            Ok(list) => list,
+        };
 
-    let custody_bit_1_indices_list = match VariableList::new(
-        custody_bit_1_indices
-            .into_iter()
-            .map(|x| x as u64)
-            .collect(),
-    ) {
-        Err(_err) => return Err(Error::ConversionToVariableList),
-        Ok(list) => list,
-    };
+    let custody_bit_1_indices_list =
+        match VariableList::new(custody_bit_1_indices.into_iter().collect()) {
+            Err(_err) => return Err(Error::ConversionToVariableList),
+            Ok(list) => list,
+        };
 
     Ok(IndexedAttestation {
         custody_bit_0_indices: custody_bit_0_indices_list,
@@ -216,8 +208,6 @@ pub fn get_attesting_indices<C: Config>(
     bits: &BitList<C::MaxValidatorsPerCommittee>,
 ) -> Result<BTreeSet<ValidatorIndex>, Error> {
     let committee = get_beacon_committee(state, data.slot, data.index)?;
-    println!("{length}", length = committee.len());
-    println!("{length}", length = bits.len());
     if bits.len() != committee.len() {
         return Err(Error::AttestationBitsInvalid);
     }
@@ -285,19 +275,16 @@ mod tests {
     #[test]
     fn test_get_seed() {
         let bs: BeaconState<MainnetConfig> = BeaconState {
-            randao_mixes: FixedVector::from(vec![
-                H256::from([1; 32]),
-                H256::from([2; 32]),
-            ]),
+            randao_mixes: FixedVector::from(vec![H256::from([1; 32]), H256::from([2; 32])]),
             ..BeaconState::default()
         };
 
         let actual = get_seed::<MainnetConfig>(&bs, 1, 1_u32);
 
         let expected = H256::from([
-            0x14, 0x81, 0x4a, 0x14, 0x7c, 0x51, 0x6b, 0x2a, 0xc3, 0xda, 0xe0, 0x72,
-            0xea, 0xf9, 0xd5, 0xca, 0x2e, 0x3a, 0xbd, 0xca, 0x96, 0x96, 0xd2, 0x44,
-            0x31, 0x3c, 0x35, 0x12, 0x99, 0x33, 0xe3, 0x36,
+            0x14, 0x81, 0x4a, 0x14, 0x7c, 0x51, 0x6b, 0x2a, 0xc3, 0xda, 0xe0, 0x72, 0xea, 0xf9,
+            0xd5, 0xca, 0x2e, 0x3a, 0xbd, 0xca, 0x96, 0x96, 0xd2, 0x44, 0x31, 0x3c, 0x35, 0x12,
+            0x99, 0x33, 0xe3, 0x36,
         ]);
 
         assert_eq!(actual, Ok(expected));
@@ -511,7 +498,6 @@ mod tests {
             exit_epoch: u64::max_value(),
             ..Validator::default()
         };
-        
         let bs: BeaconState<MainnetConfig> = BeaconState {
             validators: VariableList::from(vec![validator; 64]),
             randao_mixes: FixedVector::from(vec![H256::from([5; 32]); 64]),
@@ -522,9 +508,9 @@ mod tests {
         let custody_bits = BitList::with_capacity(64).expect("BitList creation failed");
 
         let attestation: Attestation<MainnetConfig> = Attestation {
-            aggregation_bits: aggregation_bits,
+            aggregation_bits,
             data: AttestationData::default(),
-            custody_bits: custody_bits,
+            custody_bits,
             signature: Signature::default(),
         };
 

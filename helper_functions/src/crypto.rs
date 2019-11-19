@@ -1,10 +1,8 @@
-use bls::{
-    AggregatePublicKey, PublicKey, PublicKeyBytes, Signature, SignatureBytes,
-};
-use ssz::DecodeError;
+use bls::{AggregatePublicKey, PublicKey, PublicKeyBytes, Signature, SignatureBytes};
 use ring::digest::{digest, SHA256};
-use types::primitives::Domain;
+use ssz::DecodeError;
 use std::convert::TryInto;
+use types::primitives::Domain;
 
 pub fn hash(input: &[u8]) -> Vec<u8> {
     digest(&SHA256, input).as_ref().to_vec()
@@ -50,15 +48,16 @@ mod tests {
         assert_eq!(expected_bytes, output_bytes);
     }
 
-     #[test]
-    fn test_bls_verify_simple() {
+    #[test]
+    fn test_bls_verify() {
         // Load some keys from a serialized secret key.
         let secret_key = SecretKey::from_bytes(&[
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x3e, 0x6a, 0x4c, 0x7d, 0xae, 0x8f, 0x35, 0x63, 0xfa, 0xbb, 0x9b, 0x57,
             0xd0, 0x4b, 0x4b, 0x21, 0xd3, 0xf2, 0xb9, 0xf4, 0x54, 0x4a, 0xdc, 0x7b, 0xed, 0xc6,
             0xcb, 0xb3, 0x6f, 0x03, 0x6b, 0x10,
-        ]).expect("Byte conversion to secret key failed");
+        ])
+        .expect("Byte conversion to secret key failed");
         let public_key = PublicKey::from_secret_key(&secret_key);
 
         let msg_string = String::from("test123");
@@ -66,10 +65,10 @@ mod tests {
         let domain: Domain = 2;
         let signature = Signature::new(message, domain, &secret_key);
 
-        let pk_bytes =
-            PublicKeyBytes::from_bytes(public_key.as_bytes().as_slice()).expect("Public key conversion to bytes failed");
-        let sg_bytes =
-            SignatureBytes::from_bytes(signature.as_bytes().as_slice()).expect("Signature key conversion to bytes failed");
+        let pk_bytes = PublicKeyBytes::from_bytes(public_key.as_bytes().as_slice())
+            .expect("Public key conversion to bytes failed");
+        let sg_bytes = SignatureBytes::from_bytes(signature.as_bytes().as_slice())
+            .expect("Signature key conversion to bytes failed");
 
         assert_eq!(bls_verify(&pk_bytes, message, &sg_bytes, domain), Ok(true));
     }
