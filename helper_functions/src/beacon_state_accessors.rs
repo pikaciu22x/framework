@@ -1,5 +1,5 @@
 use ring::digest::{digest, SHA256};
-use ssz_types::BitList;
+use ssz_types::{BitList, VariableList};
 use std::cmp;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
@@ -171,10 +171,43 @@ pub fn get_domain<C: Config>(
 }
 
 pub fn get_indexed_attestation<C: Config>(
-    _state: &BeaconState<C>,
-    _attestation: &Attestation<C>,
+    state: &BeaconState<C>,
+    attestation: &Attestation<C>,
 ) -> Result<IndexedAttestation<C>, Error> {
-    Err(Error::IndexOutOfRange)
+    let attesting_indices =
+        get_attesting_indices(state, &attestation.data, &attestation.aggregation_bits)?;
+
+    let custody_bit_1_indices =
+        get_attesting_indices(state, &attestation.data, &attestation.custody_bits)?;
+
+    let custody_bit_0_indices = &attesting_indices - &custody_bit_1_indices;
+
+    let custody_bit_0_indices_list = match VariableList::new(
+        custody_bit_0_indices
+            .into_iter()
+            .map(|x| x as u64)
+            .collect(),
+    ) {
+        Err(_err) => return Err(Error::ConversionToVariableList),
+        Ok(list) => list,
+    };
+
+    let custody_bit_1_indices_list = match VariableList::new(
+        custody_bit_1_indices
+            .into_iter()
+            .map(|x| x as u64)
+            .collect(),
+    ) {
+        Err(_err) => return Err(Error::ConversionToVariableList),
+        Ok(list) => list,
+    };
+
+    Ok(IndexedAttestation {
+        custody_bit_0_indices: custody_bit_0_indices_list,
+        custody_bit_1_indices: custody_bit_1_indices_list,
+        data: attestation.data.clone(),
+        signature: attestation.signature.clone(),
+    })
 }
 
 pub fn get_attesting_indices<C: Config>(
