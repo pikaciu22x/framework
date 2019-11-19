@@ -1,3 +1,4 @@
+use ring::digest::{digest, SHA256};
 // use ssz_types::BitList;
 use std::cmp;
 // use std::collections::BTreeSet;
@@ -83,12 +84,15 @@ pub fn get_seed<C: Config>(
 ) -> Result<H256, Error> {
     let mix = get_randao_mix::<C>(state, epoch + C::EpochsPerHistoricalVector::to_u64() - C::min_seed_lookahead() - 1)?;
 
-    let mut seed = vec![];
-    seed.append(&mut int_to_bytes_32(domain_type, 4));
-    seed.append(&mut int_to_bytes(epoch, 8));
+    let mut seed: [u8; 44] = [0; 44];
+    seed[0..4].copy_from_slice(&int_to_bytes_32(domain_type, 4));
+    seed[4..12].copy_from_slice(&int_to_bytes(epoch, 8));
+    seed[12..44].copy_from_slice(&mix[..]);
 
-    // Ok(H256::from(hash(&seed[..]))
-    Err(Error::AttestationBitsInvalid)
+    let mut hash_bytes: [u8; 32] = [0; 32];
+    hash_bytes[0..32].copy_from_slice(digest(&SHA256, &seed).as_ref());
+
+    Ok(H256::from(hash_bytes))
 }
 
 pub fn get_committee_count_at_slot<C: Config>(
@@ -239,6 +243,27 @@ mod tests {
         };
 
         assert_eq!(get_block_root(&bs, 3), Ok(H256::from([24; 32])));
+    }
+
+    #[test]
+    fn test_get_seed() {
+        let bs: BeaconState<MainnetConfig> = BeaconState {
+            randao_mixes: FixedVector::from(vec![
+                H256::from([1; 32]),
+                H256::from([2; 32]),
+            ]),
+            ..BeaconState::default()
+        };
+
+        let actual = get_seed::<MainnetConfig>(&bs, 1, 1_u32);
+
+        let expected = H256::from([
+            0x14, 0x81, 0x4a, 0x14, 0x7c, 0x51, 0x6b, 0x2a, 0xc3, 0xda, 0xe0, 0x72,
+            0xea, 0xf9, 0xd5, 0xca, 0x2e, 0x3a, 0xbd, 0xca, 0x96, 0x96, 0xd2, 0x44,
+            0x31, 0x3c, 0x35, 0x12, 0x99, 0x33, 0xe3, 0x36,
+        ]);
+
+        assert_eq!(actual, Ok(expected));
     }
 
     #[test]
