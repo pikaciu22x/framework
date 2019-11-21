@@ -1,7 +1,5 @@
 use helper_functions;
-use types::{ beacon_state::*, config::{ Config, MainnetConfig }};
-use types::consts::*;
-use types::types::*;
+use types::{ beacon_state::*, config::{ Config }};
 use core::consts::ExpConst;
 use helper_functions::math::*;
 use types::primitives::*;
@@ -21,7 +19,7 @@ fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<
     // let total_balance = get_total_active_balance(state);
     let mut rewards = Vec::new();
     let mut penalties = Vec::new();
-    for i in 0..(state.validators.len()) {
+    for _ in 0..(state.validators.len()) {
         rewards.push(0 as Gwei);
         penalties.push(0 as Gwei);
     }
@@ -89,8 +87,8 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T
 
     let (rewards, penalties) = get_attestation_deltas(state);
     for (index, validator) in state.validators.iter_mut().enumerate() {
-        increase_balance(validator, rewards[index]);
-        decrease_balance(validator, penalties[index]);
+        increase_balance(validator, rewards[index]).unwrap();
+        decrease_balance(validator, penalties[index]).unwrap();
     }
 }
 

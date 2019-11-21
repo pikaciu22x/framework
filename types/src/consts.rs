@@ -1,5 +1,3 @@
-use crate::primitives::*;
-
 pub const JUSTIFICATION_BITS_LENGTH: usize = 4;
 pub const SECONDS_PER_DAY: u64 = 86400;
 pub const DEPOSIT_CONTRACT_TREE_DEPTH: u64 = 32;

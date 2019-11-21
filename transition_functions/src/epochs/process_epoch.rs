@@ -7,16 +7,16 @@ use helper_functions::{
     predicates::is_active_validator,
 };
 use ssz_types::VariableList;
-use types::types::{Eth1Data, HistoricalBatch};
+use types::types::HistoricalBatch;
 use itertools::{Either, Itertools};
 use types::consts::*;
 use types::primitives::*;
 use std::{cmp, mem};
-use types::primitives::{ValidatorIndex, Gwei};
+use types::primitives::Gwei;
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::{Validator, PendingAttestation},
+    config::Config,
+    types::Validator,
 };
 
 fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
@@ -49,7 +49,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         state.validators[index].activation_eligibility_epoch = get_current_epoch(&state_copy);
     }
     for index in exiting {
-        initiate_validator_exit(state, index as u64);
+        initiate_validator_exit(state, index as u64).unwrap();
     }
 
     // Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
@@ -57,7 +57,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         .validators
         .iter()
         .enumerate()
-        .filter(|(index, validator)| {
+        .filter(|(_, validator)| {
             validator.activation_eligibility_epoch != T::far_future_epoch()
                 && validator.activation_epoch
                     >= compute_activation_exit_epoch::<T>(state.finalized_checkpoint.epoch)
@@ -79,9 +79,6 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 }
 
 fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-    let epoch = get_current_epoch(&state);
-    let total_balance = get_total_active_balance(&state);
-
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
@@ -91,7 +88,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
             let slashings_sum = state.slashings.iter().sum::<u64>();
             let penalty_numerator = validator.effective_balance / increment * cmp::min(slashings_sum * 3, total_balance);
             let penalty = penalty_numerator / total_balance * increment;
-            decrease_balance(validator, penalty);
+            decrease_balance(validator, penalty).unwrap();
         }
     }
 }
@@ -106,8 +103,8 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     //# Update effective balances with hysteresis
     for (index, validator) in state.validators.iter_mut().enumerate() {
         let balance = state.balances[index];
-        let HALF_INCREMENT = T::effective_balance_increment() / 2;
-        if balance < validator.effective_balance || validator.effective_balance + 3 * HALF_INCREMENT < balance {
+        let half_increment = T::effective_balance_increment() / 2;
+        if balance < validator.effective_balance || validator.effective_balance + 3 * half_increment < balance {
             validator.effective_balance = cmp::min(balance - balance % T::effective_balance_increment() , T::max_effective_balance());
         }
     }
@@ -122,7 +119,7 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
             block_roots: state.block_roots.clone(),
             state_roots: state.state_roots.clone(),
         };
-        state.historical_roots.push(hash_tree_root(&historical_batch));
+        state.historical_roots.push(hash_tree_root(&historical_batch)).unwrap();
     }
     //# Rotate current/previous epoch attestations
     state.previous_epoch_attestations =

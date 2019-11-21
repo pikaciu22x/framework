@@ -6,7 +6,7 @@ use core::hash::Hash;
 use serde::{Deserialize, Serialize};
 use typenum::Unsigned;
 
-use crate::primitives::{Epoch, ValidatorIndex};
+use crate::primitives::ValidatorIndex;
 
 pub trait Config
 where
