@@ -94,6 +94,8 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T
 
 #[test]
 fn test_base_reward() {
+    use types::config::MainnetConfig;
+
     assert_eq!(1,1);
     let mut bs: BeaconState<MainnetConfig> = BeaconState {
         ..BeaconState::default()
