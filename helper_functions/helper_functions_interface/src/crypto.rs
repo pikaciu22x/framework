@@ -1,6 +1,7 @@
-use bls::{AggregatePublicKey, PublicKey, PublicKeyBytes, SignatureBytes};
+use bls::{AggregatePublicKey, PublicKey, Signature};
 use ssz::DecodeError;
-use types::primitives::Domain;
+use tree_hash::{TreeHash, SignedRoot};
+use types::primitives::{Domain, H256};
 
 // ok
 pub fn hash(_input: &[u8]) -> Vec<u8> {
@@ -8,20 +9,22 @@ pub fn hash(_input: &[u8]) -> Vec<u8> {
 }
 
 // ok
-//pub fn hash_tree_root(_object : obj) -> H256 {
-//    use TreeRoot derive
-//}
+pub fn hash_tree_root(_object: &impl TreeHash) -> H256 {
+    unimplemented!()
+//    use TreeHash derive
+}
 
 // ok
-//pub fn signed_root(_object : obj) -> H256 {
+pub fn signing_root(_object: &impl SignedRoot) -> H256 {
+    unimplemented!()
 //    use SignedRoot derive
-//}
+}
 
 // ok
 pub fn bls_verify(
-    _pubkey: &PublicKeyBytes,
+    _pubkey: &PublicKey,
     _message: &[u8],
-    _signature: &SignatureBytes,
+    _signature: &Signature,
     _domain: Domain,
 ) -> Result<bool, DecodeError> {
     Ok(true)
@@ -29,9 +32,9 @@ pub fn bls_verify(
 
 // ok
 pub fn bls_verify_multiple(
-    _pubkeys: &[&PublicKeyBytes],
+    _pubkeys: &[&PublicKey],
     _messages: &[&[u8]],
-    _signature: &SignatureBytes,
+    _signature: &Signature,
     _domain: Domain,
 ) -> Result<bool, DecodeError> {
     Ok(true)

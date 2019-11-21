@@ -2,6 +2,7 @@ use core::consts::ExpConst;
 use helper_functions::{
     beacon_state_accessors::{get_current_epoch, get_validator_churn_limit, get_total_active_balance, get_randao_mix},
     beacon_state_mutators::{initiate_validator_exit, decrease_balance},
+    crypto::hash_tree_root,
     misc::compute_activation_exit_epoch,
     predicates::is_active_validator,
 };
@@ -10,7 +11,7 @@ use types::types::{Eth1Data, HistoricalBatch};
 use itertools::{Either, Itertools};
 use types::consts::*;
 use types::primitives::*;
-use std::cmp;
+use std::{cmp, mem};
 use types::primitives::{ValidatorIndex, Gwei};
 use types::{
     beacon_state::*,
@@ -84,26 +85,26 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (index, validator) in state.validators.iter().enumerate() {
+    for validator in state.validators.iter_mut() {
         if validator.slashed && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch {
             let increment = T::effective_balance_increment();
             let slashings_sum = state.slashings.iter().sum::<u64>();
             let penalty_numerator = validator.effective_balance / increment * cmp::min(slashings_sum * 3, total_balance);
             let penalty = penalty_numerator / total_balance * increment;
-            decrease_balance(state, index as u64, penalty);
+            decrease_balance(validator, penalty);
         }
     }
 }
 
-fn process_final_updates<T: Config + ExpConst>(state: BeaconState<T>) {
+fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let current_epoch = get_current_epoch(&state);
     let next_epoch = current_epoch+1 as Epoch;
     //# Reset eth1 data votes
     if (state.slot + 1) % (SLOTS_PER_ETH1_VOTING_PERIOD as u64) == 0{
-        state.eth1_data_votes: VariableList<Eth1Data, T::SlotsPerEth1VotingPeriod> = VariableList::from(vec![]);
+        state.eth1_data_votes = VariableList::from(vec![]);
     }
     //# Update effective balances with hysteresis
-    for (index, validator) in state.validators.iter().enumerate() {
+    for (index, validator) in state.validators.iter_mut().enumerate() {
         let balance = state.balances[index];
         let HALF_INCREMENT = T::effective_balance_increment() / 2;
         if balance < validator.effective_balance || validator.effective_balance + 3 * HALF_INCREMENT < balance {
@@ -117,15 +118,15 @@ fn process_final_updates<T: Config + ExpConst>(state: BeaconState<T>) {
     state.randao_mixes[(next_epoch % EPOCHS_PER_HISTORICAL_VECTOR) as usize] = get_randao_mix(&state, current_epoch).unwrap();
     //# Set historical root accumulator
     if next_epoch % (T::slots_per_historical_root() / T::slots_per_epoch()) == 0{
-        let historical_batch = HistoricalBatch {
-            block_roots: state.block_roots, 
-            state_roots: state.state_roots,
+        let historical_batch = HistoricalBatch::<T> {
+            block_roots: state.block_roots.clone(),
+            state_roots: state.state_roots.clone(),
         };
-        state.historical_roots.push(hash_tree_root(historical_batch));
+        state.historical_roots.push(hash_tree_root(&historical_batch));
     }
     //# Rotate current/previous epoch attestations
-    state.previous_epoch_attestations = state.current_epoch_attestations;
-    state.current_epoch_attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> = VariableList::from(vec![]);
+    state.previous_epoch_attestations =
+        mem::replace(&mut state.current_epoch_attestations, VariableList::from(vec![]));
 }
 
 #[cfg(test)]

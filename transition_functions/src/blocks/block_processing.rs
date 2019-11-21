@@ -11,15 +11,15 @@ use std::collections::BTreeSet;
 use std::convert::TryInto;
 use core::consts::ExpConst;
 
-fn process_block<T: Config + ExpConst>(state: &BeaconState<T>, block: &BeaconBlock<T>) {
-    process_block_header(*state, *block);
-    process_randao(*state, block.body);
-    process_eth1_data(&mut state, block.body);
-    process_operations(&mut state, block.body);
+fn process_block<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
+    process_block_header(state, block);
+    process_randao(state, &block.body);
+    process_eth1_data(state, &block.body);
+    process_operations(state, &block.body);
 }
 
 fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>,exit: VoluntaryExit){
-    let validator = state.validators[exit.validator_index as usize];
+    let validator = &state.validators[exit.validator_index as usize];
     // Verify the validator is active
     assert!(is_active_validator(&validator, get_current_epoch(state)));
     // Verify the validator has not yet exited
@@ -30,7 +30,7 @@ fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>,exit:
     assert!(get_current_epoch(state) >= validator.activation_epoch + T::persistent_committee_period());
     // Verify signature
     let domain = get_domain(state, T::domain_voluntary_exit() as u32, Some(exit.epoch));
-    assert!(bls_verify(&validator.pubkey.try_into().unwrap(), signing_root(exit), &exit.signature.try_into().unwrap(), domain).unwrap());
+    assert!(bls_verify(&validator.pubkey, signing_root(&exit).as_bytes(), &exit.signature.try_into().unwrap(), domain).unwrap());
     // Initiate exit
     initiate_validator_exit(state, exit.validator_index);
 }
@@ -38,8 +38,8 @@ fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>,exit:
 fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: Deposit) { 
     //# Verify the Merkle branch  is_valid_merkle_branch
 
-    assert!(is_valid_merkle_branch(
-        hash_tree_root(deposit.data), 
+    assert!(is_valid_merkle_branch::<T>(
+        &hash_tree_root(&deposit.data), 
         &deposit.proof, 
         DEPOSIT_CONTRACT_TREE_DEPTH + 1, 
         state.eth1_deposit_index, 
@@ -48,30 +48,30 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: De
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = deposit.data.pubkey;
+    let pubkey = (&deposit.data.pubkey).try_into().unwrap();
     let amount = deposit.data.amount;
 
-    for (index, v) in state.validators.iter().enumerate() {
+    for v in state.validators.iter_mut() {
         // bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap()
-        if  v.pubkey.try_into().unwrap() == pubkey {
+        if v.pubkey == pubkey {
             //# Increase balance by deposit amount
-            increase_balance(state, index as u64, amount);
+            increase_balance(v, amount);
             return;
         }
     }
     //# Verify the deposit signature (proof of possession) for new validators.
     //# Note: The deposit contract does not check signatures.
     //# Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-    let domain = compute_domain(T::domain_deposit() as u32, None);
+    let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
 
-    if !bls_verify(&pubkey, signing_root(deposit.data), &deposit.data.signature.try_into().unwrap(), domain).unwrap() {
+    if !bls_verify(&pubkey, signing_root(&deposit.data).as_bytes(), &deposit.data.signature.try_into().unwrap(), domain).unwrap() {
         return;
     }
     
     //# Add validator and balance entries
     // bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap()
     state.validators.push(Validator{
-        pubkey: (&pubkey).try_into().unwrap(),
+        pubkey,
         withdrawal_credentials: deposit.data.withdrawal_credentials,
         activation_eligibility_epoch: T::far_future_epoch(),
         activation_epoch: T::far_future_epoch(),
@@ -83,33 +83,33 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: De
     &state.balances.push(amount);
 }
 
-fn process_block_header<T: Config + ExpConst>(state: BeaconState<T>, block: BeaconBlock<T>) {
+fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
     //# Verify that the slots match
     assert! (block.slot == state.slot);
     //# Verify that the parent matches
-    assert! (block.parent_root == signing_root(state.latest_block_header));
+    assert!(block.parent_root == signing_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader{
         slot: block.slot,
         parent_root: block.parent_root,
         //# `state_root` is zeroed and overwritten in the next `process_slot` call
-        body_root: hash_tree_root(block.body),
+        body_root: hash_tree_root(&block.body),
         //# `signature` is zeroed
-        signature: block.signature, //# Placeholder
+        signature: block.signature.clone(), //# Placeholder
         state_root: block.state_root, //# Placeholder so the compiler doesn't scream at me as much
     };
     //# Verify proposer is not slashed
-    let proposer = state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
+    let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
     assert! (!proposer.slashed);
     //# Verify proposer signature
-    assert! (bls_verify(&proposer.pubkey.try_into().unwrap(), signing_root(block), &block.signature.try_into().unwrap(), get_domain(&state, T::domain_beacon_proposer() as u32, None)).unwrap());
+    assert! (bls_verify(&proposer.pubkey, signing_root(block).as_bytes(), &block.signature, get_domain(&state, T::domain_beacon_proposer() as u32, None)).unwrap());
 }
 
-fn process_randao<T: Config + ExpConst>(state: BeaconState<T>, body: BeaconBlockBody<T>) {
+fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
     let epoch = get_current_epoch(&state);
     //# Verify RANDAO reveal
-    let proposer = state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
-    assert! (bls_verify(&(proposer.pubkey).try_into().unwrap(), hash_tree_root(epoch), &body.randao_reveal.try_into().unwrap(), get_domain(&state, T::domain_randao() as u32, None)).unwrap());
+    let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
+    assert! (bls_verify(&proposer.pubkey, hash_tree_root(&epoch).as_bytes(), &body.randao_reveal, get_domain(&state, T::domain_randao() as u32, None)).unwrap());
     //# Mix in RANDAO reveal
     let mix = xor(get_randao_mix(&state, epoch).unwrap().as_bytes(), &hash(&body.randao_reveal.as_bytes())).unwrap();
     let mut array = [0; 32];
@@ -119,7 +119,7 @@ fn process_randao<T: Config + ExpConst>(state: BeaconState<T>, body: BeaconBlock
 }
 
 fn process_proposer_slashing<T: Config + ExpConst>(state: &mut BeaconState<T>, proposer_slashing: ProposerSlashing){
-    let proposer = state.validators[proposer_slashing.proposer_index as usize];
+    let proposer = &state.validators[proposer_slashing.proposer_index as usize];
     // Verify slots match
     assert_eq!(proposer_slashing.header_1.slot, proposer_slashing.header_2.slot);
     // But the headers are different
@@ -129,9 +129,9 @@ fn process_proposer_slashing<T: Config + ExpConst>(state: &mut BeaconState<T>, p
     // Signatures are valid
     let headers: [BeaconBlockHeader; 2] = [proposer_slashing.header_1, proposer_slashing.header_2];
     for header in &headers {
-        let domain = get_domain(state, T::domain_beacon_proposer() as u32, Some(compute_epoch_at_slot(header.slot)));
+        let domain = get_domain(state, T::domain_beacon_proposer() as u32, Some(compute_epoch_at_slot::<T>(header.slot)));
         //# Sekanti eilutė tai ******* amazing. signed_root helperiuose užkomentuota
-        assert!(bls_verify(&proposer.pubkey.try_into().unwrap(), signing_root(header), &header.signature.try_into().unwrap(), domain).unwrap()); 
+        assert!(bls_verify(&proposer.pubkey, signing_root(header).as_bytes(), &header.signature, domain).unwrap()); 
     }
 
     slash_validator(state, proposer_slashing.proposer_index);
@@ -160,22 +160,20 @@ fn process_attester_slashing<T: Config + ExpConst>(state: &mut BeaconState<T>, a
         .cloned()
         .collect::<BTreeSet<_>>();
 
-    let mut slashable_indices = vec![];
-
     for index in &attesting_indices_1 & &attesting_indices_2 {
-        let validator = state.validators[index as usize];
+        let validator = &state.validators[index as usize];
 
         if is_slashable_validator(&validator, get_current_epoch(state)) {
-            slash_validator(&mut state, index);
+            slash_validator(state, index);
             slashed_any = true;
         }
     }
     assert!(slashed_any);
 }
 
-fn get_attestation_data_index<T: Config + ExpConst>(state: BeaconState<T>, attestation_data: AttestationData) -> Result<u64, Error> {
+fn get_attestation_data_index<T: Config + ExpConst>(state: &BeaconState<T>, attestation_data: &AttestationData) -> Result<u64, Error> {
     for (index, x) in state.current_epoch_attestations.iter().enumerate() {
-        if x.data == attestation_data {
+        if &x.data == attestation_data {
             return Ok(index as u64);
         }
     }
@@ -183,8 +181,8 @@ fn get_attestation_data_index<T: Config + ExpConst>(state: BeaconState<T>, attes
 }
 
 fn process_attestation<T: Config + ExpConst>(state: &mut BeaconState<T>, attestation: Attestation<T>){
-    let data = attestation.data;
-    let index = get_attestation_data_index(*state, attestation.data).unwrap();
+    let data = &attestation.data;
+    let index = get_attestation_data_index(state, &attestation.data).unwrap();
     let attestation_slot = state.slot;
     assert!(index < get_committee_count_at_slot(state, attestation_slot).unwrap()); //# Nėra index ir slot. ¯\_(ツ)_/¯
     assert!(data.target.epoch == get_previous_epoch(state) || data.target.epoch == get_current_epoch(state));
@@ -196,7 +194,7 @@ fn process_attestation<T: Config + ExpConst>(state: &mut BeaconState<T>, attesta
 
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
-        aggregation_bits: attestation.aggregation_bits,
+        aggregation_bits: attestation.aggregation_bits.clone(),
         inclusion_delay: (state.slot - attestation_slot) as u64,
         proposer_index: get_beacon_proposer_index(state).unwrap(),
     };
@@ -215,8 +213,8 @@ fn process_attestation<T: Config + ExpConst>(state: &mut BeaconState<T>, attesta
 }
 
 
-fn process_eth1_data<T: Config + ExpConst>(state: &mut BeaconState<T>, body: BeaconBlockBody<T>){
-    state.eth1_data_votes.push(body.eth1_data);
+fn process_eth1_data<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>){
+    state.eth1_data_votes.push(body.eth1_data.clone());
     let num_votes = state
         .eth1_data_votes
         .iter()
@@ -224,28 +222,28 @@ fn process_eth1_data<T: Config + ExpConst>(state: &mut BeaconState<T>, body: Bea
         .count();
 
     if num_votes * 2 > SLOTS_PER_ETH1_VOTING_PERIOD{
-        state.eth1_data = body.eth1_data;
+        state.eth1_data = body.eth1_data.clone();
     }
 }
 
-fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: BeaconBlockBody<T>){
+fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>){
     //# Verify that outstanding deposits are processed up to the maximum number of deposits
     assert_eq!(body.deposits.len(), std::cmp::min(MAX_DEPOSITS, (state.eth1_data.deposit_count - state.eth1_deposit_index) as usize)); 
 
     for proposer_slashing in body.proposer_slashings.iter() {
-        process_proposer_slashing(&mut state, *proposer_slashing);
+        process_proposer_slashing(state, proposer_slashing.clone());
     }
     for attester_slashing in body.attester_slashings.iter() {
-        process_attester_slashing(&mut state, *attester_slashing);
+        process_attester_slashing(state, attester_slashing.clone());
     }
     for attestation in body.attestations.iter() {
-        process_attestation(&mut state, *attestation);
+        process_attestation(state, attestation.clone());
     }
     for deposit in body.deposits.iter() {
-        process_deposit(&mut state, *deposit);
+        process_deposit(state, deposit.clone());
     }
     for voluntary_exit in body.voluntary_exits.iter() {
-        process_voluntary_exit(&mut state, *voluntary_exit);
+        process_voluntary_exit(state, voluntary_exit.clone());
     }
 }
 

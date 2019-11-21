@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 ring = "0.14.6"
 typenum = '1.11.2'
+tree_hash = { path = '../../utils/tree_hash' }
 types = { path = '../../types' }
 eth2_ssz_types = { path = '../../utils/ssz_types' }
 bls = { path = '../../utils/bls' }

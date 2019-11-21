@@ -16,11 +16,11 @@ fn get_base_reward<T: Config + ExpConst>(state: BeaconState<T>, index: Validator
 
 
 
-fn get_attestation_deltas<T: Config + ExpConst>(state: BeaconState<T>) -> (Vec<Gwei>, Vec<Gwei>) {
-    //!let previous_epoch = get_previous_epoch(state);
-    //!let total_balance = get_total_active_balance(state);
-    let rewards = Vec::new();
-    let penalties = Vec::new();
+fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<Gwei>, Vec<Gwei>) {
+    // let previous_epoch = get_previous_epoch(state);
+    // let total_balance = get_total_active_balance(state);
+    let mut rewards = Vec::new();
+    let mut penalties = Vec::new();
     for i in 0..(state.validators.len()) {
         rewards.push(0 as Gwei);
         penalties.push(0 as Gwei);
@@ -64,33 +64,33 @@ fn get_attestation_deltas<T: Config + ExpConst>(state: BeaconState<T>) -> (Vec<G
     }
     */
     //# Inactivity penalty
-    //!let finality_delay = previous_epoch - state.finalized_checkpoint.epoch;
-    //!if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY{
-    //!    let matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations);
-    //!    for index in eligible_validator_indices{
-    //!        penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index));
-    //!        if index not in matching_target_attesting_indices{
-    //!            penalties[index] += Gwei(
-    //!                state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
-    //!            );
-    //!        }
-    //!    }
-    //!}
+    // let finality_delay = previous_epoch - state.finalized_checkpoint.epoch;
+    // if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY{
+    //     let matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations);
+    //     for index in eligible_validator_indices{
+    //         penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index));
+    //         if index not in matching_target_attesting_indices{
+    //             penalties[index] += Gwei(
+    //                 state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
+    //             );
+    //         }
+    //     }
+    // }
 
 
     return (rewards, penalties);
 }
 
-fn process_rewards_and_penalties<T: Config + ExpConst>(state: BeaconState<T>) {
+fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     if get_current_epoch(&state) == T::genesis_epoch()
     {
         return;
     }
 
     let (rewards, penalties) = get_attestation_deltas(state);
-    for index in 0..state.validators.len(){
-        increase_balance(&mut state, index as u64, rewards[index]);
-        decrease_balance(&mut state, index as u64, penalties[index]);
+    for (index, validator) in state.validators.iter_mut().enumerate() {
+        increase_balance(validator, rewards[index]);
+        decrease_balance(validator, penalties[index]);
     }
 }
 
