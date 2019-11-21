@@ -80,7 +80,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: De
         effective_balance: std::cmp::min(amount - (amount % T::effective_balance_increment()), T::max_effective_balance()),
         slashed: false,
     }).unwrap();
-    &state.balances.push(amount);
+    state.balances.push(amount).unwrap();
 }
 
 fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
@@ -177,7 +177,7 @@ fn get_attestation_data_index<T: Config + ExpConst>(state: &BeaconState<T>, atte
             return Ok(index as u64);
         }
     }
-    return Err(Error::SlotOutOfBounds);
+    Err(Error::SlotOutOfBounds)
 }
 
 fn process_attestation<T: Config + ExpConst>(state: &mut BeaconState<T>, attestation: Attestation<T>){

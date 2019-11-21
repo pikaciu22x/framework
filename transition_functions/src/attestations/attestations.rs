@@ -13,10 +13,10 @@ use ssz_types::VariableList;
 fn get_matching_source_attestations<T: Config + ExpConst>(state: &BeaconState<T>, epoch: Epoch) -> &VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
     assert!(epoch == get_previous_epoch(&state) || epoch == get_current_epoch(&state));
     if epoch == get_current_epoch(&state) {
-        return &state.current_epoch_attestations;
+        &state.current_epoch_attestations
     }
     else {
-        return &state.previous_epoch_attestations;
+        &state.previous_epoch_attestations
     }
 }
 
@@ -27,7 +27,7 @@ fn get_matching_target_attestations<T: Config + ExpConst>(state: &BeaconState<T>
             target_attestations.push(a.clone()).unwrap();
         }
     }
-    return target_attestations;
+    target_attestations
 }
 
 fn get_matching_head_attestations<T: Config>(_state: BeaconState<T>, _epoch: Epoch) /*-> Sequence[PendingAttestation] */{

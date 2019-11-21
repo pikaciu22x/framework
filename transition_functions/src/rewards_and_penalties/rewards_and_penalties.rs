@@ -9,7 +9,7 @@ use helper_functions::beacon_state_mutators::*;
 fn get_base_reward<T: Config + ExpConst>(state: BeaconState<T>, index: ValidatorIndex) -> Gwei{
     let total_balance = get_total_active_balance(&state).unwrap();
     let effective_balance = state.validators[index as usize].effective_balance;
-    return (effective_balance * T::base_reward_factor() / integer_squareroot(total_balance) / T::base_rewards_per_epoch()) as Gwei;
+    (effective_balance * T::base_reward_factor() / integer_squareroot(total_balance) / T::base_rewards_per_epoch()) as Gwei
 }
 
 
@@ -76,7 +76,7 @@ fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<
     // }
 
 
-    return (rewards, penalties);
+    (rewards, penalties)
 }
 
 fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T>) {
