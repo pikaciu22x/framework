@@ -128,9 +128,6 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 
 #[cfg(test)]
 mod process_epoch_tests {
-    use types::{beacon_state::*, config::MainnetConfig};
-    use super::*;
-
     #[test]
     fn process_good_epoch() {
         assert_eq!(1, 1);

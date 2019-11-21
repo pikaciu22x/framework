@@ -249,9 +249,7 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 
 #[cfg(test)]
 mod scessing_tests {
-    use types::{beacon_state::*, config::MainnetConfig};
     // use crate::{config::*};
-    use super::*;
 
     #[test]
     fn process_good_block() {
