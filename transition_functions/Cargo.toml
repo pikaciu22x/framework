@@ -5,16 +5,16 @@ authors = ["pikaciu22x <bratcikov@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-bls = { path = "../utils/bls" }
+bls = { git = "https://github.com/sigp/lighthouse" }
 integer-sqrt = "0.1"
 itertools = "0.8"
-eth2_ssz_types = { path = "../utils/ssz_types" }
-merkle_proof = { path = "../utils/merkle_proof" }
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
+merkle_proof = { git = "https://github.com/sigp/lighthouse" }
 helper_functions = { path = "../helper_functions/helper_functions_interface" }
 core = { path = "../core" }
 log = "0.4"
-tree_hash = "0.1"
-tree_hash_derive = "0.2"
+tree_hash = { git = 'https://github.com/sigp/lighthouse' }
+tree_hash_derive = { git = 'https://github.com/sigp/lighthouse' }
 types = { path = "../types" }
 rayon = "1.0"
-ethereum-types = "0.6"
+ethereum-types = "0.8"
