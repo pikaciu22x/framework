@@ -72,4 +72,12 @@ mod tests {
 
         assert_eq!(bls_verify(&pk_bytes, message, &sg_bytes, domain), Ok(true));
     }
+
+    #[test]
+    fn test_bls_aggregate_pubkeys() {
+        assert_eq!(
+            bls_aggregate_pubkeys(&[]).as_raw(),
+            AggregatePublicKey::new().as_raw()
+        );
+    }
 }

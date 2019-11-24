@@ -43,7 +43,10 @@ pub fn get_block_root_at_slot<C: Config>(
 
     match usize::try_from(slot % C::SlotsPerHistoricalRoot::to_u64()) {
         Err(_err) => Err(Error::IndexOutOfRange),
-        Ok(id) => Ok(state.block_roots[id]),
+        Ok(id) => match state.block_roots.get(id) {
+            None => Err(Error::IndexOutOfRange),
+            Some(block_root) => Ok(*block_root),
+        },
     }
 }
 

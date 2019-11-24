@@ -24,10 +24,15 @@ pub fn integer_squareroot(n: u64) -> u64 {
     x
 }
 
-pub fn xor(bytes_1: H256, bytes_2: H256) -> H256 {
-    bytes_1 ^ bytes_2
+pub fn xor(bytes_1: &[u8], bytes_2: &[u8]) -> Vec<u8> {
+    bytes_1
+        .iter()
+        .zip(bytes_2.iter())
+        .map(|(a, b)| a ^ b)
+        .collect()
 }
 
+#[allow(clippy::missing_const_for_fn)]
 pub fn bytes_to_int(bytes: [u8; 8]) -> u64 {
     u64::from_le_bytes(bytes)
 }
@@ -105,8 +110,8 @@ mod tests {
     #[test]
     fn test_xor() {
         assert_eq!(
-            xor(H256::from([1; 32]), H256::from([2; 32])),
-            H256::from([3; 32])
+            xor(&H256::from([1; 32])[..], &H256::from([2; 32])[..]),
+            &H256::from([3; 32])[..]
         );
     }
 

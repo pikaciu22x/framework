@@ -4,26 +4,33 @@ use crate::{
     math::{bytes_to_int, int_to_bytes},
 };
 use std::cmp::max;
+use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
 use types::config::Config;
 use types::primitives::*;
 
 pub fn compute_shuffled_index<C: Config>(
-    mut index: ValidatorIndex,
+    index: ValidatorIndex,
     index_count: u64,
-    seed: H256,
+    seed: &H256,
 ) -> Result<ValidatorIndex, Error> {
     if index >= index_count {
         return Err(Error::IndexOutOfRange);
     }
+    let mut index = index;
     for current_round in 0..C::shuffle_round_count() {
         let pivot = bytes_to_int(hash_seed_current_round(&seed[..], current_round)) % index_count;
         let flip = (pivot + index_count - index) % index_count;
         let position = max(index, flip);
         let source = hash_seed_current_round_position(&seed[..], current_round, position);
-        let byte = source[((position % 256) / 8) as usize];
-        let bit = (byte >> (position % 8)) % 2;
-        index = if bit == 0 { index } else { flip };
+        match usize::try_from((position % 256) / 8) {
+            Ok(id) => {
+                let byte = source[id];
+                let bit = (byte >> (position % 8)) % 2;
+                index = if bit == 0 { index } else { flip };
+            }
+            _ => return Err(Error::IndexOutOfRange),
+        }
     }
     Ok(index)
 }
@@ -67,7 +74,7 @@ pub fn compute_committee<'a, C: Config>(
     let mut committee = Vec::new();
 
     for i in start..end {
-        match compute_shuffled_index::<C>(i, count, *seed) {
+        match compute_shuffled_index::<C>(i, count, seed) {
             Ok(id) => committee.push(indices[id as usize]),
             Err(err) => return Err(err),
         }
@@ -100,7 +107,7 @@ mod tests {
     #[allow(clippy::result_unwrap_used)]
     fn test_compute_shuffled_index() {
         for i in 0..1000 {
-            let shuffled_index = compute_shuffled_index::<MainnetConfig>(i, 1000, H256::random());
+            let shuffled_index = compute_shuffled_index::<MainnetConfig>(i, 1000, &H256::random());
             assert!(shuffled_index.is_ok());
             assert!(shuffled_index.unwrap() < 1000);
         }
@@ -108,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_compute_shuffled_index_index_greater_or_equal_index_count() {
-        assert!(compute_shuffled_index::<MainnetConfig>(1, 1, H256::random()).is_err());
+        assert!(compute_shuffled_index::<MainnetConfig>(1, 1, &H256::random()).is_err());
     }
 
     #[test]
