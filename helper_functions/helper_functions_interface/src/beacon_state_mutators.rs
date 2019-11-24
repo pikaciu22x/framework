@@ -32,7 +32,8 @@ pub fn initiate_validator_exit<C: Config>(
 // ok
 pub fn slash_validator<C: Config>(
     _state: &mut BeaconState<C>,
-    _index: ValidatorIndex,
+    _slashed_index: ValidatorIndex,
+    _whistleblower_index: Option<ValidatorIndex>,
 ) -> Result<(), Error> {
     Ok(())
 }
