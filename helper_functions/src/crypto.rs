@@ -2,7 +2,8 @@ use bls::{AggregatePublicKey, PublicKey, PublicKeyBytes, Signature, SignatureByt
 use ring::digest::{digest, SHA256};
 use ssz::DecodeError;
 use std::convert::TryInto;
-use types::primitives::Domain;
+use tree_hash::{SignedRoot, TreeHash};
+use types::primitives::*;
 
 pub fn hash(input: &[u8]) -> Vec<u8> {
     digest(&SHA256, input).as_ref().to_vec()
@@ -26,6 +27,20 @@ pub fn bls_aggregate_pubkeys(pubkeys: &[PublicKey]) -> AggregatePublicKey {
         aggregated.add(pubkey);
     }
     aggregated
+}
+
+pub fn hash_tree_root<T: TreeHash>(object: &T) -> H256 {
+    let hash_root = object.tree_hash_root();
+    let hash: &[u8; 32] = hash_root[1..32]
+        .try_into()
+        .expect("Incorrect Tree Hash Root");
+    H256::from(hash)
+}
+
+pub fn signed_root<T: SignedRoot>(object: &T) -> H256 {
+    let hash_root = object.signed_root();
+    let hash: &[u8; 32] = hash_root[1..32].try_into().expect("Incorrect Signed Root");
+    H256::from(hash)
 }
 
 #[cfg(test)]
