@@ -6,8 +6,9 @@ use crate::{
 use std::cmp::max;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
-use types::config::Config;
-use types::primitives::*;
+use types::{beacon_state::BeaconState, config::Config, primitives::*};
+
+const MAX_RANDOM_BYTE: u64 = (1 << 8) - 1;
 
 pub fn compute_shuffled_index<C: Config>(
     index: ValidatorIndex,
@@ -81,6 +82,35 @@ pub fn compute_committee<'a, C: Config>(
     }
 
     Ok(committee)
+}
+
+pub fn compute_proposer_index<C: Config>(
+    state: &BeaconState<C>,
+    indices: &[ValidatorIndex],
+    seed: &H256,
+) -> Result<ValidatorIndex, Error> {
+    let mut i = 0;
+    loop {
+        match compute_shuffled_index::<C>(i % indices.len() as u64, indices.len() as u64, seed) {
+            Ok(index) => {
+                let candidate_index = indices[index as usize];
+                let mut combined = seed.as_bytes().to_vec();
+                combined.append(&mut int_to_bytes(i / 32, 8));
+
+                let random_byte = hash(&combined)[(i % 32) as usize];
+
+                let effective_balance =
+                    state.validators[candidate_index as usize].effective_balance;
+                if effective_balance * MAX_RANDOM_BYTE
+                    >= C::max_effective_balance() * u64::from(random_byte)
+                {
+                    break Ok(candidate_index);
+                }
+                i += 1
+            }
+            Err(err) => break Err(err),
+        }
+    }
 }
 
 pub fn compute_domain<C: Config>(
