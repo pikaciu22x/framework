@@ -67,11 +67,9 @@ pub fn is_valid_merkle_branch<C: Config>(
 
     for i in 0..depth {
         if index / (2 ^ i) % 2 == 0 {
-            value =
-                H256::from_slice(&hash(&join_hashes(&value, &branch[i as usize])));
+            value = H256::from_slice(&hash(&join_hashes(&value, &branch[i as usize])));
         } else {
-            value =
-                H256::from_slice(&hash(&join_hashes(&branch[i as usize], &value)));
+            value = H256::from_slice(&hash(&join_hashes(&branch[i as usize], &value)));
         }
     }
 

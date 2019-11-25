@@ -115,7 +115,7 @@ pub fn get_beacon_proposer_index<C: Config>(
             let indices = get_active_validator_indices(state, epoch);
 
             compute_proposer_index(state, &indices, &seed_combined)
-        },
+        }
         Err(err) => Err(err),
     }
 }
