@@ -7,6 +7,7 @@ use typenum::marker_traits::Unsigned;
 use types::{beacon_state::BeaconState, config::Config, primitives::*, types::*};
 
 use crate::{
+    crypto::hash,
     error::Error,
     math::{int_to_bytes, int_to_bytes_32},
     misc::*,
@@ -98,6 +99,25 @@ pub fn get_seed<C: Config>(
     hash_bytes[0..32].copy_from_slice(digest(&SHA256, &seed).as_ref());
 
     Ok(H256::from(hash_bytes))
+}
+
+pub fn get_beacon_proposer_index<C: Config>(
+    state: &BeaconState<C>,
+) -> Result<ValidatorIndex, Error> {
+    let epoch = get_current_epoch(state);
+
+    match get_seed::<C>(state, epoch, C::domain_beacon_proposer()) {
+        Ok(seed) => {
+            let mut combined = seed.as_bytes().to_vec();
+            combined.append(&mut int_to_bytes(state.slot, 8));
+
+            let seed_combined = H256::from_slice(&hash(&combined)[0..32]);
+            let indices = get_active_validator_indices(state, epoch);
+
+            compute_proposer_index(state, &indices, &seed_combined)
+        },
+        Err(err) => Err(err),
+    }
 }
 
 pub fn get_committee_count_at_slot<C: Config>(
