@@ -34,7 +34,7 @@ pub fn hash_tree_root<T: TreeHash>(object: &T) -> H256 {
     let hash: &[u8; 32] = hash_root[1..32]
         .try_into()
         .expect("Incorrect Tree Hash Root");
-    H256::from(hash)
+    H256::from_slice(hash)
 }
 
 pub fn signed_root<T: SignedRoot>(object: &T) -> H256 {

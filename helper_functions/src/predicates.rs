@@ -1,3 +1,4 @@
+use crate::crypto::hash;
 use crate::error::Error;
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -5,7 +6,7 @@ use typenum::marker_traits::Unsigned;
 use types::{
     beacon_state::BeaconState,
     config::Config,
-    primitives::Epoch,
+    primitives::*,
     types::{AttestationData, IndexedAttestation, Validator},
 };
 
@@ -55,12 +56,42 @@ pub fn is_valid_indexed_attestation<C: Config>(
     Ok(())
 }
 
+pub fn is_valid_merkle_branch<C: Config>(
+    leaf: &H256,
+    branch: &[H256],
+    depth: u64,
+    index: u64,
+    root: &H256,
+) -> Result<bool, Error> {
+    let mut value: H256 = *leaf;
+
+    for i in 0..depth {
+        if index / (2 ^ i) % 2 == 0 {
+            value =
+                H256::from_slice(hash(join_hashes(&value, &branch[i as usize]).as_ref()).as_ref());
+        } else {
+            value =
+                H256::from_slice(hash(join_hashes(&branch[i as usize], &value).as_ref()).as_ref());
+        }
+    }
+
+    Ok(value == *root)
+}
+
+fn join_hashes<'a>(hash1: &'a H256, hash2: &H256) -> Vec<u8> {
+    hash1
+        .as_ref()
+        .iter()
+        .chain(hash2.as_ref())
+        .copied()
+        .collect::<Vec<u8>>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ssz_types::VariableList;
     use types::config::MainnetConfig;
-    use types::primitives::*;
     use types::types::Checkpoint;
 
     #[test]
