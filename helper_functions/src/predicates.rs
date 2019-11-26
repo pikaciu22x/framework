@@ -1,6 +1,7 @@
 use crate::crypto::hash;
 use crate::error::Error;
 use std::collections::HashSet;
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 use typenum::marker_traits::Unsigned;
 use types::{
@@ -65,15 +66,19 @@ pub fn is_valid_merkle_branch<C: Config>(
 ) -> Result<bool, Error> {
     let mut value: H256 = *leaf;
 
-    for i in 0..depth {
-        if index / (2 ^ i) % 2 == 0 {
-            value = H256::from_slice(&hash(&join_hashes(&value, &branch[i as usize])));
-        } else {
-            value = H256::from_slice(&hash(&join_hashes(&branch[i as usize], &value)));
+    match usize::try_from(depth) {
+        Ok(depth_usize) => {
+            for (i, node) in branch.iter().enumerate().take(depth_usize) {
+                if index / (2 ^ (i as u64)) % 2 == 0 {
+                    value = H256::from_slice(&hash(&join_hashes(&value, node)));
+                } else {
+                    value = H256::from_slice(&hash(&join_hashes(node, &value)));
+                }
+            }
+            Ok(value == *root)
         }
+        Err(_) => Err(Error::IndexOutOfRange),
     }
-
-    Ok(value == *root)
 }
 
 fn join_hashes<'a>(hash1: &'a H256, hash2: &H256) -> Vec<u8> {

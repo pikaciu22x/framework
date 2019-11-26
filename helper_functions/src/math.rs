@@ -1,5 +1,3 @@
-use types::primitives::*;
-
 // endianness is not configurable
 pub fn int_to_bytes(int: u64, length: usize) -> Vec<u8> {
     let mut vec = int.to_le_bytes().to_vec();
@@ -40,6 +38,7 @@ pub fn bytes_to_int(bytes: [u8; 8]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::primitives::H256;
 
     #[test]
     fn test_int_to_bytes_value0_length_8() {

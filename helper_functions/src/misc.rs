@@ -76,7 +76,10 @@ pub fn compute_committee<'a, C: Config>(
 
     for i in start..end {
         match compute_shuffled_index::<C>(i, count, seed) {
-            Ok(id) => committee.push(indices[id as usize]),
+            Ok(id) => match usize::try_from(id) {
+                Ok(id_usize) => committee.push(indices[id_usize]),
+                Err(_) => return Err(Error::IndexOutOfRange),
+            },
             Err(err) => return Err(err),
         }
     }
@@ -92,22 +95,31 @@ pub fn compute_proposer_index<C: Config>(
     let mut i = 0;
     loop {
         match compute_shuffled_index::<C>(i % indices.len() as u64, indices.len() as u64, seed) {
-            Ok(index) => {
-                let candidate_index = indices[index as usize];
-                let mut combined = seed.as_bytes().to_vec();
-                combined.append(&mut int_to_bytes(i / 32, 8));
+            Ok(index) => match usize::try_from(index) {
+                Ok(index_usize) => {
+                    let candidate_index = indices[index_usize];
+                    let mut combined = seed.as_bytes().to_vec();
+                    combined.append(&mut int_to_bytes(i / 32, 8));
 
-                let random_byte = hash(&combined)[(i % 32) as usize];
+                    let random_byte = hash(&combined)
+                        [usize::try_from(i % 32).expect("Error while converting to u32")];
 
-                let effective_balance =
-                    state.validators[candidate_index as usize].effective_balance;
-                if effective_balance * MAX_RANDOM_BYTE
-                    >= C::max_effective_balance() * u64::from(random_byte)
-                {
-                    break Ok(candidate_index);
+                    match usize::try_from(candidate_index) {
+                        Ok(candidate_index_usize) => {
+                            let effective_balance =
+                                state.validators[candidate_index_usize].effective_balance;
+                            if effective_balance * MAX_RANDOM_BYTE
+                                >= C::max_effective_balance() * u64::from(random_byte)
+                            {
+                                break Ok(candidate_index);
+                            }
+                            i += 1
+                        }
+                        Err(_) => break Err(Error::IndexOutOfRange),
+                    }
                 }
-                i += 1
-            }
+                Err(_) => break Err(Error::IndexOutOfRange),
+            },
             Err(err) => break Err(err),
         }
     }
