@@ -1,4 +1,4 @@
-use crate::crypto::{hash, bls_verify, bls_aggregate_pubkeys};
+use crate::crypto::hash;
 use crate::error::Error;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
