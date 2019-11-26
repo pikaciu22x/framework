@@ -74,6 +74,8 @@ pub fn get_active_validator_indices<C: Config>(
 pub fn get_validator_churn_limit<C: Config>(state: &BeaconState<C>) -> Result<u64, Error> {
     let active_validator_indices = get_active_validator_indices(state, get_current_epoch(state));
 
+    // todo: check for 0
+
     Ok(cmp::max(
         C::min_per_epoch_churn_limit(),
         active_validator_indices.len() as u64 / C::churn_limit_quotient(),
@@ -126,15 +128,6 @@ pub fn get_committee_count_at_slot<C: Config>(
 ) -> Result<u64, Error> {
     let epoch = compute_epoch_at_slot::<C>(slot);
 
-    let committees_per_slot = cmp::min(
-        C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
-        get_active_validator_indices(state, epoch).len() as u64,
-    );
-
-    Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
-}
-
-pub fn get_committee_count<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result<u64, Error> {
     let committees_per_slot = cmp::min(
         C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
         get_active_validator_indices(state, epoch).len() as u64,

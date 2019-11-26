@@ -192,8 +192,7 @@ pub struct HistoricalBatch<C: Config> {
     Clone, PartialEq, Debug, Default, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
 )]
 pub struct IndexedAttestation<C: Config> {
-    pub custody_bit_0_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
-    pub custody_bit_1_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
+    pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
