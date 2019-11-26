@@ -13,3 +13,4 @@ typenum = '1.11.2'
 types = { path = '../types' }
 eth2_ssz_types = { path = '../utils/ssz_types' }
 eth2_ssz = { path = '../utils/ssz' }
+tree_hash = { path = '../utils/tree_hash' }
