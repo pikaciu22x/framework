@@ -6,7 +6,6 @@ pub enum Error {
     IndexOutOfRange,
     AttestationBitsInvalid,
     MaxIndicesExceeded,
-    CustodyBitValidatorsIntersect,
     BadValidatorIndicesOrdering,
     ValidatorExitAlreadyInitiated,
 }

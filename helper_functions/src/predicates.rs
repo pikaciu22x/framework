@@ -1,8 +1,6 @@
-use crate::crypto::hash;
+use crate::crypto::{hash, bls_verify, bls_aggregate_pubkeys};
 use crate::error::Error;
-use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::iter::FromIterator;
 use typenum::marker_traits::Unsigned;
 use types::{
     beacon_state::BeaconState,
@@ -40,19 +38,21 @@ pub fn is_valid_indexed_attestation<C: Config>(
         return Err(Error::MaxIndicesExceeded);
     }
 
-    // Verify index sets are disjoint
-    let is_disjoint = HashSet::<&u64>::from_iter(bit_0_indices.iter())
-        .is_disjoint(&HashSet::<&u64>::from_iter(bit_1_indices.iter()));
-    if !is_disjoint {
-        return Err(Error::CustodyBitValidatorsIntersect);
-    }
-
     // Verify indices are sorted
     let is_sorted = bit_0_indices.windows(2).all(|w| w[0] <= w[1])
         && bit_1_indices.windows(2).all(|w| w[0] <= w[1]);
     if !is_sorted {
         return Err(Error::BadValidatorIndicesOrdering);
     }
+
+    // if !bls_verify(
+    //     bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
+    //     message_hash=hash_tree_root(indexed_attestation.data),
+    //     signature=indexed_attestation.signature,
+    //     domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
+    // ) {
+
+    // }
 
     Ok(())
 }
@@ -245,19 +245,6 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_is_valid_indexed_attestation_custody_bit_set() {
-    //     let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-    //     let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
-    //         custody_bit_1_indices: VariableList::from(vec![1, 2]),
-    //         ..IndexedAttestation::default()
-    //     };
-    //     assert_eq!(
-    //         is_valid_indexed_attestation::<MainnetConfig>(&state, &attestation),
-    //         Err(Error::CustodyBitSet)
-    //     );
-    // }
-
     #[test]
     fn test_is_valid_indexed_attestation_max_indices_exceeded() {
         let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
@@ -271,22 +258,6 @@ mod tests {
         assert_eq!(
             is_valid_indexed_attestation::<MainnetConfig>(&state, &attestation),
             Err(Error::MaxIndicesExceeded)
-        );
-    }
-
-    #[test]
-    fn test_is_valid_indexed_attestation_custody_bit_validators_intersect() {
-        let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-        let bit_0_indices: Vec<u64> = (0_u64..64_u64).collect();
-        let bit_1_indices: Vec<u64> = vec![1_u64];
-        let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
-            custody_bit_0_indices: VariableList::from(bit_0_indices),
-            custody_bit_1_indices: VariableList::from(bit_1_indices),
-            ..IndexedAttestation::default()
-        };
-        assert_eq!(
-            is_valid_indexed_attestation::<MainnetConfig>(&state, &attestation),
-            Err(Error::CustodyBitValidatorsIntersect)
         );
     }
 
