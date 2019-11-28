@@ -1,6 +1,8 @@
 [workspace]
 members = [
+    'error_utils',
     'eth2_network',
+    'eth2_network_libp2p',
     'helper_functions/helper_functions_interface',
     'types',
     'transition_functions',
