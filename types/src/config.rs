@@ -10,7 +10,7 @@ use crate::primitives::ValidatorIndex;
 
 pub trait Config
 where
-    Self: Clone + Copy + PartialEq + Eq + Hash + PartialOrd + Ord + Default + Debug,
+    Self: Clone + Copy + PartialEq + Eq + Hash + PartialOrd + Ord + Default + Debug + 'static,
 {
     type EpochsPerSlashingsVector: Unsigned
         + Clone
@@ -51,7 +51,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxAttestations: Unsigned
         + Clone
         + Copy
@@ -61,7 +63,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxAttestationsPerEpoch: Unsigned
         + Clone
         + Copy
@@ -81,7 +85,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxProposerSlashings: Unsigned
         + Clone
         + Copy
@@ -91,7 +97,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxTransfers: Unsigned
         + Clone
         + Copy
@@ -101,7 +109,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxValidatorsPerCommittee: Unsigned
         + Clone
         + Copy
@@ -111,7 +121,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxVoluntaryExits: Unsigned
         + Clone
         + Copy
@@ -121,7 +133,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type ShardCount: Unsigned
         + Clone
         + Copy
