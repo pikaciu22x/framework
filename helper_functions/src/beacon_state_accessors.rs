@@ -190,34 +190,17 @@ pub fn get_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     attestation: &Attestation<C>,
 ) -> Result<IndexedAttestation<C>, Error> {
-    // todo: change to spec:
-    // let attesting_indices =
-    //     get_attesting_indices(state, &attestation.data, &attestation.aggregation_bits)?;
+    let attesting_indices =
+        get_attesting_indices(state, &attestation.data, &attestation.aggregation_bits)?;
 
-    // let custody_bit_1_indices =
-    //     get_attesting_indices(state, &attestation.data, &attestation.custody_bits)?;
+    let mut vec: Vec<ValidatorIndex> = attesting_indices.iter().cloned().collect();
+    vec.sort();
 
-    // let custody_bit_0_indices = &attesting_indices - &custody_bit_1_indices;
-
-    // let custody_bit_0_indices_list =
-    //     match VariableList::new(custody_bit_0_indices.into_iter().collect()) {
-    //         Err(_err) => return Err(Error::ConversionToVariableList),
-    //         Ok(list) => list,
-    //     };
-
-    // let custody_bit_1_indices_list =
-    //     match VariableList::new(custody_bit_1_indices.into_iter().collect()) {
-    //         Err(_err) => return Err(Error::ConversionToVariableList),
-    //         Ok(list) => list,
-    //     };
-
-    // Ok(IndexedAttestation {
-    //     custody_bit_0_indices: custody_bit_0_indices_list,
-    //     custody_bit_1_indices: custody_bit_1_indices_list,
-    //     data: attestation.data.clone(),
-    //     signature: attestation.signature.clone(),
-    // })
-    Err(Error::SlotOutOfRange)
+    Ok(IndexedAttestation {
+        attesting_indices: VariableList::from(vec),
+        data: attestation.data.clone(),
+        signature: attestation.signature.clone(),
+    })
 }
 
 pub fn get_attesting_indices<C: Config>(
@@ -379,25 +362,6 @@ mod tests {
         assert_eq!(
             get_validator_churn_limit(&bs),
             Ok(MainnetConfig::min_per_epoch_churn_limit())
-        )
-    }
-
-    #[test]
-    fn test_get_committee_count() {
-        let v1 = Validator {
-            effective_balance: 11,
-            activation_epoch: 0,
-            exit_epoch: 2,
-            ..Validator::default()
-        };
-        let bs: BeaconState<MainnetConfig> = BeaconState {
-            validators: VariableList::from(vec![v1]),
-            ..BeaconState::default()
-        };
-
-        assert_eq!(
-            get_committee_count(&bs, 0_u64),
-            Ok(<MainnetConfig as Config>::ShardCount::to_u64())
         )
     }
 
