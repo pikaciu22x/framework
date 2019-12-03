@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use std::convert::TryInto;
 use core::consts::ExpConst;
 
-fn process_block<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
+pub fn process_block<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
     process_block_header(state, block);
     process_randao(state, &block.body);
     process_eth1_data(state, &block.body);
