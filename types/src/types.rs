@@ -174,7 +174,7 @@ impl BeaconBlockHeader {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
+    Clone, Copy, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
 )]
 pub struct Checkpoint {
     pub epoch: Epoch,
