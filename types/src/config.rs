@@ -6,8 +6,6 @@ use core::hash::Hash;
 use serde::{Deserialize, Serialize};
 use typenum::Unsigned;
 
-use crate::primitives::ValidatorIndex;
-
 pub trait Config
 where
     Self: Clone + Copy + PartialEq + Eq + Hash + PartialOrd + Ord + Default + Debug + 'static,
@@ -330,35 +328,4 @@ impl Config for MinimalConfig {
     type SlotsPerEth1VotingPeriod = typenum::U16;
     type SlotsPerHistoricalRoot = typenum::U64;
     type ValidatorRegistryLimit = typenum::U1099511627776;
-}
-
-#[derive(
-    Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Debug, Deserialize, Serialize,
-)]
-pub struct QuickConfig;
-
-impl Config for QuickConfig {
-    type EpochsPerSlashingsVector = typenum::U64;
-    type EpochsPerHistoricalVector = typenum::U64;
-    type HistoricalRootsLimit = typenum::U16777216;
-    type MaxAttesterSlashings = typenum::U1;
-    type MaxAttestations = typenum::U128;
-    type MaxAttestationsPerEpoch = typenum::U1024;
-    type MaxDeposits = typenum::U16;
-    type MaxProposerSlashings = typenum::U16;
-    type MaxTransfers = typenum::U0;
-    type MaxValidatorsPerCommittee = typenum::U4096;
-    type MaxVoluntaryExits = typenum::U16;
-    type ShardCount = typenum::U8;
-    type SlotsPerEpoch = typenum::U1;
-    type SlotsPerEth1VotingPeriod = typenum::U16;
-    type SlotsPerHistoricalRoot = typenum::U64;
-    type ValidatorRegistryLimit = typenum::U1099511627776;
-
-    fn min_genesis_active_validator_count() -> ValidatorIndex {
-        1
-    }
-    fn min_genesis_time() -> u64 {
-        9_476_400
-    }
 }
