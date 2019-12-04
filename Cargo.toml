@@ -1,6 +1,7 @@
 [workspace]
 members = [
     'beacon_fork_choice',
+    'beacon_node',
     'error_utils',
     'eth2_network',
     'eth2_network_libp2p',
