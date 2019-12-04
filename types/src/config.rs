@@ -4,7 +4,7 @@ use core::fmt::Debug;
 use core::hash::Hash;
 
 use serde::{Deserialize, Serialize};
-use typenum::Unsigned;
+use typenum::{NonZero, Unsigned};
 
 pub trait Config
 where
@@ -134,6 +134,7 @@ where
         + Debug
         + Send
         + Sync;
+    type SecondsPerSlot: Unsigned + NonZero;
     type ShardCount: Unsigned
         + Clone
         + Copy
@@ -299,6 +300,7 @@ impl Config for MainnetConfig {
     type MaxTransfers = typenum::U0;
     type MaxValidatorsPerCommittee = typenum::U4096;
     type MaxVoluntaryExits = typenum::U16;
+    type SecondsPerSlot = typenum::U12;
     type ShardCount = typenum::U8;
     type SlotsPerEpoch = typenum::U8;
     type SlotsPerEth1VotingPeriod = typenum::U16;
@@ -323,6 +325,7 @@ impl Config for MinimalConfig {
     type MaxTransfers = typenum::U0;
     type MaxValidatorsPerCommittee = typenum::U4096;
     type MaxVoluntaryExits = typenum::U16;
+    type SecondsPerSlot = typenum::U6;
     type ShardCount = typenum::U8;
     type SlotsPerEpoch = typenum::U8;
     type SlotsPerEth1VotingPeriod = typenum::U16;
