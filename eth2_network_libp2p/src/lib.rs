@@ -4,8 +4,9 @@ use anyhow::{bail, ensure, Error, Result};
 use error_utils::{DebugAsError, SyncError};
 use eth2_libp2p::{
     rpc::{
-        methods::{BeaconBlocksRequest, GoodbyeReason, HelloMessage, RecentBeaconBlocksRequest},
+        methods::{BlocksByRangeRequest, BlocksByRootRequest, GoodbyeReason, StatusMessage},
         ErrorMessage, RPCError, RPCErrorResponse, RPCRequest, RPCResponse, RequestId,
+        ResponseTermination,
     },
     Libp2pEvent, PeerId, PubsubMessage, RPCEvent, Service, Topic, TopicHash,
 };
@@ -40,14 +41,16 @@ enum EventHandlerError {
         rpc_error: RPCError,
     },
     #[error(
-        "peer {} sent a response to RecentBeaconBlocks without request: {}",
+        "peer {} sent a response to BlocksByRoot without request: {}",
         peer_id,
         Hs(response_bytes)
     )]
-    UnexpectedResponse {
+    UnexpectedBlocksByRootResponse {
         peer_id: PeerId,
         response_bytes: Vec<u8>,
     },
+    #[error("peer {peer_id} terminated BlocksByRoot response stream sent without request")]
+    UnexpectedBlocksByRootTermination { peer_id: PeerId },
     #[error(
         "peer {} rejected the request: {}",
         peer_id,
@@ -84,6 +87,8 @@ enum EventHandlerError {
         topics: Vec<TopicHash>,
         message: PubsubMessage,
     },
+    #[error("unexpectedly subscribed to peer {peer_id} for topic {topic}")]
+    UnexpectedTopicSubscription { peer_id: PeerId, topic: TopicHash },
     #[error("slot step is zero")]
     SlotStepIsZero,
     #[error("slot difference overflowed ({count} * {step})")]
@@ -139,20 +144,21 @@ struct EventHandler<C: Config, N> {
 impl<C: Config, N: Networked<C>> EventHandler<C, N> {
     fn handle_libp2p_event(&mut self, libp2p_event: Libp2pEvent) -> Result<EventFuture> {
         match libp2p_event {
-            Libp2pEvent::RPC(peer_id, RPCEvent::Request(request_id, RPCRequest::Hello(hello))) => {
-                self.handle_hello_request(peer_id, request_id, hello)
-            }
+            Libp2pEvent::RPC(
+                peer_id,
+                RPCEvent::Request(request_id, RPCRequest::Status(status_message)),
+            ) => self.handle_status_request(peer_id, request_id, status_message),
             Libp2pEvent::RPC(peer_id, RPCEvent::Request(_, RPCRequest::Goodbye(reason))) => {
                 self.handle_goodbye_request(&peer_id, &reason)
             }
             Libp2pEvent::RPC(
                 peer_id,
-                RPCEvent::Request(request_id, RPCRequest::BeaconBlocks(request)),
-            ) => self.handle_beacon_blocks_request(peer_id, request_id, &request),
+                RPCEvent::Request(request_id, RPCRequest::BlocksByRange(request)),
+            ) => self.handle_blocks_by_range_request(peer_id, request_id, &request),
             Libp2pEvent::RPC(
                 peer_id,
-                RPCEvent::Request(request_id, RPCRequest::RecentBeaconBlocks(request)),
-            ) => self.handle_recent_beacon_blocks_request(peer_id, request_id, request),
+                RPCEvent::Request(request_id, RPCRequest::BlocksByRoot(request)),
+            ) => self.handle_blocks_by_root_request(peer_id, request_id, request),
             Libp2pEvent::RPC(peer_id, RPCEvent::Response(_, response)) => {
                 self.handle_rpc_response(peer_id, response)
             }
@@ -170,23 +176,26 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 topics,
                 message,
             } => self.handle_pubsub_message(id, source, topics, message),
+            Libp2pEvent::PeerSubscribed(peer_id, topic) => {
+                bail!(EventHandlerError::UnexpectedTopicSubscription { peer_id, topic });
+            }
         }
     }
 
-    fn handle_hello_request(
+    fn handle_status_request(
         &mut self,
         peer_id: PeerId,
-        hello_request_id: RequestId,
-        hello: HelloMessage,
+        status_request_id: RequestId,
+        status_message: StatusMessage,
     ) -> Result<EventFuture> {
-        let remote = hello_message_into_status(hello);
+        let remote = status_message_into_status(status_message);
 
         info!(
-            "received Hello request (peer_id: {}, remote: {:?})",
+            "received Status request (peer_id: {}, remote: {:?})",
             peer_id, remote,
         );
 
-        let beacon_blocks_request_id = self.request_id()?;
+        let blocks_by_range_request_id = self.request_id()?;
 
         Ok(Box::new(
             self.lock_networked().join(self.lock_service()).and_then(
@@ -194,16 +203,16 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                     let local = get_and_check_status(networked.deref(), remote)?;
 
                     info!(
-                        "sending Hello response (peer_id: {}, local: {:?})",
+                        "sending Status response (peer_id: {}, local: {:?})",
                         peer_id, local,
                     );
 
                     service.swarm.send_rpc(
                         peer_id.clone(),
                         RPCEvent::Response(
-                            hello_request_id,
-                            RPCErrorResponse::Success(RPCResponse::Hello(
-                                status_into_hello_message(local),
+                            status_request_id,
+                            RPCErrorResponse::Success(RPCResponse::Status(
+                                status_into_status_message(local),
                             )),
                         ),
                     );
@@ -213,7 +222,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                         remote,
                         service,
                         peer_id,
-                        beacon_blocks_request_id,
+                        blocks_by_range_request_id,
                     );
 
                     Ok(())
@@ -234,18 +243,18 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
         Ok(Box::new(future::ok(())))
     }
 
-    fn handle_beacon_blocks_request(
+    fn handle_blocks_by_range_request(
         &self,
         peer_id: PeerId,
         request_id: RequestId,
-        request: &BeaconBlocksRequest,
+        request: &BlocksByRangeRequest,
     ) -> Result<EventFuture> {
         info!(
-            "received BeaconBlocks request (peer_id: {}, request: {:?})",
+            "received BlocksByRange request (peer_id: {}, request: {:?})",
             peer_id, request,
         );
 
-        let BeaconBlocksRequest {
+        let BlocksByRangeRequest {
             head_block_root,
             start_slot,
             count,
@@ -269,44 +278,60 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
             self.lock_networked()
                 .join(self.lock_service())
                 .map(move |(networked, mut service)| {
-                    let beacon_blocks =
-                        iter::successors(networked.get_beacon_block(head_block_root), |previous| {
-                            networked.get_beacon_block(previous.parent_root)
-                        })
-                        .skip_while(|block| end_slot < block.slot)
-                        .take_while(|block| start_slot <= block.slot)
-                        .filter(|block| (block.slot - start_slot) % step == 0)
-                        .cloned()
-                        .collect::<Vec<_>>();
+                    // It is unclear what should be done in the case that no blocks are found.
+                    // The [specification] implies a `ServerError` should be sent in response.
+                    // It would be easier for both the server and the client to terminate the
+                    // stream immediately. Lighthouse does exactly that. Given that the notion
+                    // of response chunks was [introduced] by a Lighthouse developer, that may
+                    // have been the intended meaning.
+                    //
+                    // [specification]: https://github.com/ethereum/eth2.0-specs/blob/19fa53709a247df5279f063179cc5e317ad57041/specs/networking/p2p-interface.md
+                    // [introduced]:    https://github.com/ethereum/eth2.0-specs/pull/1404
+                    iter::successors(networked.get_beacon_block(head_block_root), |previous| {
+                        networked.get_beacon_block(previous.parent_root)
+                    })
+                    .skip_while(|block| end_slot < block.slot)
+                    .take_while(|block| start_slot <= block.slot)
+                    .filter(|block| (block.slot - start_slot) % step == 0)
+                    .for_each(|block| {
+                        info!(
+                            "sending BlocksByRange response chunk (peer_id: {}, block: {:?})",
+                            peer_id, block,
+                        );
+                        service.swarm.send_rpc(
+                            peer_id.clone(),
+                            RPCEvent::Response(
+                                request_id,
+                                RPCErrorResponse::Success(RPCResponse::BlocksByRange(
+                                    block.as_ssz_bytes(),
+                                )),
+                            ),
+                        );
+                    });
 
-                    info!(
-                        "sending BeaconBlocks response (peer_id: {}, beacon_blocks: {:?})",
-                        peer_id, beacon_blocks,
-                    );
+                    info!("terminating BlocksByRange response stream");
 
                     service.swarm.send_rpc(
                         peer_id,
                         RPCEvent::Response(
                             request_id,
-                            RPCErrorResponse::Success(RPCResponse::BeaconBlocks(
-                                beacon_blocks.as_ssz_bytes(),
-                            )),
+                            RPCErrorResponse::StreamTermination(ResponseTermination::BlocksByRange),
                         ),
                     );
                 }),
         ))
     }
 
-    fn handle_recent_beacon_blocks_request(
+    fn handle_blocks_by_root_request(
         &self,
         peer_id: PeerId,
         request_id: RequestId,
-        request: RecentBeaconBlocksRequest,
+        request: BlocksByRootRequest,
     ) -> Result<EventFuture> {
         let block_roots = request.block_roots;
 
         info!(
-            "received RecentBeaconBlocks request (peer_id: {}, block_roots: {:?})",
+            "received BlocksByRoot request (peer_id: {}, block_roots: {:?})",
             peer_id, block_roots,
         );
 
@@ -314,23 +339,40 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
             self.lock_networked()
                 .join(self.lock_service())
                 .map(move |(networked, mut service)| {
-                    let beacon_blocks = block_roots
-                        .into_iter()
-                        .map(|root| networked.get_beacon_block(root).cloned())
-                        .collect::<Vec<_>>();
+                    // It is unclear what should be done in the case that no blocks are found.
+                    // The [specification] implies a `ServerError` should be sent in response.
+                    // It would be easier for both the server and the client to terminate the
+                    // stream immediately. Lighthouse does exactly that. Given that the notion
+                    // of response chunks was [introduced] by a Lighthouse developer, that may
+                    // have been the intended meaning.
+                    //
+                    // [specification]: https://github.com/ethereum/eth2.0-specs/blob/19fa53709a247df5279f063179cc5e317ad57041/specs/networking/p2p-interface.md
+                    // [introduced]:    https://github.com/ethereum/eth2.0-specs/pull/1404
+                    for root in block_roots {
+                        if let Some(block) = networked.get_beacon_block(root) {
+                            info!(
+                                "sending BlocksByRoot response chunk (peer_id: {}, block: {:?})",
+                                peer_id, block,
+                            );
+                            service.swarm.send_rpc(
+                                peer_id.clone(),
+                                RPCEvent::Response(
+                                    request_id,
+                                    RPCErrorResponse::Success(RPCResponse::BlocksByRoot(
+                                        block.as_ssz_bytes(),
+                                    )),
+                                ),
+                            );
+                        }
+                    }
 
-                    info!(
-                        "sending RecentBeaconBlocks response (peer_id: {}, beacon_blocks: {:?})",
-                        peer_id, beacon_blocks,
-                    );
+                    info!("terminating BlocksByRoot response stream");
 
                     service.swarm.send_rpc(
                         peer_id,
                         RPCEvent::Response(
                             request_id,
-                            RPCErrorResponse::Success(RPCResponse::RecentBeaconBlocks(
-                                beacon_blocks.as_ssz_bytes(),
-                            )),
+                            RPCErrorResponse::StreamTermination(ResponseTermination::BlocksByRoot),
                         ),
                     );
                 }),
@@ -343,11 +385,11 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
         response: RPCErrorResponse,
     ) -> Result<EventFuture> {
         match response {
-            RPCErrorResponse::Success(RPCResponse::Hello(hello)) => {
-                let remote = hello_message_into_status(hello);
+            RPCErrorResponse::Success(RPCResponse::Status(status_message)) => {
+                let remote = status_message_into_status(status_message);
 
                 info!(
-                    "received Hello response (peer_id: {}, remote: {:?})",
+                    "received Status response (peer_id: {}, remote: {:?})",
                     peer_id, remote,
                 );
 
@@ -365,24 +407,21 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                     ),
                 ))
             }
-            RPCErrorResponse::Success(RPCResponse::BeaconBlocks(bytes)) => {
-                let beacon_blocks =
-                    Vec::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
+            RPCErrorResponse::Success(RPCResponse::BlocksByRange(bytes)) => {
+                let beacon_block =
+                    BeaconBlock::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
                 info!(
-                    "received BeaconBlocks response (peer_id: {}, beacon_blocks: {:?})",
-                    peer_id, beacon_blocks,
+                    "received BlocksByRange response chunk (peer_id: {}, beacon_block: {:?})",
+                    peer_id, beacon_block,
                 );
 
                 Ok(Box::new(self.lock_networked().and_then(|mut networked| {
-                    for beacon_block in beacon_blocks {
-                        networked.accept_beacon_block(beacon_block)?;
-                    }
-                    Ok(())
+                    networked.accept_beacon_block(beacon_block)
                 })))
             }
-            RPCErrorResponse::Success(RPCResponse::RecentBeaconBlocks(response_bytes)) => {
-                bail!(EventHandlerError::UnexpectedResponse {
+            RPCErrorResponse::Success(RPCResponse::BlocksByRoot(response_bytes)) => {
+                bail!(EventHandlerError::UnexpectedBlocksByRootResponse {
                     peer_id,
                     response_bytes
                 })
@@ -401,6 +440,13 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 peer_id,
                 error_message,
             }),
+            RPCErrorResponse::StreamTermination(ResponseTermination::BlocksByRange) => {
+                info!("peer {} terminated BlocksByRange response stream", peer_id);
+                Ok(Box::new(future::ok(())))
+            }
+            RPCErrorResponse::StreamTermination(ResponseTermination::BlocksByRoot) => {
+                bail!(EventHandlerError::UnexpectedBlocksByRootTermination { peer_id })
+            }
         }
     }
 
@@ -416,7 +462,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                     let status = networked.get_status();
 
                     info!(
-                        "sending Hello request (peer_id: {}, status: {:?})",
+                        "sending Status request (peer_id: {}, status: {:?})",
                         peer_id, status,
                     );
 
@@ -424,7 +470,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                         peer_id,
                         RPCEvent::Request(
                             request_id,
-                            RPCRequest::Hello(status_into_hello_message(status)),
+                            RPCRequest::Status(status_into_status_message(status)),
                         ),
                     );
                 }),
@@ -566,14 +612,14 @@ pub fn run_network<C: Config, N: Networked<C>>(
     })
 }
 
-fn hello_message_into_status(hello: HelloMessage) -> Status {
-    let HelloMessage {
+fn status_message_into_status(status_message: StatusMessage) -> Status {
+    let StatusMessage {
         fork_version,
         finalized_root,
         finalized_epoch,
         head_root,
         head_slot,
-    } = hello;
+    } = status_message;
     Status {
         fork_version,
         finalized_root,
@@ -583,7 +629,7 @@ fn hello_message_into_status(hello: HelloMessage) -> Status {
     }
 }
 
-fn status_into_hello_message(status: Status) -> HelloMessage {
+fn status_into_status_message(status: Status) -> StatusMessage {
     let Status {
         fork_version,
         finalized_root,
@@ -591,7 +637,7 @@ fn status_into_hello_message(status: Status) -> HelloMessage {
         head_root,
         head_slot,
     } = status;
-    HelloMessage {
+    StatusMessage {
         fork_version,
         finalized_root,
         finalized_epoch: finalized_epoch.into(),
@@ -626,19 +672,19 @@ fn compare_status_and_request_blocks<C: Config>(
     // `remote.finalized_epoch` because there is no easy way to do it with our implementation of the
     // fork choice store.
     if (local.finalized_epoch, local.head_slot) < (remote.finalized_epoch, remote.head_slot) {
-        let request = BeaconBlocksRequest {
+        let request = BlocksByRangeRequest {
             head_block_root: remote.head_root,
             start_slot: misc::compute_start_slot_of_epoch::<C>(remote.finalized_epoch),
             count: u64::max_value(),
             step: 1,
         };
         info!(
-            "sending BeaconBlocks request (peer_id: {}, request: {:?})",
+            "sending BlocksByRange request (peer_id: {}, request: {:?})",
             peer_id, request,
         );
         service.swarm.send_rpc(
             peer_id,
-            RPCEvent::Request(request_id, RPCRequest::BeaconBlocks(request)),
+            RPCEvent::Request(request_id, RPCRequest::BlocksByRange(request)),
         );
     }
 }
