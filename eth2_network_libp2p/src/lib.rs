@@ -41,8 +41,7 @@ enum EventHandlerError {
         rpc_error: RPCError,
     },
     #[error(
-        "peer {} sent a response to BlocksByRoot without request: {}",
-        peer_id,
+        "peer {peer_id} sent a response to BlocksByRoot without request: {}",
         Hs(response_bytes)
     )]
     UnexpectedBlocksByRootResponse {
@@ -51,27 +50,18 @@ enum EventHandlerError {
     },
     #[error("peer {peer_id} terminated BlocksByRoot response stream sent without request")]
     UnexpectedBlocksByRootTermination { peer_id: PeerId },
-    #[error(
-        "peer {} rejected the request: {}",
-        peer_id,
-        AsciiStr(&error_message.error_message)
-    )]
+    #[error("peer {peer_id} rejected the request: {}", AsciiStr(&error_message.error_message))]
     InvalidRequest {
         peer_id: PeerId,
         error_message: ErrorMessage,
     },
-    #[error(
-        "peer {} encountered an error: {}",
-        peer_id,
-        AsciiStr(&error_message.error_message)
-    )]
+    #[error("peer {peer_id} encountered an error: {}", AsciiStr(&error_message.error_message))]
     ServerError {
         peer_id: PeerId,
         error_message: ErrorMessage,
     },
     #[error(
-        "peer {} responded with unknown response code: {}",
-        peer_id,
+        "peer {peer_id} responded with unknown response code: {}",
         AsciiStr(&error_message.error_message)
     )]
     UnknownResponse {
