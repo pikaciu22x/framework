@@ -6,7 +6,7 @@ edition = '2018'
 [dependencies]
 anyhow = '1.0.25'
 error_utils = { path = '../error_utils' }
-eth2-libp2p = { git = 'https://github.com/sigp/lighthouse', rev = 'bf2eeae3f227fc02958956cf6cb0c8cd6f6c3cda' }
+eth2-libp2p = { git = 'https://github.com/sigp/lighthouse' }
 eth2_network = { path = '../eth2_network' }
 eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
 ethereum-types = '0.8.0'
