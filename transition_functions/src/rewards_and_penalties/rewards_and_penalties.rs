@@ -1,18 +1,18 @@
-use helper_functions;
-use types::{ beacon_state::*, config::{ Config }};
 use core::consts::ExpConst;
-use helper_functions::math::*;
-use types::primitives::*;
+use helper_functions;
 use helper_functions::beacon_state_accessors::*;
 use helper_functions::beacon_state_mutators::*;
+use helper_functions::math::*;
+use types::primitives::*;
+use types::{beacon_state::*, config::Config};
 
-fn get_base_reward<T: Config + ExpConst>(state: BeaconState<T>, index: ValidatorIndex) -> Gwei{
+fn get_base_reward<T: Config + ExpConst>(state: BeaconState<T>, index: ValidatorIndex) -> Gwei {
     let total_balance = get_total_active_balance(&state).unwrap();
     let effective_balance = state.validators[index as usize].effective_balance;
-    (effective_balance * T::base_reward_factor() / integer_squareroot(total_balance) / T::base_rewards_per_epoch()) as Gwei
+    (effective_balance * T::base_reward_factor()
+        / integer_squareroot(total_balance)
+        / T::base_rewards_per_epoch()) as Gwei
 }
-
-
 
 fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<Gwei>, Vec<Gwei>) {
     // let previous_epoch = get_previous_epoch(state);
@@ -27,7 +27,7 @@ fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<
     //     ValidatorIndex(index) for index, v in enumerate(state.validators)
     //     //!if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
     // ];
- 
+
     //# Micro-incentives for matching FFG source, FFG target, and head
     /*
     let matching_source_attestations = get_matching_source_attestations(state, previous_epoch);
@@ -75,13 +75,11 @@ fn get_attestation_deltas<T: Config + ExpConst>(state: &BeaconState<T>) -> (Vec<
     //     }
     // }
 
-
     (rewards, penalties)
 }
 
 fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-    if get_current_epoch(&state) == T::genesis_epoch()
-    {
+    if get_current_epoch(&state) == T::genesis_epoch() {
         return;
     }
 
@@ -94,6 +92,5 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(state: &mut BeaconState<T
 
 #[test]
 fn test_base_reward() {
-    assert_eq!(1,1);
-    
+    assert_eq!(1, 1);
 }

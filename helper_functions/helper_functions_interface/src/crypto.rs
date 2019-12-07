@@ -1,6 +1,6 @@
 use bls::{AggregatePublicKey, PublicKey, Signature};
 use ssz::DecodeError;
-use tree_hash::{TreeHash, SignedRoot};
+use tree_hash::{SignedRoot, TreeHash};
 use types::primitives::{Domain, H256};
 
 // ok
@@ -11,13 +11,13 @@ pub fn hash(_input: &[u8]) -> Vec<u8> {
 // ok
 pub fn hash_tree_root(_object: &impl TreeHash) -> H256 {
     unimplemented!()
-//    use TreeHash derive
+    //    use TreeHash derive
 }
 
 // ok
 pub fn signing_root(_object: &impl SignedRoot) -> H256 {
     unimplemented!()
-//    use SignedRoot derive
+    //    use SignedRoot derive
 }
 
 // ok

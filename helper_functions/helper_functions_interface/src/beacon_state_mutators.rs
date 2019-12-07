@@ -5,18 +5,12 @@ use types::primitives::{Gwei, ValidatorIndex};
 use types::types::Validator;
 
 // ok
-pub fn increase_balance(
-    _validator: &mut Validator,
-    _delta: Gwei,
-) -> Result<(), Error> {
+pub fn increase_balance(_validator: &mut Validator, _delta: Gwei) -> Result<(), Error> {
     Ok(())
 }
 
 // ok
-pub fn decrease_balance(
-    _validator: &mut Validator,
-    _delta: Gwei,
-) -> Result<(), Error> {
+pub fn decrease_balance(_validator: &mut Validator, _delta: Gwei) -> Result<(), Error> {
     Ok(())
 }
 
