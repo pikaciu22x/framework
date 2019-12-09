@@ -35,10 +35,11 @@ pub struct Attestation<C: Config> {
     Default,
 )]
 pub struct AttestationData {
+    pub slot: Slot,
+    pub index: CommitteeIndex,
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
-    pub crosslink: Crosslink,
     pub slot: Slot,
 }
 
@@ -77,9 +78,7 @@ pub struct AttesterSlashing<C: Config> {
     pub attestation_2: IndexedAttestation<C>,
 }
 
-#[derive(
-    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
-)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
 pub struct BeaconBlock<C: Config> {
     pub slot: Slot,
     pub parent_root: H256,
@@ -89,9 +88,20 @@ pub struct BeaconBlock<C: Config> {
     pub signature: Signature,
 }
 
-#[derive(
-    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
-)]
+impl<C: Config> Default for BeaconBlock<C> {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            slot: Default::default(),
+            parent_root: Default::default(),
+            state_root: Default::default(),
+            body: Default::default(),
+            signature: Signature::empty_signature(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
 pub struct BeaconBlockBody<C: Config> {
     pub randao_reveal: Signature,
     pub eth1_data: Eth1Data,
@@ -104,18 +114,25 @@ pub struct BeaconBlockBody<C: Config> {
     pub transfers: VariableList<Transfer, C::MaxTransfers>,
 }
 
+impl<C: Config> Default for BeaconBlockBody<C> {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            randao_reveal: Signature::empty_signature(),
+            eth1_data: Default::default(),
+            graffiti: Default::default(),
+            proposer_slashings: Default::default(),
+            attester_slashings: Default::default(),
+            attestations: Default::default(),
+            deposits: Default::default(),
+            voluntary_exits: Default::default(),
+            transfers: Default::default(),
+        }
+    }
+}
+
 #[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    Debug,
-    Deserialize,
-    Serialize,
-    Encode,
-    Decode,
-    TreeHash,
-    SignedRoot,
-    Default,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
 )]
 pub struct BeaconBlockHeader {
     pub slot: Slot,
@@ -125,6 +142,19 @@ pub struct BeaconBlockHeader {
     pub signature: Signature,
 }
 
+impl Default for BeaconBlockHeader {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            slot: Default::default(),
+            parent_root: Default::default(),
+            state_root: Default::default(),
+            body_root: Default::default(),
+            signature: Signature::empty_signature(),
+        }
+    }
+}
+
 impl BeaconBlockHeader {
     pub fn canonical_root(&self) -> Hash256 {
         Hash256::from_slice(&self.tree_hash_root()[..])
@@ -132,7 +162,18 @@ impl BeaconBlockHeader {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Debug,
+    Default,
+    Hash,
+    Deserialize,
+    Serialize,
+    Encode,
+    Decode,
+    TreeHash,
 )]
 pub struct Checkpoint {
     pub epoch: Epoch,

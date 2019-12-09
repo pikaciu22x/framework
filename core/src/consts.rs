@@ -1,4 +1,4 @@
-use types::config::MainnetConfig;
+use types::config::{MainnetConfig, MinimalConfig};
 
 pub trait ExpConst {
     fn far_future_epoch() -> u64 {
@@ -19,3 +19,9 @@ pub trait ExpConst {
 }
 
 impl ExpConst for MainnetConfig {}
+
+impl ExpConst for MinimalConfig {
+    fn slots_per_epoch() -> u64 {
+        8
+    }
+}
