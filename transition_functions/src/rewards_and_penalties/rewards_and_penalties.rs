@@ -113,20 +113,57 @@ where
     }
 }
 
-#[test]
-fn test_base_reward() {
+
+
+#[cfg(test)]
+mod process_slot_tests {
+    use types::{beacon_state::*, config::MainnetConfig};
     use types::types::Validator;
-    assert_eq!(1,1);
-    let mut bs: BeaconState<MainnetConfig> = BeaconState {
-        ..BeaconState::default()
-    };
-    let mut val: Validator = Validator {
-        ..Validator::default()
-    };
-    val.effective_balance = 5;
-    val.slashed = false;
-    bs.validators.push(val).unwrap();
-    let mut index = 0;
-    assert_eq!(5*64/4, bs.get_base_reward(index));
-    
+
+    // use crate::{config::*};
+    use super::*;
+    #[test]
+    fn test_base_reward() {
+        assert_eq!(1,1);
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            ..BeaconState::default()
+        };
+        let mut val: Validator = Validator {
+            ..Validator::default()
+        };
+        val.effective_balance = 5;
+        val.slashed = false;
+        bs.validators.push(val).unwrap();
+        let mut index = 0;
+        assert_eq!(5*64/4, bs.get_base_reward(index));
+        
+    } 
+
+    fn test_get_attestation_deltas() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 1,
+            ..BeaconState::default()
+        };
+        let mut val: Validator = Validator {
+            ..Validator::default()
+        };
+        val.effective_balance = 5;
+        let mut val2: Validator = Validator {
+            ..Validator::default()
+        };
+        val.effective_balance = 5;        
+        val2.effective_balance = 4;
+        val.slashed= false;
+        val2.slashed= true;
+        bs.validators.push(val).unwrap();
+        bs.validators.push(val2).unwrap();
+        let base_reward1 = 5*64/4;
+        let base_reward2 = 4*64/4;
+
+        let reward1 = base_reward1;
+        let penalty1 = 0;
+        let reward2= 0;
+        let penalty2 = base_reward2;
+        bs.process_rewards_and_penalties();        
+    }
 }
