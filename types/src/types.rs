@@ -40,7 +40,6 @@ pub struct AttestationData {
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
-    pub slot: Slot,
 }
 
 #[derive(
