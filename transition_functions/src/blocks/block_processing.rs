@@ -68,7 +68,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     let pubkey = &deposit.data.pubkey;
     let amount = &deposit.data.amount;
 
-    for (index, v) in state.validators.iter().enumerate() {
+    for v in state.validators.iter_mut() {
         // bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap()
         if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
             //# Increase balance by deposit amount
@@ -82,38 +82,42 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
 
     if !bls_verify(
-        pubkey,
-        signed_root(&deposit.data).as_bytes(),
-        &(deposit.data.signature.clone()).try_into().unwrap(),
+        &pubkey,
+        signing_root(&deposit.data).as_bytes(),
+        &deposit.data.signature.try_into().unwrap(),
         domain,
     )
     .unwrap()
     {
         return;
     }
+
     //# Add validator and balance entries
     // bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap()
-    state.validators.push(Validator {
-        pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
-        withdrawal_credentials: deposit.data.withdrawal_credentials,
-        activation_eligibility_epoch: T::far_future_epoch(),
-        activation_epoch: T::far_future_epoch(),
-        exit_epoch: T::far_future_epoch(),
-        withdrawable_epoch: T::far_future_epoch(),
-        effective_balance: std::cmp::min(
-            amount - (amount % T::effective_balance_increment()),
-            T::max_effective_balance(),
-        ),
-        slashed: false,
-    }).unwrap();
-    &state.balances.push(*amount);
+    state
+        .validators
+        .push(Validator {
+            pubkey,
+            withdrawal_credentials: deposit.data.withdrawal_credentials,
+            activation_eligibility_epoch: T::far_future_epoch(),
+            activation_epoch: T::far_future_epoch(),
+            exit_epoch: T::far_future_epoch(),
+            withdrawable_epoch: T::far_future_epoch(),
+            effective_balance: std::cmp::min(
+                amount - (amount % T::effective_balance_increment()),
+                T::max_effective_balance(),
+            ),
+            slashed: false,
+        })
+        .unwrap();
+    state.balances.push(amount).unwrap();
 }
 
 fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
-    assert!(block.parent_root == signed_root(&state.latest_block_header));
+    assert!(block.parent_root == signing_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader {
         slot: block.slot,
@@ -121,8 +125,8 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
         //# `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root: hash_tree_root(&block.body),
         //# `signature` is zeroed
-        signature: block.signature.clone(),   //# Placeholder
-        state_root: block.state_root.clone(), //# Placeholder so the compiler doesn't scream at me as much
+        signature: block.signature.clone(), //# Placeholder
+        state_root: block.state_root, //# Placeholder so the compiler doesn't scream at me as much
     };
     //# Verify proposer is not slashed
     let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
@@ -249,7 +253,7 @@ fn get_attestation_data_index<T: Config + ExpConst>(
             return Ok(index as u64);
         }
     }
-    return Err(Error::SlotOutOfBounds);
+    Err(Error::SlotOutOfBounds)
 }
 
 fn process_attestation<T: Config + ExpConst>(
@@ -285,10 +289,16 @@ fn process_attestation<T: Config + ExpConst>(
 
     if data.target.epoch == get_current_epoch(state) {
         assert_eq!(data.source, state.current_justified_checkpoint);
-        state.current_epoch_attestations.push(pending_attestation).unwrap();
+        state
+            .current_epoch_attestations
+            .push(pending_attestation)
+            .unwrap();
     } else {
         assert_eq!(data.source, state.previous_justified_checkpoint);
-        state.previous_epoch_attestations.push(pending_attestation).unwrap();
+        state
+            .previous_epoch_attestations
+            .push(pending_attestation)
+            .unwrap();
     }
 
     //# Check signature
@@ -341,9 +351,7 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 
 #[cfg(test)]
 mod scessing_tests {
-    use types::{beacon_state::*, config::MainnetConfig};
     // use crate::{config::*};
-    use super::*;
 
     #[test]
     fn process_good_block() {

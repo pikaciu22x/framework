@@ -13,8 +13,9 @@ use helper_functions::{
 };
 use itertools::{Either, Itertools};
 use ssz_types::VariableList;
-use std::cmp;
+use std::{cmp, mem};
 use types::consts::*;
+use types::primitives::Gwei;
 use types::primitives::*;
 use types::primitives::{Gwei, ValidatorIndex};
 use types::types::{Eth1Data, HistoricalBatch};
@@ -137,7 +138,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         .validators
         .iter()
         .enumerate()
-        .filter(|(index, validator)| {
+        .filter(|(_, validator)| {
             validator.activation_eligibility_epoch != T::far_future_epoch()
                 && validator.activation_epoch
                     >= compute_activation_exit_epoch::<T>(state.finalized_checkpoint.epoch)

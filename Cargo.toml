@@ -1,14 +1,12 @@
 [workspace]
 members = [
+    'beacon_fork_choice',
+    'beacon_node',
+    'error_utils',
+    'eth2_network',
+    'eth2_network_libp2p',
     'helper_functions/helper_functions_interface',
     'types',
-    'utils/bls',
-    'utils/eth2_hashing',
-    'utils/serde_hex',
-    'utils/ssz',
-    'utils/ssz_types',
-    'utils/tree_hash',
-    'utils/tree_hash_derive',
     'transition_functions',
     'core',
 ]
@@ -19,8 +17,9 @@ overflow-checks = true
 [patch]
 [patch.crates-io]
 helper_functions = { path = "helper_functions/helper_functions_interface" }
-tree_hash = { path = "utils/tree_hash" }
-tree_hash_derive = { path = "utils/tree_hash_derive" }
-eth2_ssz = { path = "utils/ssz" }
-eth2_ssz_derive = { path = "utils/ssz_derive" }
-eth2_ssz_types = { path = "utils/ssz_types" }
+tree_hash = { git = "https://github.com/sigp/lighthouse" }
+tree_hash_derive = { git = "https://github.com/sigp/lighthouse" }
+eth2_ssz = { git = "https://github.com/sigp/lighthouse" }
+eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse" }
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
+eth2_hashing = { git = "https://github.com/sigp/lighthouse" }

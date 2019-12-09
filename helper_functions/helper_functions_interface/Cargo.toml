@@ -7,14 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ring = "0.14.6"
+ring = "0.16.9"
 typenum = '1.11.2'
+tree_hash = { git = 'https://github.com/sigp/lighthouse' }
 types = { path = '../../types' }
-eth2_ssz_types = { path = '../../utils/ssz_types' }
-bls = { path = '../../utils/bls' }
-eth2_ssz = { path = '../../utils/ssz' }
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
+bls = { git = "https://github.com/sigp/lighthouse" }
+eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
 mockall = "0.5.2"
-ethereum-types = "0.6"
-tree_hash = { path = '../../utils/tree_hash'}
-
-[dev-dependencies]
+ethereum-types = "0.8"
