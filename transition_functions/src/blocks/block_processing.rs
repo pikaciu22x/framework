@@ -6,7 +6,7 @@ use helper_functions::math::*;
 use helper_functions::misc::{compute_domain, compute_epoch_at_slot};
 use helper_functions::predicates::{
     is_active_validator, is_slashable_attestation_data, is_slashable_validator,
-    is_valid_indexed_attestation, is_valid_merkle_branch,
+    validate_indexed_attestation, is_valid_merkle_branch,
 };
 use std::collections::BTreeSet;
 use std::convert::TryInto;
@@ -53,7 +53,7 @@ fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>, exit
 fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Verify the Merkle branch  is_valid_merkle_branch
 
-    assert!(is_valid_merkle_branch::<T>(
+    assert!(is_valid_merkle_branch(
         &hash_tree_root(&deposit.data),
         &deposit.proof,
         DEPOSIT_CONTRACT_TREE_DEPTH + 1,
@@ -79,7 +79,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     //# Verify the deposit signature (proof of possession) for new validators.
     //# Note: The deposit contract does not check signatures.
     //# Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-    let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
+    let domain = compute_domain(T::domain_deposit() as u32, None);
 
     if !bls_verify(
         pubkey,
@@ -150,10 +150,9 @@ fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Beaco
     .unwrap());
     //# Mix in RANDAO reveal
     let mix = xor(
-        get_randao_mix(&state, epoch).unwrap().as_bytes(),
-        &hash(&body.randao_reveal.as_bytes()),
-    )
-    .unwrap();
+        get_randao_mix(&state, epoch).unwrap().as_fixed_bytes(),
+        &hash(&body.randao_reveal.as_bytes()).as_slice().try_into().unwrap(),
+    );
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
     array.copy_from_slice(mix);
@@ -195,7 +194,7 @@ fn process_proposer_slashing<T: Config + ExpConst>(
         .unwrap());
     }
 
-    slash_validator(state, proposer_slashing.proposer_index).unwrap();
+    slash_validator(state, proposer_slashing.proposer_index, None).unwrap();
 }
 
 fn process_attester_slashing<T: Config + ExpConst>(
@@ -208,8 +207,8 @@ fn process_attester_slashing<T: Config + ExpConst>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(is_valid_indexed_attestation(state, &attestation_1).is_ok());
-    assert!(is_valid_indexed_attestation(state, &attestation_2).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_1).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_2).is_ok());
 
     let mut slashed_any = false;
 
@@ -233,7 +232,7 @@ fn process_attester_slashing<T: Config + ExpConst>(
         let validator = &state.validators[index as usize];
 
         if is_slashable_validator(&validator, get_current_epoch(state)) {
-            slash_validator(state, index).unwrap();
+            slash_validator(state, index, None).unwrap();
             slashed_any = true;
         }
     }
@@ -274,7 +273,7 @@ fn process_attestation<T: Config + ExpConst>(
         attestation.aggregation_bits.len(),
         attestation.custody_bits.len()
     );
-    assert_eq!(attestation.custody_bits.len(), committee.count()); // Count suranda ilgį, bet nebelieka iteratoriaus. Might wanna look into that
+    assert_eq!(attestation.custody_bits.len(), committee.len());
 
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
@@ -292,7 +291,7 @@ fn process_attestation<T: Config + ExpConst>(
     }
 
     //# Check signature
-    assert!(is_valid_indexed_attestation(
+    assert!(validate_indexed_attestation(
         &state,
         &get_indexed_attestation(&state, &attestation).unwrap()
     )

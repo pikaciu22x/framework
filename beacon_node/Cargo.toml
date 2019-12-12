@@ -10,7 +10,7 @@ eth2_core = { path = '../core', package = 'core' }
 eth2_network = { path = '../eth2_network' }
 eth2_network_libp2p = { path = '../eth2_network_libp2p' }
 futures = '0.1.29'
-helper_functions = { path = '../helper_functions/helper_functions_interface' }
+helper_functions = { path = '../helper_functions/helper_functions_2' }
 log = '0.4.8'
 serde = { version = '1.0', features = ['derive']}
 serde_yaml = '0.8.11'

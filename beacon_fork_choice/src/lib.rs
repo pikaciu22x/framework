@@ -236,7 +236,7 @@ impl<C: Config + ExpConst> Store<C> {
             beacon_state_accessors::get_indexed_attestation(target_state, &attestation)
                 .map_err(DebugAsError::new)?;
 
-        predicates::is_valid_indexed_attestation(target_state, &indexed_attestation)
+        predicates::validate_indexed_attestation(target_state, &indexed_attestation)
             .map_err(DebugAsError::new)?;
 
         let validator_indices = indexed_attestation
@@ -270,15 +270,16 @@ impl<C: Config + ExpConst> Store<C> {
         );
 
         active_indices
+            .into_iter()
             .filter_map(|index| {
-                let latest_message = self.latest_messages.get(index)?;
+                let latest_message = self.latest_messages.get(&index)?;
                 Some((index, latest_message))
             })
             .filter(|(_, latest_message)| {
                 let latest_message_block = &self.blocks[&latest_message.root];
                 self.ancestor(latest_message.root, latest_message_block, block.slot) == root
             })
-            .map(|(index, _)| justified_state.validators[*index as usize].effective_balance)
+            .map(|(index, _)| justified_state.validators[index as usize].effective_balance)
             .sum()
     }
 
@@ -300,7 +301,7 @@ impl<C: Config + ExpConst> Store<C> {
     }
 
     fn epoch_start_slot(epoch: Epoch) -> Slot {
-        misc::compute_start_slot_of_epoch::<C>(epoch)
+        misc::compute_start_slot_at_epoch::<C>(epoch)
     }
 
     fn delay_until_block(&mut self, block_root: H256, object: DelayedObject<C>) {

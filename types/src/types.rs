@@ -17,7 +17,7 @@ pub struct Attestation<C: Config> {
     pub aggregation_bits: BitList<C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     pub custody_bits: BitList<C::MaxValidatorsPerCommittee>,
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 #[derive(
@@ -35,11 +35,12 @@ pub struct Attestation<C: Config> {
     Default,
 )]
 pub struct AttestationData {
+    pub slot: Slot,
+    pub index: u64,
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
     pub crosslink: Crosslink,
-    pub slot: Slot,
 }
 
 #[derive(
@@ -206,7 +207,7 @@ pub struct DepositData {
     pub withdrawal_credentials: H256,
     pub amount: u64,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize, Encode, Decode, TreeHash)]
@@ -241,13 +242,15 @@ pub struct HistoricalBatch<C: Config> {
     pub state_roots: FixedVector<H256, C::SlotsPerHistoricalRoot>,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
+)]
 pub struct IndexedAttestation<C: Config> {
     pub custody_bit_0_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub custody_bit_1_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
@@ -259,6 +262,7 @@ pub struct PendingAttestation<C: Config> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+
 pub struct ProposerSlashing {
     pub proposer_index: u64,
     pub header_1: BeaconBlockHeader,

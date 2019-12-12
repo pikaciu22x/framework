@@ -664,7 +664,7 @@ fn compare_status_and_request_blocks<C: Config>(
     if (local.finalized_epoch, local.head_slot) < (remote.finalized_epoch, remote.head_slot) {
         let request = BlocksByRangeRequest {
             head_block_root: remote.head_root,
-            start_slot: misc::compute_start_slot_of_epoch::<C>(remote.finalized_epoch),
+            start_slot: misc::compute_start_slot_at_epoch::<C>(remote.finalized_epoch),
             count: u64::max_value(),
             step: 1,
         };

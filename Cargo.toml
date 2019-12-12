@@ -5,10 +5,10 @@ members = [
     'error_utils',
     'eth2_network',
     'eth2_network_libp2p',
-    'helper_functions/helper_functions_interface',
     'types',
     'transition_functions',
     'core',
+    'helper_functions/helper_functions_2',
 ]
 
 [profile.release]
@@ -16,7 +16,6 @@ overflow-checks = true
 
 [patch]
 [patch.crates-io]
-helper_functions = { path = "helper_functions/helper_functions_interface" }
 tree_hash = { git = "https://github.com/sigp/lighthouse" }
 tree_hash_derive = { git = "https://github.com/sigp/lighthouse" }
 eth2_ssz = { git = "https://github.com/sigp/lighthouse" }

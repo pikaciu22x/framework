@@ -1,0 +1,21 @@
+[package]
+name = "helper_functions"
+version = "0.1.0"
+authors = ["Tadas Vaitiekūnas", "Vidmantas Bakštys", "Olga Joana Šmitaitė"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+types = { path = "../../types" }
+bls = { git = 'https://github.com/sigp/lighthouse' }
+eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
+ring = "0.16.9"
+ethereum-types = '0.8'
+typenum = '1.11.2'
+itertools = '0.8.1'
+tree_hash = '0.1'
+eth2_ssz_types = { git = 'https://github.com/sigp/lighthouse' }
+
+[dev-dependencies]
+rustc-hex = "2.0.1"

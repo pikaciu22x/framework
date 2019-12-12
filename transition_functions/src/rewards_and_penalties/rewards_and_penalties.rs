@@ -35,8 +35,8 @@ where
     fn get_attestation_deltas(
         &self
     ) -> (Vec<Gwei>, Vec<Gwei>) {
-        let previous_epoch = self.get_previous_epoch();
-        let total_balance = self.get_total_active_balance().unwrap();
+        let previous_epoch = get_previous_epoch(self);
+        let total_balance = get_total_active_balance(self).unwrap();
         let mut rewards = Vec::new();
         let mut penalties = Vec::new();
         for _i in 0..(self.validators.len()) {
@@ -76,7 +76,7 @@ where
             let attestation = matching_source_attestations.iter().fold(None, |min, x| match min {
                 None => Some(x),
                 Some(y) => Some(
-                    if get_attesting_indices(self, &x.data, &x.aggregation_bits).unwrap().any(|&x| x == *index)
+                    if get_attesting_indices(self, &x.data, &x.aggregation_bits).unwrap().contains(index)
                     && x.inclusion_delay < y.inclusion_delay { x } else { y }),
             }).unwrap();
 
