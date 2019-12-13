@@ -15,7 +15,6 @@ use itertools::{Either, Itertools};
 use ssz_types::VariableList;
 use std::{cmp, mem};
 use types::consts::*;
-use types::primitives::Gwei;
 use types::primitives::*;
 use types::primitives::{Gwei, ValidatorIndex};
 use types::types::{Eth1Data, HistoricalBatch};
@@ -167,9 +166,9 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(
     }
 
     let (rewards, penalties) = state.get_attestation_deltas();
-    for index in 0..state.validators.len() {
-        increase_balance(state, index as ValidatorIndex, rewards[index]).unwrap();
-        decrease_balance(state, index as ValidatorIndex, penalties[index]).unwrap();
+    for (index, validator) in state.validators.iter_mut().enumerate() {
+        increase_balance(validator, rewards[index]).unwrap();
+        decrease_balance(validator, penalties[index]).unwrap();
     }
 
     Ok(())
@@ -179,7 +178,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = state.get_current_epoch();
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (index, validator) in state.validators.clone().iter().enumerate() {
+    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
             && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
         {
@@ -188,7 +187,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
             let penalty_numerator = validator.effective_balance / increment
                 * cmp::min(slashings_sum * 3, total_balance);
             let penalty = penalty_numerator / total_balance * increment;
-            decrease_balance(state, index as u64, penalty).unwrap();
+            decrease_balance(validator, penalty).unwrap();
         }
     }
 }
@@ -226,7 +225,8 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         };
         state
             .historical_roots
-            .push(hash_tree_root(&historical_batch)).unwrap();
+            .push(hash_tree_root(&historical_batch))
+            .unwrap();
     }
     //# Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations.clone();
