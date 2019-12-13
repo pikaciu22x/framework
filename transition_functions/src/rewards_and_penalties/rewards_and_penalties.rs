@@ -3,7 +3,7 @@ use types::{ beacon_state::*, config::{ Config, MainnetConfig }};
 // use types::consts::*;
 // use types::types::*;
 use core::consts::ExpConst;
-use helper_functions;
+use helper_functions::*;
 use helper_functions::beacon_state_accessors::*;
 use helper_functions::beacon_state_mutators::*;
 use helper_functions::predicates::*;
@@ -62,10 +62,10 @@ where
 
             for index in eligible_validator_indices.iter() {
                 if unslashed_attesting_indices.contains(&index) {
-                    rewards[*index as usize] += ((self.get_base_reward(*index) * attesting_balance) / total_balance) as ValidatorIndex;
+                    rewards[index as usize] += ((self.get_base_reward(index) * attesting_balance) / total_balance) as ValidatorIndex;
                 }
                 else {
-                    penalties[*index as usize] += self.get_base_reward(*index);
+                    penalties[index as usize] += self.get_base_reward(index);
                 }
             }
         }

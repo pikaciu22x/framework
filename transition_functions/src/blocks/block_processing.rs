@@ -83,7 +83,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
 
     if !bls_verify(
         &pubkey,
-        signing_root(&deposit.data).as_bytes(),
+        signed_root(&deposit.data).as_bytes(),
         &deposit.data.signature.try_into().unwrap(),
         domain,
     )
@@ -117,7 +117,7 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
-    assert!(block.parent_root == signing_root(&state.latest_block_header));
+    assert!(block.parent_root == signed_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader {
         slot: block.slot,
