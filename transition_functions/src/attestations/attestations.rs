@@ -1,14 +1,13 @@
 use core::ExpConst;
 use helper_functions::beacon_state_accessors::BeaconStateAccessor;
-use helper_functions::{
-    beacon_state_accessors::{
-        get_attesting_indices, get_block_root, get_current_epoch, get_previous_epoch,
-        get_randao_mix, get_total_active_balance, get_total_balance, get_validator_churn_limit,
-    },
-    beacon_state_mutators::{decrease_balance, initiate_validator_exit},
-    misc::compute_activation_exit_epoch,
-    predicates::is_active_validator,
-};
+use helper_functions::beacon_state_accessors::get_attesting_indices;
+// use helper_functions::{
+//     beacon_state_accessors::{
+//     },
+//     // beacon_state_mutators::{decrease_balance, initiate_validator_exit},
+//     // misc::compute_activation_exit_epoch,
+//     // predicates::is_active_validator,
+// };
 use ssz_types::VariableList;
 use types::{
     beacon_state::*,
@@ -51,8 +50,8 @@ where
         &self,
         epoch: Epoch,
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
-        assert!(epoch == get_previous_epoch(&self) || epoch == get_current_epoch(&self));
-        if epoch == get_current_epoch(&self) {
+        assert!(epoch == self.get_previous_epoch() || epoch == self.get_current_epoch());
+        if epoch == self.get_current_epoch() {
             return self.current_epoch_attestations.clone();
         } else {
             return self.previous_epoch_attestations.clone();
@@ -101,7 +100,7 @@ where
             VariableList::from(vec![]);
         for attestation in attestations.iter() {
             let indices =
-                get_attesting_indices(&self, &attestation.data, &attestation.aggregation_bits)
+                get_attesting_indices(self, &attestation.data, &attestation.aggregation_bits)
                     .unwrap();
             for index in indices {
                 if !(self.validators[*index as usize].slashed) {
@@ -115,7 +114,14 @@ where
         &self,
         attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch>,
     ) -> Gwei {
-        return get_total_balance(&self, &self.get_unslashed_attesting_indices(attestations))
+        return self.get_total_balance(&self.get_unslashed_attesting_indices(attestations))
             .unwrap();
     }
 }
+
+
+#[test]
+fn test_sth() {
+    assert_eq!(1,1);   
+}
+

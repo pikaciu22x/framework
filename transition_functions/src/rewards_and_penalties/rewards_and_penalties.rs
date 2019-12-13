@@ -1,13 +1,13 @@
-use helper_functions;
+use helper_functions::predicates::is_active_validator;
+
 use types::{ beacon_state::*, config::{ Config, MainnetConfig }};
-// use types::consts::*;
-// use types::types::*;
+use types::{primitives::{Gwei, ValidatorIndex, }, };
 use core::consts::ExpConst;
-use helper_functions::*;
-use helper_functions::beacon_state_accessors::*;
-use helper_functions::beacon_state_mutators::*;
-use helper_functions::predicates::*;
+use helper_functions::math::integer_squareroot;
+use helper_functions::beacon_state_accessors::get_attesting_indices;
+use helper_functions::beacon_state_mutators::{increase_balance, decrease_balance};
 use crate::attestations::attestations::AttestableBlock;
+use helper_functions::beacon_state_accessors::BeaconStateAccessor;
 
 pub trait StakeholderBlock<T>
 where
@@ -26,7 +26,7 @@ where
         &self,
         index: ValidatorIndex
     ) -> Gwei {
-        let total_balance = get_total_active_balance(&self).unwrap();
+        let total_balance = self.get_total_active_balance().unwrap();
         let effective_balance = self.validators[index as usize].effective_balance;
         return (effective_balance * T::base_reward_factor() / integer_squareroot(total_balance) / T::base_rewards_per_epoch()) as Gwei;
     }
@@ -38,13 +38,11 @@ where
         let total_balance = self.get_total_active_balance().unwrap();
         let mut rewards = Vec::new();
         let mut penalties = Vec::new();
-        for _i in 0..(self.validators.len()) {
-            rewards.push(0 as Gwei);
-            penalties.push(0 as Gwei);
-        }
         let mut eligible_validator_indices: Vec<ValidatorIndex> = Vec::new();
 
         for (index, v) in self.validators.iter().enumerate() {
+            rewards.push(0 as Gwei);
+            penalties.push(0 as Gwei);
             if is_active_validator(v, previous_epoch) || (v.slashed && previous_epoch + 1 < v.withdrawable_epoch) {
                 eligible_validator_indices.push(index as ValidatorIndex);
             }
@@ -58,14 +56,14 @@ where
 
         for attestations in vec.into_iter() {
             let unslashed_attesting_indices = self.get_unslashed_attesting_indices(attestations);
-            let attesting_balance = get_total_balance(self, &unslashed_attesting_indices).unwrap();
+            let attesting_balance = self.get_total_balance(&unslashed_attesting_indices).unwrap();
 
             for index in eligible_validator_indices.iter() {
                 if unslashed_attesting_indices.contains(&index) {
-                    rewards[index as usize] += ((self.get_base_reward(index) * attesting_balance) / total_balance) as ValidatorIndex;
+                    rewards[*index as usize] += ((self.get_base_reward(*index) * attesting_balance) / total_balance) as ValidatorIndex;
                 }
                 else {
-                    penalties[index as usize] += self.get_base_reward(index);
+                    penalties[*index as usize] += self.get_base_reward(*index);
                 }
             }
         }
@@ -88,10 +86,10 @@ where
         let finality_delay = previous_epoch - self.finalized_checkpoint.epoch;
         if finality_delay > T::min_epochs_to_inactivity_penalty() {
             let matching_target_attesting_indices = self.get_unslashed_attesting_indices(matching_target_attestations);
-            for index in eligible_validator_indices {
-                penalties[index as usize] += (T::base_rewards_per_epoch() * self.get_base_reward(index)) as Gwei;
-                if !(matching_target_attesting_indices.contains(&index)) {
-                    penalties[index as usize] += ((self.validators[index as usize].effective_balance * finality_delay) / T::inactivity_penalty_quotient()) as Gwei;
+            for index in eligible_validator_indices.iter() {
+                penalties[*index as usize] += (T::base_rewards_per_epoch() * self.get_base_reward(*index)) as Gwei;
+                if !(matching_target_attesting_indices.contains(index)) {
+                    penalties[*index as usize] += ((self.validators[*index as usize].effective_balance * finality_delay) / T::inactivity_penalty_quotient()) as Gwei;
                 }
             }
         }
@@ -101,13 +99,13 @@ where
     fn process_rewards_and_penalties(
         &mut self
     ) {
-        if get_current_epoch(&self) == T::genesis_epoch() {
+        if self.get_current_epoch() == T::genesis_epoch() {
             return;
         }
         let (rewards, penalties) = self.get_attestation_deltas();
-        for index in 0..self.validators.len() {
-            increase_balance(self, index as u64, rewards[index]).unwrap();
-            decrease_balance(self, index as u64, penalties[index]).unwrap();
+        for (index, validator) in self.validators.iter_mut().enumerate() {
+            increase_balance(validator, rewards[index]).unwrap();
+            decrease_balance(validator, penalties[index]).unwrap();
         }
     }
 }
