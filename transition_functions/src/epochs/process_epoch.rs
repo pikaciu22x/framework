@@ -15,7 +15,6 @@ use itertools::{Either, Itertools};
 use ssz_types::VariableList;
 use std::{cmp, mem};
 use types::consts::*;
-use types::primitives::Gwei;
 use types::primitives::*;
 use types::primitives::{Gwei, ValidatorIndex};
 use types::types::{Eth1Data, HistoricalBatch};
