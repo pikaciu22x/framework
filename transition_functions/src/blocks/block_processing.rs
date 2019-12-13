@@ -66,6 +66,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     state.eth1_deposit_index += 1;
 
     let pubkey = (&deposit.data.pubkey).try_into().unwrap();
+    // let pubkey = bls::PublicKey::from_bytes(&deposit.data.pubkey.clone().as_bytes()).unwrap();
     let amount = deposit.data.amount;
 
     for validator in state.validators.iter_mut() {
@@ -82,9 +83,9 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
 
     if !bls_verify(
-        &pubkey.try_into().unwrap(),
+        &pubkey.clone().try_into().unwrap(),
         signed_root(&deposit.data).as_bytes(),
-        &deposit.data.signature.try_into().unwrap(),
+        &deposit.data.signature,
         domain,
     )
     .unwrap()
@@ -97,7 +98,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     state
         .validators
         .push(Validator {
-            pubkey,
+            pubkey: pubkey,
             withdrawal_credentials: deposit.data.withdrawal_credentials,
             activation_eligibility_epoch: T::far_future_epoch(),
             activation_epoch: T::far_future_epoch(),
@@ -133,11 +134,9 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
     assert!(!proposer.slashed);
     //# Verify proposer signature
     assert!(bls_verify(
-        // &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
-        &proposer.pubkey,
+        &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
         signed_root(block).as_bytes(),
-        // &block.signature.clone().try_into().unwrap(),
-        &block.signature,
+        &block.signature.clone().try_into().unwrap(),
         get_domain(&state, T::domain_beacon_proposer() as u32, None)
     )
     .unwrap());
@@ -201,7 +200,7 @@ fn process_proposer_slashing<T: Config + ExpConst>(
         .unwrap());
     }
 
-    slash_validator(state, proposer_slashing.proposer_index).unwrap();
+    slash_validator(state, proposer_slashing.proposer_index, None).unwrap();
 }
 
 fn process_attester_slashing<T: Config + ExpConst>(
@@ -239,7 +238,7 @@ fn process_attester_slashing<T: Config + ExpConst>(
         let validator = &state.validators[index as usize];
 
         if is_slashable_validator(&validator, get_current_epoch(state)) {
-            slash_validator(state, index).unwrap();
+            slash_validator(state, index, None).unwrap();
             slashed_any = true;
         }
     }
