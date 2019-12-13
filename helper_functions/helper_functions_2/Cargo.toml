@@ -11,7 +11,7 @@ types = { path = "../../types" }
 bls = { git = "https://github.com/sigp/lighthouse" }
 eth2_ssz = { git = "https://github.com/sigp/lighthouse" }
 ring = "0.16.9"
-ethereum-types = '0.6'
+ethereum-types = '0.8'
 typenum = '1.11.2'
 itertools = '0.8.1'
 tree_hash = '0.1'
