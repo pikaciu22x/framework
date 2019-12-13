@@ -65,14 +65,14 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = &deposit.data.pubkey;
-    let amount = &deposit.data.amount;
+    let pubkey = (&deposit.data.pubkey).try_into().unwrap();
+    let amount = deposit.data.amount;
 
-    for v in state.validators.iter_mut() {
-        // bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap()
-        if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
+    for validator in state.validators.iter_mut() {
+        // if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
+        if validator.pubkey == pubkey {
             //# Increase balance by deposit amount
-            increase_balance(state, index as u64, *amount).unwrap();
+            increase_balance(validator, amount).unwrap();
             return;
         }
     }
@@ -82,7 +82,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
 
     if !bls_verify(
-        &pubkey,
+        &pubkey.try_into().unwrap(),
         signed_root(&deposit.data).as_bytes(),
         &deposit.data.signature.try_into().unwrap(),
         domain,
@@ -133,9 +133,11 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
     assert!(!proposer.slashed);
     //# Verify proposer signature
     assert!(bls_verify(
-        &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
+        // &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
+        &proposer.pubkey,
         signed_root(block).as_bytes(),
-        &block.signature.clone().try_into().unwrap(),
+        // &block.signature.clone().try_into().unwrap(),
+        &block.signature,
         get_domain(&state, T::domain_beacon_proposer() as u32, None)
     )
     .unwrap());
