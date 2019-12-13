@@ -1002,22 +1002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "helper_functions2"
-version = "0.1.0"
-dependencies = [
- "bls 0.1.0 (git+https://github.com/sigp/lighthouse)",
- "eth2_ssz 0.1.2 (git+https://github.com/sigp/lighthouse)",
- "eth2_ssz_types 0.2.0 (git+https://github.com/sigp/lighthouse)",
- "ethereum-types 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tree_hash 0.1.1 (git+https://github.com/sigp/lighthouse)",
- "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "types 0.1.0",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
