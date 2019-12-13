@@ -9,6 +9,7 @@ members = [
     'types',
     'transition_functions',
     'core',
+    'helper_functions/helper_functions_2',
 ]
 
 [profile.release]
