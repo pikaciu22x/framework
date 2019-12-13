@@ -131,17 +131,7 @@ impl<C: Config> Default for BeaconBlockBody<C> {
 }
 
 #[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    Debug,
-    Deserialize,
-    Serialize,
-    Encode,
-    Decode,
-    TreeHash,
-    SignedRoot,
-    Default,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
 )]
 pub struct BeaconBlockHeader {
     pub slot: Slot,
