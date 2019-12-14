@@ -65,14 +65,15 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = &deposit.data.pubkey;
-    let amount = &deposit.data.amount;
+    let pubkey = (&deposit.data.pubkey).try_into().unwrap();
+    // let pubkey = bls::PublicKey::from_bytes(&deposit.data.pubkey.clone().as_bytes()).unwrap();
+    let amount = deposit.data.amount;
 
-    for v in state.validators.iter_mut() {
-        // bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap()
-        if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
+    for validator in state.validators.iter_mut() {
+        // if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
+        if validator.pubkey == pubkey {
             //# Increase balance by deposit amount
-            increase_balance(state, index as u64, *amount).unwrap();
+            increase_balance(validator, amount).unwrap();
             return;
         }
     }
@@ -82,9 +83,9 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
 
     if !bls_verify(
-        &pubkey,
-        signing_root(&deposit.data).as_bytes(),
-        &deposit.data.signature.try_into().unwrap(),
+        &pubkey.clone().try_into().unwrap(),
+        signed_root(&deposit.data).as_bytes(),
+        &deposit.data.signature,
         domain,
     )
     .unwrap()
@@ -97,7 +98,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     state
         .validators
         .push(Validator {
-            pubkey,
+            pubkey: pubkey,
             withdrawal_credentials: deposit.data.withdrawal_credentials,
             activation_eligibility_epoch: T::far_future_epoch(),
             activation_epoch: T::far_future_epoch(),
@@ -117,7 +118,7 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
-    assert!(block.parent_root == signing_root(&state.latest_block_header));
+    assert!(block.parent_root == signed_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader {
         slot: block.slot,
@@ -199,7 +200,7 @@ fn process_proposer_slashing<T: Config + ExpConst>(
         .unwrap());
     }
 
-    slash_validator(state, proposer_slashing.proposer_index).unwrap();
+    slash_validator(state, proposer_slashing.proposer_index, None).unwrap();
 }
 
 fn process_attester_slashing<T: Config + ExpConst>(
@@ -237,7 +238,7 @@ fn process_attester_slashing<T: Config + ExpConst>(
         let validator = &state.validators[index as usize];
 
         if is_slashable_validator(&validator, get_current_epoch(state)) {
-            slash_validator(state, index).unwrap();
+            slash_validator(state, index, None).unwrap();
             slashed_any = true;
         }
     }
@@ -352,9 +353,62 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 #[cfg(test)]
 mod scessing_tests {
     // use crate::{config::*};
+    use super::*;
+    use bls::{PublicKey, SecretKey};
+    use ethereum_types::H256;
+    use ssz_types::VariableList;
+    use types::{
+        beacon_state::*,
+        config::{Config, MainnetConfig},
+        types::{BeaconBlock, BeaconBlockHeader},
+    };
+
+    const EPOCH_MAX: u64 = u64::max_value();
+
+    fn default_validator() -> Validator {
+        Validator {
+            effective_balance: 0,
+            slashed: false,
+            activation_eligibility_epoch: EPOCH_MAX,
+            activation_epoch: 0,
+            exit_epoch: EPOCH_MAX,
+            withdrawable_epoch: EPOCH_MAX,
+            withdrawal_credentials: H256([0; 32]),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+        }
+    }
 
     #[test]
-    fn process_good_block() {
-        assert_eq!(2, 2);
+    fn process_block_header_test() {
+        // preparation
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 0,
+            latest_block_header: BeaconBlockHeader {
+                slot: 0,
+                parent_root: H256::zero(),
+                ..BeaconBlockHeader::default()
+            },
+            validators: VariableList::from(vec![default_validator()]),
+            ..BeaconState::default()
+        };
+
+        let mut block: BeaconBlock<MainnetConfig> = BeaconBlock {
+            slot: 0,
+            parent_root: signed_root(&bs.latest_block_header),
+            ..BeaconBlock::default()
+        };
+
+        // execution
+        process_block_header(&mut bs, &block);
+
+        // checks
+        assert_eq!(bs.latest_block_header.slot, block.slot);
+        assert_eq!(bs.latest_block_header.parent_root, block.parent_root);
+        assert_eq!(
+            bs.latest_block_header.body_root,
+            hash_tree_root(&block.body)
+        );
+        assert_eq!(bs.latest_block_header.state_root, block.state_root);
     }
+
 }

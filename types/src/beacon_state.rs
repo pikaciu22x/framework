@@ -38,19 +38,19 @@ pub enum Error {
     CurrentCommitteeCacheUninitialized,
     //RelativeEpochError(RelativeEpochError),
     //CommitteeCacheUninitialized(RelativeEpoch),
-    SszTypesError(ssz_types::Error),
-    HelperError(HelperError),
+    SszTypes(ssz_types::Error),
+    Helper(HelperError),
 }
 
 impl From<SzzError> for Error {
     fn from(error: SzzError) -> Self {
-        Error::SszTypesError(error)
+        Self::SszTypes(error)
     }
 }
 
 impl From<HelperError> for Error {
     fn from(error: HelperError) -> Self {
-        Error::HelperError(error)
+        Self::Helper(error)
     }
 }
 

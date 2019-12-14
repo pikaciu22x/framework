@@ -7,4 +7,7 @@ pub enum Error {
     CustodyBitIndicesIntersect,
     IndicesExceedMaxValidators,
     InvalidSignature,
+    NumberExceedsCapacity,
+    ArrayIsEmpty,
+    NotAHash,
 }

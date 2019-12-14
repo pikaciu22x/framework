@@ -1,4 +1,5 @@
-pub use bls::{PublicKey, SecretKey, Signature};
+pub use bls::{AggregatePublicKey, AggregateSignature, PublicKey, SecretKey, Signature};
+pub use bls::{PublicKeyBytes, SignatureBytes};
 pub use ethereum_types::H256;
 
 pub type Epoch = u64;

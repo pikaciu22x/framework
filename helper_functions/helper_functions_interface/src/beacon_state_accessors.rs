@@ -128,6 +128,8 @@ pub trait BeaconStateAccessor {
     fn get_block_root(&self, _epoch: Epoch) -> Result<H256, Error>;
     fn get_block_root_at_slot(&self, _slot: Slot) -> Result<H256, Error>;
     fn get_total_active_balance(&self) -> Result<u64, Error>;
+    fn get_total_balance(&self, _indices: &[ValidatorIndex]) -> Result<u64, Error>;
+    // fn get_attesting_indices(&self, _attestation_data: &AttestationData, _bitlist: &BitList) -> Result<impl Iterator<Item = &ValidatorIndex>, Error>;
 }
 
 impl<C> BeaconStateAccessor for BeaconState<C>
@@ -150,4 +152,10 @@ where
     fn get_total_active_balance(&self) -> Result<u64, Error> {
         get_total_active_balance(self)
     }
+    fn get_total_balance(&self, _indices: &[ValidatorIndex]) -> Result<u64, Error> {
+        get_total_balance(self, _indices)
+    }
+    // fn get_attesting_indices(&self, _attestation_data: &AttestationData, _bitlist: &BitList) -> Result<impl Iterator<Item = &ValidatorIndex>, Error> {
+    //     get_attesting_indices(&self, _attestation_data, _bitlist)
+    // }
 }

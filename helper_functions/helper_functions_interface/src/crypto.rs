@@ -30,15 +30,11 @@ pub fn bls_aggregate_pubkeys(pubkeys: &[PublicKey]) -> AggregatePublicKey {
 }
 
 pub fn hash_tree_root<T: TreeHash>(object: &T) -> H256 {
-    let hash_root = object.tree_hash_root();
-    let hash: &[u8; 32] = hash_root[1..32]
-        .try_into()
-        .expect("Incorrect Tree Hash Root");
-    H256::from_slice(hash)
+    let hash = object.tree_hash_root();
+    H256::from_slice(hash.as_slice())
 }
 
 pub fn signed_root<T: SignedRoot>(object: &T) -> H256 {
-    let hash_root = object.signed_root();
-    let hash: &[u8; 32] = hash_root[1..32].try_into().expect("Incorrect Signed Root");
-    H256::from(hash)
+    let hash = object.signed_root();
+    H256::from_slice(hash.as_slice())
 }
