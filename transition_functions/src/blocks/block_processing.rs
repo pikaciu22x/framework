@@ -353,9 +353,62 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 #[cfg(test)]
 mod scessing_tests {
     // use crate::{config::*};
+    use super::*;
+    use bls::{PublicKey, SecretKey};
+    use ethereum_types::H256;
+    use ssz_types::VariableList;
+    use types::{
+        beacon_state::*,
+        config::{Config, MainnetConfig},
+        types::{BeaconBlock, BeaconBlockHeader},
+    };
+
+    const EPOCH_MAX: u64 = u64::max_value();
+
+    fn default_validator() -> Validator {
+        Validator {
+            effective_balance: 0,
+            slashed: false,
+            activation_eligibility_epoch: EPOCH_MAX,
+            activation_epoch: 0,
+            exit_epoch: EPOCH_MAX,
+            withdrawable_epoch: EPOCH_MAX,
+            withdrawal_credentials: H256([0; 32]),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+        }
+    }
 
     #[test]
-    fn process_good_block() {
-        assert_eq!(2, 2);
+    fn process_block_header_test() {
+        // preparation
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            slot: 0,
+            latest_block_header: BeaconBlockHeader {
+                slot: 0,
+                parent_root: H256::zero(),
+                ..BeaconBlockHeader::default()
+            },
+            validators: VariableList::from(vec![default_validator()]),
+            ..BeaconState::default()
+        };
+
+        let mut block: BeaconBlock<MainnetConfig> = BeaconBlock {
+            slot: 0,
+            parent_root: signed_root(&bs.latest_block_header),
+            ..BeaconBlock::default()
+        };
+
+        // execution
+        process_block_header(&mut bs, &block);
+
+        // checks
+        assert_eq!(bs.latest_block_header.slot, block.slot);
+        assert_eq!(bs.latest_block_header.parent_root, block.parent_root);
+        assert_eq!(
+            bs.latest_block_header.body_root,
+            hash_tree_root(&block.body)
+        );
+        assert_eq!(bs.latest_block_header.state_root, block.state_root);
     }
+
 }
