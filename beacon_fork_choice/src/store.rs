@@ -72,7 +72,7 @@ impl<C: Config + ExpConst> Store<C> {
         let genesis_block = genesis::block(&genesis_state);
 
         let epoch = C::genesis_epoch();
-        let root = crypto::signing_root(&genesis_block);
+        let root = crypto::signed_root(&genesis_block);
         let checkpoint = Checkpoint { epoch, root };
 
         Self {
@@ -161,7 +161,7 @@ impl<C: Config + ExpConst> Store<C> {
             return Ok(());
         }
 
-        let block_root = crypto::signing_root(&block);
+        let block_root = crypto::signed_root(&block);
 
         ensure!(
             self.ancestor(block_root, &block, finalized_slot) == self.finalized_checkpoint.root,

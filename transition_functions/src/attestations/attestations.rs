@@ -1,6 +1,6 @@
 use core::ExpConst;
-use helper_functions::beacon_state_accessors::BeaconStateAccessor;
 use helper_functions::beacon_state_accessors::get_attesting_indices;
+use helper_functions::beacon_state_accessors::BeaconStateAccessor;
 // use helper_functions::{
 //     beacon_state_accessors::{
 //     },
@@ -65,10 +65,7 @@ where
             PendingAttestation<T>,
             T::MaxAttestationsPerEpoch,
         > = VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
             if attestation.data.target.root == self.get_block_root(epoch).unwrap() {
                 target_attestations.push(attestation.clone()).unwrap();
             }
@@ -81,11 +78,10 @@ where
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
         let mut head_attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> =
             VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
-            if attestation.data.beacon_block_root == self.get_block_root_at_slot(attestation.data.slot).unwrap() {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
+            if attestation.data.beacon_block_root
+                == self.get_block_root_at_slot(attestation.data.slot).unwrap()
+            {
                 head_attestations.push(attestation.clone()).unwrap();
             }
         }
@@ -114,14 +110,13 @@ where
         &self,
         attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch>,
     ) -> Gwei {
-        return self.get_total_balance(&self.get_unslashed_attesting_indices(attestations))
+        return self
+            .get_total_balance(&self.get_unslashed_attesting_indices(attestations))
             .unwrap();
     }
 }
 
-
 #[test]
 fn test_sth() {
-    assert_eq!(1,1);   
+    assert_eq!(1, 1);
 }
-
