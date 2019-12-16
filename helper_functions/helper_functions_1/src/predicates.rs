@@ -1,4 +1,5 @@
-use crate::crypto::{bls_aggregate_pubkeys, bls_verify, hash, hash_tree_root};
+// use crate::crypto::{bls_aggregate_pubkeys, bls_verify, hash, hash_tree_root};
+use crate::crypto::hash;
 use crate::error::Error;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
@@ -27,7 +28,7 @@ pub fn is_slashable_attestation_data(data_1: &AttestationData, data_2: &Attestat
 }
 
 pub fn validate_indexed_attestation<C: Config>(
-    state: &BeaconState<C>,
+    _state: &BeaconState<C>,
     indexed_attestation: &IndexedAttestation<C>,
 ) -> Result<(), Error> {
     let indices = &indexed_attestation.attesting_indices;

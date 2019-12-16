@@ -113,8 +113,7 @@ pub fn slash_validator<C: Config>(
                                 slashed_index,
                                 state.validators[s_index].effective_balance
                                     / C::min_slashing_penalty_quotient(),
-                            );
-                            //Ok(())
+                            )?;
                         }
                         Err(_) => return Err(Error::IndexOutOfRange),
                     };
@@ -130,12 +129,12 @@ pub fn slash_validator<C: Config>(
                                 / C::whistleblower_reward_quotient();
                             let proposer_reward =
                                 whistleblower_reward / C::proposer_reward_quotient();
-                            increase_balance(state, proposer_index, proposer_reward);
+                            increase_balance(state, proposer_index, proposer_reward)?;
                             increase_balance(
                                 state,
                                 whistleblower,
                                 whistleblower_reward - proposer_reward,
-                            );
+                            )?;
                             Ok(())
                         }
                         Err(err) => Err(err),
