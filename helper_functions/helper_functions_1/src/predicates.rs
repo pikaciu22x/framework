@@ -1,6 +1,6 @@
 // use crate::crypto::{bls_aggregate_pubkeys, bls_verify, hash, hash_tree_root};
 use crate::crypto::hash;
-use crate::error::Error;
+use types::helper_functions_types::Error;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
 use types::{

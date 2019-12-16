@@ -1,7 +1,7 @@
 use crate::beacon_state_accessors::{
     get_beacon_proposer_index, get_current_epoch, get_validator_churn_limit,
 };
-use crate::error::Error;
+use types::helper_functions_types::Error;
 use crate::misc::compute_activation_exit_epoch;
 use std::cmp;
 use std::convert::TryFrom;

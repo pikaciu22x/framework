@@ -1,8 +1,8 @@
 use crate::{
     crypto::hash,
-    error::Error,
     math::{bytes_to_int, int_to_bytes},
 };
+use types::helper_functions_types::Error;
 use std::cmp::max;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
