@@ -12,22 +12,26 @@ use types::{
     primitives::{Gwei, ValidatorIndex},
 };
 
-pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
+pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) -> Result<(), Error> {
     match usize::try_from(index) {
-        Err(_err) => {}
-        Ok(id) => state.balances[id] += delta,
+        Err(_err) => Err(Error::IndexOutOfRange),
+        Ok(id) => {
+            state.balances[id] += delta;
+            Ok(())
+        }
     }
 }
 
-pub fn decrease_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) {
+pub fn decrease_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) -> Result<(), Error> {
     match usize::try_from(index) {
-        Err(_err) => {}
+        Err(_err) => Err(Error::IndexOutOfRange),
         Ok(id) => {
             state.balances[id] = if delta > state.balances[id] {
                 0
             } else {
                 state.balances[id] - delta
-            }
+            };
+            Ok(())
         }
     }
 }
