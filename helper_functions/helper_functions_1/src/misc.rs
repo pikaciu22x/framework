@@ -125,7 +125,7 @@ pub fn compute_proposer_index<C: Config>(
     }
 }
 
-pub fn compute_domain<C: Config>(
+pub fn compute_domain(
     domain_type: DomainType,
     fork_version: Option<&Version>,
 ) -> Domain {
