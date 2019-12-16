@@ -68,7 +68,7 @@ pub fn validate_indexed_attestation<C: Config>(
     Ok(())
 }
 
-pub fn is_valid_merkle_branch<C: Config>(
+pub fn is_valid_merkle_branch(
     leaf: &H256,
     branch: &[H256],
     depth: u64,
