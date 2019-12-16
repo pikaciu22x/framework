@@ -34,7 +34,7 @@ pub fn validate_indexed_attestation<C: Config>(
     let indices = &indexed_attestation.attesting_indices;
 
     // Verify max number of indices
-    if !(indices.len() < C::MaxValidatorsPerCommittee::to_usize()) {
+    if indices.len() >= C::MaxValidatorsPerCommittee::to_usize() {
         return Err(Error::MaxIndicesExceeded);
     }
 
