@@ -39,7 +39,6 @@ pub fn bytes_to_int(bytes: [u8; 8]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::primitives::H256;
 
     #[test]
     fn test_int_to_bytes_value0_length_8() {
@@ -107,14 +106,13 @@ mod tests {
         assert_eq!(integer_squareroot(20), 4);
     }
 
-    // todo:
-    // #[test]
-    // fn test_xor() {
-    //     assert_eq!(
-    //         xor(&H256::from([1; 32]), &H256::from([2; 32])[..]),
-    //         &H256::from([3; 32])[..]
-    //     );
-    // }
+    #[test]
+    fn test_xor() {
+        assert_eq!(
+            xor(&[1; 32], &[2; 32]),
+            [3; 32]
+        );
+    }
 
     #[test]
     fn test_bytes_to_int() {
