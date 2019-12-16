@@ -1,18 +1,22 @@
 use crate::beacon_state_accessors::{
     get_beacon_proposer_index, get_current_epoch, get_validator_churn_limit,
 };
-use types::helper_functions_types::Error;
 use crate::misc::compute_activation_exit_epoch;
 use std::cmp;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
+use types::helper_functions_types::Error;
 use types::{
     beacon_state::BeaconState,
     config::Config,
     primitives::{Gwei, ValidatorIndex},
 };
 
-pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) -> Result<(), Error> {
+pub fn increase_balance<C: Config>(
+    state: &mut BeaconState<C>,
+    index: ValidatorIndex,
+    delta: Gwei,
+) -> Result<(), Error> {
     match usize::try_from(index) {
         Err(_err) => Err(Error::IndexOutOfRange),
         Ok(id) => {
@@ -22,7 +26,11 @@ pub fn increase_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorI
     }
 }
 
-pub fn decrease_balance<C: Config>(state: &mut BeaconState<C>, index: ValidatorIndex, delta: Gwei) -> Result<(), Error> {
+pub fn decrease_balance<C: Config>(
+    state: &mut BeaconState<C>,
+    index: ValidatorIndex,
+    delta: Gwei,
+) -> Result<(), Error> {
     match usize::try_from(index) {
         Err(_err) => Err(Error::IndexOutOfRange),
         Ok(id) => {
@@ -95,54 +103,51 @@ pub fn slash_validator<C: Config>(
 ) -> Result<(), Error> {
     let epoch = get_current_epoch(state);
     match initiate_validator_exit::<C>(state, slashed_index) {
-        Ok(_) => {
-            match usize::try_from(slashed_index) {
-                Ok(s_index) => {
-                    state.validators[s_index].slashed = true;
-                    state.validators[s_index].withdrawable_epoch = cmp::max(
-                        state.validators[s_index].withdrawable_epoch,
-                        epoch + C::EpochsPerSlashingsVector::to_u64(),
-                    );
+        Ok(_) => match usize::try_from(slashed_index) {
+            Ok(s_index) => {
+                state.validators[s_index].slashed = true;
+                state.validators[s_index].withdrawable_epoch = cmp::max(
+                    state.validators[s_index].withdrawable_epoch,
+                    epoch + C::EpochsPerSlashingsVector::to_u64(),
+                );
 
-                    match usize::try_from(epoch % C::EpochsPerSlashingsVector::to_u64()) {
-                        Ok(slashing_index) => {
-                            state.slashings[slashing_index] +=
-                                state.validators[s_index].effective_balance;
-                            decrease_balance(
-                                state,
-                                slashed_index,
-                                state.validators[s_index].effective_balance
-                                    / C::min_slashing_penalty_quotient(),
-                            )?;
-                        }
-                        Err(_) => return Err(Error::IndexOutOfRange),
-                    };
-
-                    match get_beacon_proposer_index(state) {
-                        Ok(proposer_index) => {
-                            let whistleblower = match whistleblower_index {
-                                Some(index) => index,
-                                None => proposer_index,
-                            };
-
-                            let whistleblower_reward = state.validators[s_index].effective_balance
-                                / C::whistleblower_reward_quotient();
-                            let proposer_reward =
-                                whistleblower_reward / C::proposer_reward_quotient();
-                            increase_balance(state, proposer_index, proposer_reward)?;
-                            increase_balance(
-                                state,
-                                whistleblower,
-                                whistleblower_reward - proposer_reward,
-                            )?;
-                            Ok(())
-                        }
-                        Err(err) => Err(err),
+                match usize::try_from(epoch % C::EpochsPerSlashingsVector::to_u64()) {
+                    Ok(slashing_index) => {
+                        state.slashings[slashing_index] +=
+                            state.validators[s_index].effective_balance;
+                        decrease_balance(
+                            state,
+                            slashed_index,
+                            state.validators[s_index].effective_balance
+                                / C::min_slashing_penalty_quotient(),
+                        )?;
                     }
+                    Err(_) => return Err(Error::IndexOutOfRange),
+                };
+
+                match get_beacon_proposer_index(state) {
+                    Ok(proposer_index) => {
+                        let whistleblower = match whistleblower_index {
+                            Some(index) => index,
+                            None => proposer_index,
+                        };
+
+                        let whistleblower_reward = state.validators[s_index].effective_balance
+                            / C::whistleblower_reward_quotient();
+                        let proposer_reward = whistleblower_reward / C::proposer_reward_quotient();
+                        increase_balance(state, proposer_index, proposer_reward)?;
+                        increase_balance(
+                            state,
+                            whistleblower,
+                            whistleblower_reward - proposer_reward,
+                        )?;
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
                 }
-                Err(_) => Err(Error::IndexOutOfRange),
             }
-        }
+            Err(_) => Err(Error::IndexOutOfRange),
+        },
         Err(err) => Err(err),
     }
 }

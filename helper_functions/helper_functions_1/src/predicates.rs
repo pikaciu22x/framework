@@ -1,8 +1,8 @@
 // use crate::crypto::{bls_aggregate_pubkeys, bls_verify, hash, hash_tree_root};
 use crate::crypto::hash;
-use types::helper_functions_types::Error;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
+use types::helper_functions_types::Error;
 use types::{
     beacon_state::BeaconState,
     config::Config,

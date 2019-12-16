@@ -66,10 +66,7 @@ where
             PendingAttestation<T>,
             T::MaxAttestationsPerEpoch,
         > = VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
             if attestation.data.target.root == get_block_root(self, epoch).unwrap() {
                 target_attestations.push(attestation.clone()).unwrap();
             }
@@ -82,11 +79,10 @@ where
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
         let mut head_attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> =
             VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
-            if attestation.data.beacon_block_root == get_block_root_at_slot(self, attestation.data.slot).unwrap() {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
+            if attestation.data.beacon_block_root
+                == get_block_root_at_slot(self, attestation.data.slot).unwrap()
+            {
                 head_attestations.push(attestation.clone()).unwrap();
             }
         }

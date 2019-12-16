@@ -108,10 +108,7 @@ mod tests {
 
     #[test]
     fn test_xor() {
-        assert_eq!(
-            xor(&[1; 32], &[2; 32]),
-            [3; 32]
-        );
+        assert_eq!(xor(&[1; 32], &[2; 32]), [3; 32]);
     }
 
     #[test]

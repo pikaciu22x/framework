@@ -2,10 +2,10 @@ use crate::{
     crypto::hash,
     math::{bytes_to_int, int_to_bytes},
 };
-use types::helper_functions_types::Error;
 use std::cmp::max;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
+use types::helper_functions_types::Error;
 use types::{beacon_state::BeaconState, config::Config, primitives::*};
 
 const MAX_RANDOM_BYTE: u64 = (1 << 8) - 1;
@@ -125,10 +125,7 @@ pub fn compute_proposer_index<C: Config>(
     }
 }
 
-pub fn compute_domain(
-    domain_type: DomainType,
-    fork_version: Option<&Version>,
-) -> Domain {
+pub fn compute_domain(domain_type: DomainType, fork_version: Option<&Version>) -> Domain {
     let version: &Version = match fork_version {
         Some(version) => version,
         None => &[0_u8; 4],

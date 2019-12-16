@@ -6,7 +6,7 @@ use helper_functions::math::*;
 use helper_functions::misc::{compute_domain, compute_epoch_at_slot};
 use helper_functions::predicates::{
     is_active_validator, is_slashable_attestation_data, is_slashable_validator,
-    validate_indexed_attestation, is_valid_merkle_branch,
+    is_valid_merkle_branch, validate_indexed_attestation,
 };
 use std::collections::BTreeSet;
 use std::convert::TryInto;
@@ -93,19 +93,22 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     }
     //# Add validator and balance entries
     // bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap()
-    state.validators.push(Validator {
-        pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
-        withdrawal_credentials: deposit.data.withdrawal_credentials,
-        activation_eligibility_epoch: T::far_future_epoch(),
-        activation_epoch: T::far_future_epoch(),
-        exit_epoch: T::far_future_epoch(),
-        withdrawable_epoch: T::far_future_epoch(),
-        effective_balance: std::cmp::min(
-            amount - (amount % T::effective_balance_increment()),
-            T::max_effective_balance(),
-        ),
-        slashed: false,
-    }).unwrap();
+    state
+        .validators
+        .push(Validator {
+            pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
+            withdrawal_credentials: deposit.data.withdrawal_credentials,
+            activation_eligibility_epoch: T::far_future_epoch(),
+            activation_epoch: T::far_future_epoch(),
+            exit_epoch: T::far_future_epoch(),
+            withdrawable_epoch: T::far_future_epoch(),
+            effective_balance: std::cmp::min(
+                amount - (amount % T::effective_balance_increment()),
+                T::max_effective_balance(),
+            ),
+            slashed: false,
+        })
+        .unwrap();
     &state.balances.push(*amount);
 }
 
@@ -151,7 +154,10 @@ fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Beaco
     //# Mix in RANDAO reveal
     let mix = xor(
         get_randao_mix(&state, epoch).unwrap().as_fixed_bytes(),
-        &hash(&body.randao_reveal.as_bytes()).as_slice().try_into().unwrap(),
+        &hash(&body.randao_reveal.as_bytes())
+            .as_slice()
+            .try_into()
+            .unwrap(),
     );
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
@@ -284,10 +290,16 @@ fn process_attestation<T: Config + ExpConst>(
 
     if data.target.epoch == get_current_epoch(state) {
         assert_eq!(data.source, state.current_justified_checkpoint);
-        state.current_epoch_attestations.push(pending_attestation).unwrap();
+        state
+            .current_epoch_attestations
+            .push(pending_attestation)
+            .unwrap();
     } else {
         assert_eq!(data.source, state.previous_justified_checkpoint);
-        state.previous_epoch_attestations.push(pending_attestation).unwrap();
+        state
+            .previous_epoch_attestations
+            .push(pending_attestation)
+            .unwrap();
     }
 
     //# Check signature

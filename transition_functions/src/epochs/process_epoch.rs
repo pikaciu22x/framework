@@ -223,7 +223,8 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         };
         state
             .historical_roots
-            .push(hash_tree_root(&historical_batch)).unwrap();
+            .push(hash_tree_root(&historical_batch))
+            .unwrap();
     }
     //# Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations.clone();
