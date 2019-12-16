@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 bls = { git = 'https://github.com/sigp/lighthouse' }
-ring = "0.14.6"
+ring = "0.16.9"
 typenum = '1.11.2'
 types = { path = "../../types" }
 eth2_ssz_types = { git = 'https://github.com/sigp/lighthouse' }

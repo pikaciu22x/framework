@@ -55,7 +55,7 @@ pub fn compute_epoch_at_slot<C: Config>(slot: Slot) -> Epoch {
     slot / C::SlotsPerEpoch::to_u64()
 }
 
-pub fn compute_start_slot_of_epoch<C: Config>(epoch: Epoch) -> Slot {
+pub fn compute_start_slot_at_epoch<C: Config>(epoch: Epoch) -> Slot {
     epoch * C::SlotsPerEpoch::to_u64()
 }
 
