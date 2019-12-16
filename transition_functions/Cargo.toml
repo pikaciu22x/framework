@@ -10,7 +10,7 @@ integer-sqrt = "0.1"
 itertools = "0.8"
 eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
 merkle_proof = { git = "https://github.com/sigp/lighthouse" }
-helper_functions = { path = "../helper_functions/helper_functions_2" }
+helper_functions = { path = "../helper_functions/helper_functions_1" }
 core = { path = "../core" }
 log = "0.4"
 tree_hash = { git = 'https://github.com/sigp/lighthouse' }
