@@ -246,6 +246,10 @@ pub struct HistoricalBatch<C: Config> {
 )]
 pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
+    // temp:
+    pub custody_bit_0_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
+    pub custody_bit_1_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
+    //
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
     pub signature: AggregateSignature,

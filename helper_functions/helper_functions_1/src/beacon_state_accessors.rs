@@ -198,6 +198,10 @@ pub fn get_indexed_attestation<C: Config>(
 
     Ok(IndexedAttestation {
         attesting_indices: VariableList::from(vec),
+        // temp
+        custody_bit_0_indices: VariableList::default(),
+        custody_bit_1_indices: VariableList::default(),
+        //
         data: attestation.data.clone(),
         signature: attestation.signature.clone(),
     })
