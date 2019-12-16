@@ -1,9 +1,6 @@
 use types::config::{MainnetConfig, MinimalConfig};
 
 pub trait ExpConst {
-    fn far_future_epoch() -> u64 {
-        u64::max_value()
-    }
     fn epochs_per_slashings_vector() -> u64 {
         8192
     }
