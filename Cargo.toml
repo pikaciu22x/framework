@@ -5,11 +5,10 @@ members = [
     'error_utils',
     'eth2_network',
     'eth2_network_libp2p',
-    'helper_functions',
     'types',
     'transition_functions',
     'core',
-    'helper_functions/helper_functions_2',
+    'helper_functions/helper_functions_1',
 ]
 
 [profile.release]
