@@ -165,7 +165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_compute_start_slot_of_epoch() {
+    fn test_compute_start_slot_at_epoch() {
         assert_eq!(
             compute_start_slot_at_epoch::<MainnetConfig>(10_u64),
             <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64
