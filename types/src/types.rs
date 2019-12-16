@@ -1,5 +1,6 @@
 //temporary Lighthouse SSZ and hashing implementation
 use bls::PublicKeyBytes;
+use ethereum_types::H256 as Hash256;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::{BitList, FixedVector, VariableList};
@@ -16,7 +17,7 @@ pub struct Attestation<C: Config> {
     pub aggregation_bits: BitList<C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     pub custody_bits: BitList<C::MaxValidatorsPerCommittee>,
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 #[derive(
@@ -35,7 +36,7 @@ pub struct Attestation<C: Config> {
 )]
 pub struct AttestationData {
     pub slot: Slot,
-    pub index: CommitteeIndex,
+    pub index: u64,
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
@@ -76,7 +77,9 @@ pub struct AttesterSlashing<C: Config> {
     pub attestation_2: IndexedAttestation<C>,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+)]
 pub struct BeaconBlock<C: Config> {
     pub slot: Slot,
     pub parent_root: H256,
@@ -86,7 +89,22 @@ pub struct BeaconBlock<C: Config> {
     pub signature: Signature,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+impl<C: Config> Default for BeaconBlock<C> {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            slot: Default::default(),
+            parent_root: Default::default(),
+            state_root: Default::default(),
+            body: Default::default(),
+            signature: Signature::empty_signature(),
+        }
+    }
+}
+
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+)]
 pub struct BeaconBlockBody<C: Config> {
     pub randao_reveal: Signature,
     pub eth1_data: Eth1Data,
@@ -97,6 +115,23 @@ pub struct BeaconBlockBody<C: Config> {
     pub deposits: VariableList<Deposit, C::MaxDeposits>,
     pub voluntary_exits: VariableList<VoluntaryExit, C::MaxVoluntaryExits>,
     pub transfers: VariableList<Transfer, C::MaxTransfers>,
+}
+
+impl<C: Config> Default for BeaconBlockBody<C> {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            randao_reveal: Signature::empty_signature(),
+            eth1_data: Default::default(),
+            graffiti: Default::default(),
+            proposer_slashings: Default::default(),
+            attester_slashings: Default::default(),
+            attestations: Default::default(),
+            deposits: Default::default(),
+            voluntary_exits: Default::default(),
+            transfers: Default::default(),
+        }
+    }
 }
 
 #[derive(
@@ -110,7 +145,6 @@ pub struct BeaconBlockBody<C: Config> {
     Decode,
     TreeHash,
     SignedRoot,
-    Default,
 )]
 pub struct BeaconBlockHeader {
     pub slot: Slot,
@@ -120,8 +154,27 @@ pub struct BeaconBlockHeader {
     pub signature: Signature,
 }
 
+impl Default for BeaconBlockHeader {
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            slot: Default::default(),
+            parent_root: Default::default(),
+            state_root: Default::default(),
+            body_root: Default::default(),
+            signature: Signature::empty_signature(),
+        }
+    }
+}
+
+impl BeaconBlockHeader {
+    pub fn canonical_root(&self) -> Hash256 {
+        Hash256::from_slice(&self.tree_hash_root()[..])
+    }
+}
+
 #[derive(
-    Clone, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
+    Clone, Copy, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
 )]
 pub struct Checkpoint {
     pub epoch: Epoch,
@@ -153,7 +206,7 @@ pub struct DepositData {
     pub withdrawal_credentials: H256,
     pub amount: u64,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize, Encode, Decode, TreeHash)]
@@ -189,13 +242,13 @@ pub struct HistoricalBatch<C: Config> {
 }
 
 #[derive(
-    Clone, PartialEq, Debug, Default, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
 )]
 pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
@@ -207,6 +260,7 @@ pub struct PendingAttestation<C: Config> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+
 pub struct ProposerSlashing {
     pub proposer_index: u64,
     pub header_1: BeaconBlockHeader,

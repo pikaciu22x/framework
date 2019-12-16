@@ -1,0 +1,15 @@
+[package]
+name = 'beacon_fork_choice'
+version = '0.1.0'
+edition = '2018'
+
+[dependencies]
+anyhow = '1.0.25'
+error_utils = { path = '../error_utils' }
+eth2_core = { path = '../core', package = 'core' }
+helper_functions = { path = '../helper_functions/helper_functions_2' }
+log = '0.4.8'
+maplit = '1.0.2'
+thiserror = '1.0.9'
+transition_functions = { path = '../transition_functions' }
+types = { path = '../types' }
