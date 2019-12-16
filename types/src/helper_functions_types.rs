@@ -10,4 +10,11 @@ pub enum Error {
     NumberExceedsCapacity,
     ArrayIsEmpty,
     NotAHash,
+    ConversionToUsize,
+    ConversionToVariableList,
+    AttestationBitsInvalid,
+    MaxIndicesExceeded,
+    BadValidatorIndicesOrdering,
+    ValidatorExitAlreadyInitiated,
+    DecodeError,
 }

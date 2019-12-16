@@ -4,11 +4,11 @@ use std::cmp;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
+use types::helper_functions_types::Error;
 use types::{beacon_state::BeaconState, config::Config, primitives::*, types::*};
 
 use crate::{
     crypto::hash,
-    error::Error,
     math::{int_to_bytes, int_to_bytes_32},
     misc::*,
     predicates::is_active_validator,
