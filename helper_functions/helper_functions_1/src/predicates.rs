@@ -34,7 +34,7 @@ pub fn validate_indexed_attestation<C: Config>(
     let indices = &indexed_attestation.attesting_indices;
 
     // Verify max number of indices
-    if !(indices.len() < C::MaxValidatorsPerCommittee::to_usize()) {
+    if indices.len() >= C::MaxValidatorsPerCommittee::to_usize() {
         return Err(Error::MaxIndicesExceeded);
     }
 
@@ -104,8 +104,6 @@ fn join_hashes<'a>(hash1: &'a H256, hash2: &H256) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ssz_types::VariableList;
-    use types::config::MainnetConfig;
     use types::types::Checkpoint;
 
     #[test]

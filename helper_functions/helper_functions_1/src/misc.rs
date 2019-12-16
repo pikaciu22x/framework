@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_compute_start_slot_of_epoch() {
         assert_eq!(
-            compute_start_slot_of_epoch::<MainnetConfig>(10_u64),
+            compute_start_slot_at_epoch::<MainnetConfig>(10_u64),
             <MainnetConfig as Config>::SlotsPerEpoch::to_u64() * 10_u64
         );
     }
@@ -183,10 +183,7 @@ mod tests {
         let domain_type: DomainType = 2_u32;
         let expected: u64 = 0x0100_0000_0000_0002_u64;
 
-        assert_eq!(
-            compute_domain::<MainnetConfig>(domain_type, Some(&version)),
-            expected
-        );
+        assert_eq!(compute_domain(domain_type, Some(&version)), expected);
     }
 
     #[test]
@@ -194,6 +191,6 @@ mod tests {
         let domain_type: DomainType = 2_u32;
         let expected: u64 = 0x0000_0000_0000_0002_u64;
 
-        assert_eq!(compute_domain::<MainnetConfig>(domain_type, None), expected);
+        assert_eq!(compute_domain(domain_type, None), expected);
     }
 }
