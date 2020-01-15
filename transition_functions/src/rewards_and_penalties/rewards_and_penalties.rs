@@ -197,13 +197,14 @@ mod process_slot_tests {
         val2.slashed= true;
         bs.validators.push(val).unwrap();
         bs.validators.push(val2).unwrap();
-        let base_reward1 = 5*64/4;
-        let base_reward2 = 4*64/4;
+        // let base_reward1 = 5*64/4;
+        // let base_reward2 = 4*64/4;
 
-        let reward1 = base_reward1;
-        let penalty1 = 0;
-        let reward2= 0;
-        let penalty2 = base_reward2;
-        bs.process_rewards_and_penalties();        
+
+        // let reward1 = base_reward1;
+        // let penalty1 = 0;
+        // let reward2= 0;
+        // let penalty2 = base_reward2;
+        // bs.process_rewards_and_penalties();        
     }
 }

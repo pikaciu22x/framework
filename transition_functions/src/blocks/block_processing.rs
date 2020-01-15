@@ -402,16 +402,25 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 }
 
 #[cfg(test)]
-mod scessing_tests {
+mod block_processing_tests {
     // use crate::{config::*};
     use super::*;
-    use bls::{PublicKey, SecretKey};
+    use bls::{
+        PublicKey,
+        SecretKey
+    };
     use ethereum_types::H256;
     use ssz_types::VariableList;
     use types::{
-        beacon_state::*,
-        config::{Config, MainnetConfig},
-        types::{BeaconBlock, BeaconBlockHeader},
+        // beacon_state::*,
+        config::{
+            // Config,
+            MainnetConfig
+        },
+        types::{
+            BeaconBlock,
+            BeaconBlockHeader
+        },
     };
 
     const EPOCH_MAX: u64 = u64::max_value();

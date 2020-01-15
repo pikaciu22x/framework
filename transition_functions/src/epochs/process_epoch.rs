@@ -274,8 +274,11 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
  #[cfg(test)]
  mod process_epoch_tests {
      use super::*;
-     use mockall::mock;
-     use types::{beacon_state::*, config::MainnetConfig};
+    //  use mockall::mock;
+     use types::{
+        //  beacon_state::*,
+         config::MainnetConfig
+    };
      /*mock! {
          BeaconState<C: Config + 'static> {}
          trait BeaconStateAccessor {
@@ -296,8 +299,7 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         val.effective_balance = 5;
         val.slashed = false;
         bs.validators.push(val).unwrap();
-        let mut index = 0;
+        let index = 0;
         assert_eq!(5*64/4, bs.get_base_reward(index));
-        
     } 
  }
