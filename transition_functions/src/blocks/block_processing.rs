@@ -1,21 +1,48 @@
 use core::consts::ExpConst;
-use helper_functions::beacon_state_accessors::*;
-use helper_functions::beacon_state_mutators::*;
-use helper_functions::crypto::{bls_verify, hash, hash_tree_root, signed_root};
-use helper_functions::math::*;
-use helper_functions::misc::{compute_domain, compute_epoch_at_slot};
-use helper_functions::predicates::{
-    is_active_validator, is_slashable_attestation_data, is_slashable_validator,
-    is_valid_indexed_attestation, is_valid_merkle_branch,
+
+use helper_functions::{
+    beacon_state_accessors::{
+        *,
+    },
+    beacon_state_mutators::{
+        *,
+    },
+    crypto::{
+        bls_verify, 
+        hash, 
+        hash_tree_root, 
+        signed_root,
+    },
+    math::{
+        *,
+    },
+    misc::{
+        compute_domain,
+        compute_epoch_at_slot,
+    },
+    predicates::{
+        is_active_validator, 
+        is_slashable_attestation_data, 
+        is_slashable_validator,
+        is_valid_indexed_attestation, 
+        is_valid_merkle_branch,
+    },
 };
 use std::collections::BTreeSet;
 use std::convert::TryInto;
-use types::consts::*;
-use types::types::*;
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::VoluntaryExit,
+    config::{
+        Config, 
+        // MainnetConfig
+    },
+    consts::{
+        *,
+    },
+    types::{
+        VoluntaryExit,
+        *,
+    },
 };
 
 pub fn process_block<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
@@ -392,7 +419,7 @@ mod scessing_tests {
             ..BeaconState::default()
         };
 
-        let mut block: BeaconBlock<MainnetConfig> = BeaconBlock {
+        let block: BeaconBlock<MainnetConfig> = BeaconBlock {
             slot: 0,
             parent_root: signed_root(&bs.latest_block_header),
             ..BeaconBlock::default()

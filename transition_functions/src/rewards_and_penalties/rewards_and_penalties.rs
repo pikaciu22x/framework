@@ -1,15 +1,31 @@
-use helper_functions::predicates::is_active_validator;
-
 use crate::attestations::attestations::AttestableBlock;
 use core::consts::ExpConst;
-use helper_functions::beacon_state_accessors::get_attesting_indices;
-use helper_functions::beacon_state_accessors::BeaconStateAccessor;
-use helper_functions::beacon_state_mutators::{decrease_balance, increase_balance};
-use helper_functions::math::integer_squareroot;
-use types::primitives::{Gwei, ValidatorIndex};
+use helper_functions::{
+    beacon_state_accessors::{
+        get_attesting_indices,
+        BeaconStateAccessor,
+    },
+    beacon_state_mutators::{
+        decrease_balance, 
+        increase_balance,
+    },
+    math::{
+        integer_squareroot,
+    },
+    predicates::{
+        is_active_validator,
+    },
+};
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig},
+    config::{
+        Config, 
+        // MainnetConfig
+    },
+    primitives::{
+        Gwei, 
+        ValidatorIndex,
+    },
 };
 
 pub trait StakeholderBlock<T>
@@ -156,7 +172,7 @@ mod process_slot_tests {
         val.effective_balance = 5;
         val.slashed = false;
         bs.validators.push(val).unwrap();
-        let mut index = 0;
+        let index = 0;
         assert_eq!(5*64/4, bs.get_base_reward(index));
         
     } 

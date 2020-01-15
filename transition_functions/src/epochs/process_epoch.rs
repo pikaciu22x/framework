@@ -1,32 +1,63 @@
-use crate::attestations::{attestations::AttestableBlock, *};
+use crate::attestations::{
+    attestations::AttestableBlock,
+    // *
+};
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
 use core::consts::ExpConst;
-use helper_functions::beacon_state_accessors::*;
 use helper_functions::{
     beacon_state_accessors::{
-        get_randao_mix, get_total_active_balance, get_validator_churn_limit, BeaconStateAccessor,
+        get_randao_mix,
+        get_total_active_balance,
+        get_validator_churn_limit,
+        BeaconStateAccessor,
+        *,
     },
     beacon_state_mutators::*,
-    crypto::{bls_verify, hash, hash_tree_root, signed_root},
+    crypto::{
+        // bls_verify,
+        // hash,
+        hash_tree_root,
+        // signed_root
+    },
     misc::compute_activation_exit_epoch,
     predicates::is_active_validator,
 };
-use itertools::{Either, Itertools};
+use itertools::{
+    Either,
+    Itertools
+};
 use ssz_types::VariableList;
-use std::{cmp, mem};
-use types::consts::*;
-use types::primitives::*;
-use types::primitives::{Gwei, ValidatorIndex};
-use types::types::{Eth1Data, HistoricalBatch};
+use std::{
+    cmp,
+    // mem
+};
+
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::{Checkpoint, PendingAttestation, Validator},
+    config::{
+        Config,
+        // MainnetConfig
+    },
+    consts::{
+        *,
+    },
+    primitives::{
+        Gwei,
+        // ValidatorIndex,
+        *,
+    },
+    types::{
+        Checkpoint,
+        // Eth1Data, 
+        HistoricalBatch,
+        // PendingAttestation,
+        Validator,
+    },
 };
 
 pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-    process_justification_and_finalization(state);
-    process_rewards_and_penalties(state);
+    process_justification_and_finalization(state).unwrap();
+    process_rewards_and_penalties(state).unwrap();
     process_registry_updates(state);
     process_slashings(state);
     process_final_updates(state);
@@ -178,7 +209,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = state.get_current_epoch();
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
+    for (_index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
             && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
         {

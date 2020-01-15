@@ -1,18 +1,19 @@
 use core::ExpConst;
-use helper_functions::beacon_state_accessors::get_attesting_indices;
-use helper_functions::beacon_state_accessors::BeaconStateAccessor;
-// use helper_functions::{
-//     beacon_state_accessors::{
-//     },
-//     // beacon_state_mutators::{decrease_balance, initiate_validator_exit},
-//     // misc::compute_activation_exit_epoch,
-//     // predicates::is_active_validator,
-// };
+use helper_functions::{
+    beacon_state_accessors::{
+        get_attesting_indices,
+        BeaconStateAccessor,
+    },
+};
 use ssz_types::VariableList;
 use types::{
     beacon_state::*,
     config::Config,
-    primitives::{Epoch, Gwei, ValidatorIndex},
+    primitives::{
+        Epoch, 
+        Gwei, 
+        ValidatorIndex
+    },
     types::PendingAttestation,
 };
 

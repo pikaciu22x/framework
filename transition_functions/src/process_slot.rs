@@ -1,17 +1,26 @@
 use crate::*;
-use blocks::block_processing::*;
+// use blocks::block_processing::*;
 use core::consts::ExpConst;
-use core::*;
+// use core::*;
 use epochs::process_epoch::process_epoch;
-use ethereum_types::H256 as Hash256;
-use helper_functions;
-use helper_functions::crypto::*;
-use types::primitives::*;
-use types::types::*;
+// use ethereum_types::H256 as Hash256;
+use helper_functions::{
+    crypto::{
+        *,
+    },
+};
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::BeaconBlockHeader,
+    config::{
+        Config, 
+        // MainnetConfig
+    },
+    primitives::{
+        *,
+    },
+    types::{
+        *,
+    },
 };
 #[derive(Debug, PartialEq)]
 pub enum Error {}
