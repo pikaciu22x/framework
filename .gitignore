@@ -1,3 +1,7 @@
 /target/
 cobertura.xml
 rustup-init.sh
+*.sh
+scripts/ci
+rustup-init.sh
+Cargo.lock

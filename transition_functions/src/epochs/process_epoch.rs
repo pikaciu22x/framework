@@ -1,6 +1,4 @@
-use crate::attestations::{
-    attestations::AttestableBlock,
-};
+use crate::attestations::attestations::AttestableBlock;
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
 use core::consts::ExpConst;
 use helper_functions::{
@@ -62,6 +60,7 @@ use types::{
     },
 };
 
+// Matches Documentation
 pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     process_justification_and_finalization(state).unwrap();
     process_rewards_and_penalties(state).unwrap();
@@ -70,6 +69,8 @@ pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     process_final_updates(state);
 }
 
+
+// Matches new doc
 fn process_justification_and_finalization<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
@@ -137,6 +138,7 @@ fn process_justification_and_finalization<T: Config + ExpConst>(
     Ok(())
 }
 
+// IDK if matches doc, too complicated for me to understand atm
 fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let state_copy = state.clone();
 
@@ -196,6 +198,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     }
 }
 
+// Matches new doc
 fn process_rewards_and_penalties<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
@@ -212,11 +215,12 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(
     Ok(())
 }
 
+// Matches new doc
 fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = state.get_current_epoch();
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (_index, validator) in state.validators.clone().iter_mut().enumerate() {
+    for validator in state.validators.clone().iter_mut() {
         if validator.slashed
             && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
         {
@@ -271,24 +275,26 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     state.current_epoch_attestations = VariableList::from(vec![]);
 }
 
- #[cfg(test)]
- mod process_epoch_tests {
+#[cfg(test)]
+mod process_epoch_tests {
      use super::*;
     //  use mockall::mock;
      use types::{
         //  beacon_state::*,
          config::MainnetConfig
     };
-     /*mock! {
-         BeaconState<C: Config + 'static> {}
-         trait BeaconStateAccessor {
-             fn get_current_epoch(&self) -> Epoch;
-             fn get_previous_epoch(&self) -> Epoch;
-             fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
-         }
-     }*/
+    /*
+    mock! {
+        BeaconState<C: Config + 'static> {}
+        trait BeaconStateAccessor {
+            fn get_current_epoch(&self) -> Epoch;
+            fn get_previous_epoch(&self) -> Epoch;
+            fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
+        }
+    }
+    */
 
-     // #[test]
+    // #[test]
     fn test_process_rewards_and_penalties() {
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
             ..BeaconState::default()
@@ -300,6 +306,6 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         val.slashed = false;
         bs.validators.push(val).unwrap();
         let index = 0;
-        assert_eq!(5*64/4, bs.get_base_reward(index));
-    } 
- }
+        assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+    }
+}
