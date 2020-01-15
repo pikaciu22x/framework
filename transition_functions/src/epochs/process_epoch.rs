@@ -1,6 +1,5 @@
 use crate::attestations::{
     attestations::AttestableBlock,
-    // *
 };
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
 use core::consts::ExpConst;
@@ -10,9 +9,13 @@ use helper_functions::{
         get_total_active_balance,
         get_validator_churn_limit,
         BeaconStateAccessor,
-        *,
+        get_current_epoch,
     },
-    beacon_state_mutators::*,
+    beacon_state_mutators::{
+        initiate_validator_exit,
+        increase_balance,
+        decrease_balance,
+    },
     crypto::{
         // bls_verify,
         // hash,
@@ -33,18 +36,22 @@ use std::{
 };
 
 use types::{
-    beacon_state::*,
+    beacon_state::{
+        BeaconState,
+        Error,
+    },
     config::{
         Config,
         // MainnetConfig
     },
     consts::{
-        *,
+        EPOCHS_PER_HISTORICAL_VECTOR,
+        SLOTS_PER_ETH1_VOTING_PERIOD,
     },
     primitives::{
         Gwei,
+        Epoch,
         // ValidatorIndex,
-        *,
     },
     types::{
         Checkpoint,

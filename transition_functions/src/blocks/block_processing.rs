@@ -2,10 +2,19 @@ use core::consts::ExpConst;
 
 use helper_functions::{
     beacon_state_accessors::{
-        *,
+        get_current_epoch,
+        get_domain,
+        get_beacon_proposer_index,
+        get_randao_mix,
+        get_indexed_attestation,
+        get_beacon_committee,
+        get_committee_count_at_slot,
+        get_previous_epoch,
     },
     beacon_state_mutators::{
-        *,
+        slash_validator,
+        initiate_validator_exit,
+        increase_balance,
     },
     crypto::{
         bls_verify, 
@@ -14,7 +23,7 @@ use helper_functions::{
         signed_root,
     },
     math::{
-        *,
+        xor,
     },
     misc::{
         compute_domain,
@@ -31,17 +40,32 @@ use helper_functions::{
 use std::collections::BTreeSet;
 use std::convert::TryInto;
 use types::{
-    beacon_state::*,
+    beacon_state::{
+        BeaconState,
+        Error,
+    },
     config::{
         Config, 
         // MainnetConfig
     },
     consts::{
-        *,
+        MAX_DEPOSITS,
+        SLOTS_PER_ETH1_VOTING_PERIOD,
+        EPOCHS_PER_HISTORICAL_VECTOR,
+        DEPOSIT_CONTRACT_TREE_DEPTH,
     },
     types::{
         VoluntaryExit,
-        *,
+        BeaconBlock,
+        BeaconBlockBody,
+        PendingAttestation,
+        Attestation,
+        AttestationData,
+        AttesterSlashing,
+        BeaconBlockHeader,
+        ProposerSlashing,
+        Deposit,
+        Validator,
     },
 };
 

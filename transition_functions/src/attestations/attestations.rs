@@ -7,7 +7,9 @@ use helper_functions::{
 };
 use ssz_types::VariableList;
 use types::{
-    beacon_state::*,
+    beacon_state::{
+        BeaconState,
+    },
     config::Config,
     primitives::{
         Epoch, 

@@ -17,7 +17,9 @@ use helper_functions::{
     },
 };
 use types::{
-    beacon_state::*,
+    beacon_state::{
+        BeaconState,
+    },
     config::{
         Config, 
         // MainnetConfig

@@ -6,20 +6,24 @@ use epochs::process_epoch::process_epoch;
 // use ethereum_types::H256 as Hash256;
 use helper_functions::{
     crypto::{
-        *,
+        hash_tree_root,
+        signed_root,
     },
 };
 use types::{
-    beacon_state::*,
+    beacon_state::{
+        BeaconState,
+    },
     config::{
         Config, 
         // MainnetConfig
     },
     primitives::{
-        *,
+        Slot,
+        H256,
     },
     types::{
-        *,
+        BeaconBlock,
     },
 };
 #[derive(Debug, PartialEq)]
