@@ -71,14 +71,12 @@ enum EventHandlerError {
     #[error("unsupported gossiped object type (id: {id:?}, peer_id: {peer_id}, topics: {topics:?}, message: {message:?})")]
     UnsupportedGossipedObjectType {
         id: String,
-        // `eth2-libp2p` calls this `source` rather than `peer_id`, but we can't use that name
+        // `eth2-libp2p` calls this `source` rather than `peer_id`, but we cannot use that name
         // because `thiserror` treats `source` fields specially and provides no way to opt out.
         peer_id: PeerId,
         topics: Vec<TopicHash>,
         message: PubsubMessage,
     },
-    #[error("unexpectedly subscribed to peer {peer_id} for topic {topic}")]
-    UnexpectedTopicSubscription { peer_id: PeerId, topic: TopicHash },
     #[error("slot step is zero")]
     SlotStepIsZero,
     #[error("slot difference overflowed ({count} * {step})")]
@@ -103,6 +101,8 @@ enum Gossip<C: Config> {
 
 pub struct Sender<C: Config>(UnboundedSender<Gossip<C>>);
 
+// The implementation of `<EventHandler<C, N> as Future>::poll` relies on `UnboundedReceiver` not
+// panicking if it is polled after being exhausted.
 pub struct Receiver<C: Config>(UnboundedReceiver<Gossip<C>>);
 
 impl<C: Config> Network<C> for Sender<C> {
@@ -124,8 +124,8 @@ type EventFuture = Box<dyn Future<Item = (), Error = Error>>;
 struct EventHandler<C: Config, N> {
     networked: Qutex<N>,
     networked_receiver: Receiver<C>,
-    // Wrapping `Service` in a `Qutex` isn't strictly necessary but simplifies the types of
-    // `in_progress` and `handle_libp2p_event`.
+    // Wrapping `Service` in a `Qutex` is not strictly necessary but simplifies the types of
+    // `EventHandler.in_progress` and `EventHandler::handle_libp2p_event`.
     service: Qutex<Service>,
     next_request_id: usize,
     in_progress: Option<EventFuture>,
@@ -167,7 +167,8 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 message,
             } => self.handle_pubsub_message(id, source, topics, message),
             Libp2pEvent::PeerSubscribed(peer_id, topic) => {
-                bail!(EventHandlerError::UnexpectedTopicSubscription { peer_id, topic });
+                info!("subscribed to peer {} for topic {}", peer_id, topic);
+                Ok(Box::new(future::ok(())))
             }
         }
     }
@@ -398,11 +399,17 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 ))
             }
             RPCErrorResponse::Success(RPCResponse::BlocksByRange(bytes)) => {
+                info!(
+                    "received BlocksByRange response chunk (peer_id: {}, bytes: {})",
+                    peer_id,
+                    Hs(bytes.as_slice()),
+                );
+
                 let beacon_block =
                     BeaconBlock::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
                 info!(
-                    "received BlocksByRange response chunk (peer_id: {}, beacon_block: {:?})",
+                    "decoded BlocksByRange response chunk (peer_id: {}, beacon_block: {:?})",
                     peer_id, beacon_block,
                 );
 
@@ -476,20 +483,27 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
     ) -> Result<EventFuture> {
         match message {
             PubsubMessage::Block(bytes) => {
+                info!("received beacon block as gossip: {}", Hs(bytes.as_slice()));
+
                 let beacon_block =
                     BeaconBlock::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
-                info!("received beacon block as gossip: {:?}", beacon_block);
+                info!("decoded gossiped beacon block: {:?}", beacon_block);
 
                 Ok(Box::new(self.lock_networked().and_then(|mut networked| {
                     networked.accept_beacon_block(beacon_block)
                 })))
             }
             PubsubMessage::Attestation(bytes) => {
+                info!(
+                    "received beacon attestation as gossip: {}",
+                    Hs(bytes.as_slice()),
+                );
+
                 let attestation =
                     Attestation::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
-                info!("received beacon attestation as gossip: {:?}", attestation);
+                info!("decoded gossiped beacon attestation: {:?}", attestation);
 
                 Ok(Box::new(self.lock_networked().and_then(|mut networked| {
                     networked.accept_beacon_attestation(attestation)
@@ -529,7 +543,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
 // ```
 // let handle_events = service.for_each(|libp2p_event| …);
 // let publish_gossip = self.networked_receiver.0.for_each(|gossip| …);
-// handle_events.select(publish_gossip)
+// handle_events.join(publish_gossip)
 // ```
 impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
     type Item = ();
@@ -556,6 +570,10 @@ impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
         }
 
         // Publish all `Gossip`s received through `networked_receiver`.
+        //
+        // This will keep polling the `UnboundedReceiver` after it has been exhausted.
+        // `UnboundedReceiver` does not panic in that scenario, so there is no need to use
+        // `Stream::fuse`.
         let swarm = &mut try_ready!(self.lock_service().poll()).swarm;
         while let Some(gossip) = try_ready!(self
             .networked_receiver
@@ -577,7 +595,7 @@ impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
             }
         }
 
-        Ok(Async::Ready(()))
+        Ok(Async::NotReady)
     }
 }
 
@@ -664,7 +682,7 @@ fn compare_status_and_request_blocks<C: Config>(
     if (local.finalized_epoch, local.head_slot) < (remote.finalized_epoch, remote.head_slot) {
         let request = BlocksByRangeRequest {
             head_block_root: remote.head_root,
-            start_slot: misc::compute_start_slot_of_epoch::<C>(remote.finalized_epoch),
+            start_slot: misc::compute_start_slot_at_epoch::<C>(remote.finalized_epoch),
             count: u64::max_value(),
             step: 1,
         };

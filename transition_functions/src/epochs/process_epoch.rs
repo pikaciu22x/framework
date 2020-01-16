@@ -74,12 +74,12 @@ pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 fn process_justification_and_finalization<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
-    if state.get_current_epoch() <= T::genesis_epoch() + 1 {
+    if get_current_epoch(state) <= T::genesis_epoch() + 1 {
         return Ok(());
     }
 
-    let previous_epoch = state.get_previous_epoch();
-    let current_epoch = state.get_current_epoch();
+    let previous_epoch = get_previous_epoch(state);
+    let current_epoch = get_current_epoch(state);
     let old_previous_justified_checkpoint = state.previous_justified_checkpoint.clone();
     let old_current_justified_checkpoint = state.current_justified_checkpoint.clone();
 
@@ -89,11 +89,11 @@ fn process_justification_and_finalization<T: Config + ExpConst>(
     //Previous epoch
     let matching_target_attestations = state.get_matching_target_attestations(previous_epoch);
     if state.get_attesting_balance(matching_target_attestations) * 3
-        >= state.get_total_active_balance()? * 2
+        >= get_total_active_balance(state)? * 2
     {
         state.current_justified_checkpoint = Checkpoint {
             epoch: previous_epoch,
-            root: state.get_block_root(previous_epoch)?,
+            root: get_block_root(state, previous_epoch)?,
         };
         state.justification_bits.set(1, true)?;
     }
@@ -101,11 +101,11 @@ fn process_justification_and_finalization<T: Config + ExpConst>(
     // Current epoch
     let matching_target_attestations = state.get_matching_target_attestations(current_epoch);
     if state.get_attesting_balance(matching_target_attestations) * 3
-        >= state.get_total_active_balance()? * 2
+        >= get_total_active_balance(state)? * 2
     {
         state.current_justified_checkpoint = Checkpoint {
             epoch: current_epoch,
-            root: state.get_block_root(current_epoch)?,
+            root: get_block_root(state, previous_epoch)?,
         };
         state.justification_bits.set(0, true)?;
     }
@@ -148,7 +148,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     };
 
     let is_exiting_validator = |validator: &Validator| {
-        is_active_validator(validator, state_copy.get_current_epoch())
+        is_active_validator(validator, get_current_epoch(&state_copy))
             && validator.effective_balance <= T::ejection_balance()
     };
 
@@ -166,7 +166,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         });
 
     for index in eligible {
-        state.validators[index].activation_eligibility_epoch = state_copy.get_current_epoch();
+        state.validators[index].activation_eligibility_epoch = get_current_epoch(&state_copy);
     }
     for index in exiting {
         initiate_validator_exit(state, index as u64).unwrap();
@@ -187,9 +187,9 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         .collect_vec();
     // Dequeued validators for activation up to churn limit (without resetting activation epoch)
 
-    let churn_limit = get_validator_churn_limit(&state);
+    let churn_limit = get_validator_churn_limit(&state).unwrap();
     let delayed_activation_epoch =
-        compute_activation_exit_epoch::<T>(state.get_current_epoch() as u64);
+        compute_activation_exit_epoch::<T>(get_current_epoch(state) as u64);
     for index in activation_queue.into_iter().take(churn_limit as usize) {
         let validator = &mut state.validators[index];
         if validator.activation_epoch == T::far_future_epoch() {
@@ -202,7 +202,7 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 fn process_rewards_and_penalties<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
-    if state.get_current_epoch() == T::genesis_epoch() {
+    if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
 
@@ -217,7 +217,7 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(
 
 // Matches new doc
 fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-    let epoch = state.get_current_epoch();
+    let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
     for validator in state.validators.clone().iter_mut() {

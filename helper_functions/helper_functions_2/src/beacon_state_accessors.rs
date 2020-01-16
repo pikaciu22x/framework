@@ -1,16 +1,16 @@
 use crate::crypto::*;
-use crate::error::Error;
 use crate::math::*;
 use crate::misc::*;
 use crate::predicates::is_active_validator;
 use ethereum_types::H256;
-use ssz_types::{BitList, VariableList};
+use ssz_types::BitList;
 use std::cmp::max;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use types::beacon_state::BeaconState;
 use types::config::Config;
 use types::consts::*;
+use types::helper_functions_types::Error;
 use types::primitives::*;
 use types::types::{Attestation, AttestationData, IndexedAttestation};
 
@@ -237,41 +237,11 @@ pub fn get_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     attestation: &Attestation<C>,
 ) -> Result<IndexedAttestation<C>, Error> {
-    let custody_bit_0_indices =
-        get_attesting_indices(state, &(attestation.data), &(attestation.aggregation_bits));
-    if custody_bit_0_indices.is_err() {
-        return Err(custody_bit_0_indices.err().expect("Expected success"));
-    }
-
-    let custody_bit_1_indices =
-        get_attesting_indices(state, &(attestation.data), &(attestation.custody_bits));
-    if custody_bit_1_indices.is_err() {
-        return Err(custody_bit_1_indices.err().expect("Expected success"));
-    }
-
-    let custody_bit_0_indices_list = VariableList::new(
-        custody_bit_0_indices
-            .expect("Expected success getting custody indices")
-            .into_iter()
-            .collect(),
-    );
-    if custody_bit_0_indices_list.is_err() {
-        return Err(Error::IndexOutOfRange);
-    }
-
-    let custody_bit_1_indices_list = VariableList::new(
-        custody_bit_1_indices
-            .expect("Expected success getting custody indices")
-            .into_iter()
-            .collect(),
-    );
-    if custody_bit_1_indices_list.is_err() {
-        return Err(Error::IndexOutOfRange);
-    }
+    let attesting_indices =
+        get_attesting_indices(state, &attestation.data, &attestation.aggregation_bits)?;
 
     let att = IndexedAttestation {
-        custody_bit_0_indices: custody_bit_0_indices_list.expect("Expected success"),
-        custody_bit_1_indices: custody_bit_1_indices_list.expect("Expected success"),
+        attesting_indices: attesting_indices.into_iter().collect::<Vec<_>>().into(),
         data: attestation.data.clone(),
         signature: attestation.signature.clone(),
     };

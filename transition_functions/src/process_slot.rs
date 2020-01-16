@@ -30,7 +30,7 @@ use types::{
 pub enum Error {}
 
 // Doesn't match documentation
-fn state_transition<T: Config + ExpConst>(
+pub fn state_transition<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
     block: &BeaconBlock<T>, // Old doc
     // signed_block: &SignedBeaconBlock<T> // New Doc
@@ -50,7 +50,7 @@ fn state_transition<T: Config + ExpConst>(
 }
 
 // Matches documentation
-fn process_slots<T: Config + ExpConst>(state: &mut BeaconState<T>, slot: Slot) {
+pub fn process_slots<T: Config + ExpConst>(state: &mut BeaconState<T>, slot: Slot) {
     assert!(state.slot <= slot);
     while state.slot < slot {
         process_slot(state);

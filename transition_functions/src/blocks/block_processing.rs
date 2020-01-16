@@ -104,7 +104,7 @@ fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>, exit
 fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Verify the Merkle branch  is_valid_merkle_branch
 
-    assert!(is_valid_merkle_branch::<T>(
+    assert!(is_valid_merkle_branch(
         &hash_tree_root(&deposit.data),
         &deposit.proof,
         DEPOSIT_CONTRACT_TREE_DEPTH + 1,
@@ -131,7 +131,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     //# Verify the deposit signature (proof of possession) for new validators.
     //# Note: The deposit contract does not check signatures.
     //# Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-    let domain = compute_domain::<T>(T::domain_deposit() as u32, None);
+    let domain = compute_domain(T::domain_deposit() as u32, None);
 
     if !bls_verify(
         &pubkey.clone().try_into().unwrap(),
@@ -206,10 +206,9 @@ fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Beaco
     .unwrap());
     //# Mix in RANDAO reveal
     let mix = xor(
-        get_randao_mix(&state, epoch).unwrap().as_bytes(),
-        &hash(&body.randao_reveal.as_bytes()),
-    )
-    .unwrap();
+        get_randao_mix(&state, epoch).unwrap().as_fixed_bytes(),
+        &hash(&body.randao_reveal.as_bytes()).as_slice().try_into().unwrap(),
+    );
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
     array.copy_from_slice(mix);
@@ -264,22 +263,20 @@ fn process_attester_slashing<T: Config + ExpConst>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(is_valid_indexed_attestation(state, &attestation_1).is_ok());
-    assert!(is_valid_indexed_attestation(state, &attestation_2).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_1).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_2).is_ok());
 
     let mut slashed_any = false;
 
     // Turns attesting_indices into a binary tree set. It's a set and it's ordered :)
     let attesting_indices_1 = attestation_1
-        .custody_bit_0_indices
+        .attesting_indices
         .iter()
-        .chain(&attestation_1.custody_bit_1_indices)
         .cloned()
         .collect::<BTreeSet<_>>();
     let attesting_indices_2 = attestation_2
-        .custody_bit_0_indices
+        .attesting_indices
         .iter()
-        .chain(&attestation_2.custody_bit_1_indices)
         .cloned()
         .collect::<BTreeSet<_>>();
 
@@ -326,11 +323,7 @@ fn process_attestation<T: Config + ExpConst>(
     );
 
     let committee = get_beacon_committee(state, attestation_slot, index).unwrap();
-    assert_eq!(
-        attestation.aggregation_bits.len(),
-        attestation.custody_bits.len()
-    );
-    assert_eq!(attestation.custody_bits.len(), committee.count()); // Count suranda ilgį, bet nebelieka iteratoriaus. Might wanna look into that
+    assert_eq!(attestation.aggregation_bits.len(), committee.len());
 
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
@@ -354,7 +347,7 @@ fn process_attestation<T: Config + ExpConst>(
     }
 
     //# Check signature
-    assert!(is_valid_indexed_attestation(
+    assert!(validate_indexed_attestation(
         &state,
         &get_indexed_attestation(&state, &attestation).unwrap()
     )

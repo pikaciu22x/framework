@@ -1,4 +1,0 @@
-[submodule "lighthouse"]
-	path = lighthouse
-	url = https://github.com/sigp/lighthouse
-	shallow = true

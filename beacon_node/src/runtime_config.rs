@@ -43,7 +43,7 @@ impl Default for RuntimeConfig {
 impl RuntimeConfig {
     pub fn parse(mut strings: impl ExactSizeIterator<Item = String>) -> Result<Self> {
         ensure!(strings.next().is_some(), Error::MissingExecutablePath);
-        let first_argument = strings.next().ok_or_else(|| Error::MissingConfiguration)?;
+        let first_argument = strings.next().ok_or(Error::MissingConfiguration)?;
         ensure!(strings.len() == 0, Error::TrailingArguments);
         let runtime_config = serde_yaml::from_str(first_argument.as_str())?;
         Ok(runtime_config)

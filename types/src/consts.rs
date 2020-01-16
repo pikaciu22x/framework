@@ -1,3 +1,5 @@
+use crate::primitives::*;
+
 pub use crate::primitives::Gwei;
 
 pub const JUSTIFICATION_BITS_LENGTH: usize = 4;

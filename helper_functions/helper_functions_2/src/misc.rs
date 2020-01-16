@@ -1,5 +1,4 @@
 use crate::crypto::hash;
-use crate::error::Error;
 use crate::math::bytes_to_int;
 use crate::math::int_to_bytes;
 
@@ -10,6 +9,7 @@ use types::beacon_state::BeaconState;
 use types::config::Config;
 use types::config::MainnetConfig;
 use types::consts::SHUFFLE_ROUND_COUNT;
+use types::helper_functions_types::Error;
 use types::primitives::{Domain, DomainType, Epoch, Slot, ValidatorIndex, Version, H256};
 
 pub fn compute_epoch_at_slot<C: Config>(slot: Slot) -> Epoch {

@@ -1,4 +1,3 @@
-use crate::error::Error;
 use crate::{beacon_state_accessors as accessors, crypto};
 use bls::AggregatePublicKey;
 use itertools::Itertools;
@@ -10,8 +9,9 @@ use types::{
     beacon_state::BeaconState,
     config::Config,
     consts::*,
+    helper_functions_types::Error,
     primitives::{Epoch, H256},
-    types::{AttestationData, AttestationDataAndCustodyBit, IndexedAttestation, Validator},
+    types::{AttestationData, IndexedAttestation, Validator},
 };
 
 type ValidatorIndexList<C> = VariableList<u64, <C as Config>::MaxValidatorsPerCommittee>;
@@ -42,15 +42,6 @@ where
     data.into_iter().tuple_windows().all(|(a, b)| a <= b)
 }
 
-fn has_common_elements<I>(data1: I, data2: I) -> bool
-where
-    I: IntoIterator,
-    I::Item: Eq,
-{
-    let mut data2_iter = data2.into_iter();
-    data1.into_iter().any(|x| data2_iter.any(|y| x == y))
-}
-
 fn aggregate_validator_public_keys<C: Config>(
     indices: &ValidatorIndexList<C>,
     state: &BeaconState<C>,
@@ -71,49 +62,29 @@ pub fn validate_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     indexed_attestation: &IndexedAttestation<C>,
 ) -> Result<(), Error> {
-    let bit_0_indices = &indexed_attestation.custody_bit_0_indices;
-    let bit_1_indices = &indexed_attestation.custody_bit_1_indices;
-
-    if !bit_1_indices.is_empty() {
-        return Err(Error::CustodyBit1Set);
-    }
+    let indices = &indexed_attestation.attesting_indices;
 
     let max_validators = C::MaxValidatorsPerCommittee::to_usize();
-    if bit_0_indices.len() + bit_1_indices.len() > max_validators {
+    if indices.len() > max_validators {
         return Err(Error::IndicesExceedMaxValidators);
     }
 
-    // Index sets will always be disjoint if we get through the first `if`
-    if has_common_elements(bit_0_indices, bit_1_indices) {
-        return Err(Error::CustodyBitIndicesIntersect);
+    if !is_sorted(indices) {
+        return Err(Error::IndicesNotSorted);
     }
 
-    if !is_sorted(bit_0_indices) || !is_sorted(bit_1_indices) {
-        return Err(Error::CustodyBitIndicesNotSorted);
-    }
+    let aggr_pubkey = aggregate_validator_public_keys(indices, state)?;
 
-    let aggr_pubkey1 = aggregate_validator_public_keys(bit_0_indices, state)?;
-    let aggr_pubkey2 = aggregate_validator_public_keys(bit_1_indices, state)?;
-
-    let hash_1 = AttestationDataAndCustodyBit {
-        data: indexed_attestation.data.clone(),
-        custody_bit: false,
-    }
-    .tree_hash_root();
-    let hash_2 = AttestationDataAndCustodyBit {
-        data: indexed_attestation.data.clone(),
-        custody_bit: true,
-    }
-    .tree_hash_root();
+    let hash = indexed_attestation.data.tree_hash_root();
 
     if indexed_attestation.signature.verify_multiple(
-        &[&hash_1, &hash_2],
+        &[hash.as_slice()],
         accessors::get_domain(
             state,
             DOMAIN_BEACON_ATTESTER,
             Some(indexed_attestation.data.target.epoch),
         ),
-        &[&aggr_pubkey1, &aggr_pubkey2],
+        &[&aggr_pubkey],
     ) {
         Ok(())
     } else {
@@ -470,7 +441,7 @@ mod tests {
 
             assert_eq!(
                 validate_indexed_attestation(&state, &attestation),
-                Err(Error::CustodyBitIndicesNotSorted)
+                Err(Error::IndicesNotSorted)
             );
         }
 

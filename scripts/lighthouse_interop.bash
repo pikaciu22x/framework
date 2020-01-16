@@ -2,11 +2,11 @@
 
 # You can use this to install non-Rust dependencies on Debian-based distributions.
 install_dependencies_on_debian() {
-    sudo apt-get update
-    sudo apt-get install \
-        git              \
-        moreutils        \
-        pipexec          \
+    apt-get install \
+        bash        \
+        git         \
+        moreutils   \
+        pipexec     \
         ruby
 }
 
@@ -34,7 +34,7 @@ beacon_node() {
         "
             preset: Minimal
             genesis_state_path: "<(genesis_state)"
-            network_dir: /tmp/eth2_network_libp2p_$LIBP2P_PORT
+            network_dir: /tmp/beacon_node
             libp2p_port: $LIBP2P_PORT
             discovery_port: $LIBP2P_PORT
             libp2p_nodes:
@@ -42,31 +42,32 @@ beacon_node() {
         "
 }
 
+lighthouse() {
+    exec cargo run                                   \
+        --bin lighthouse                             \
+        --manifest-path "$lighthouse_dir"/Cargo.toml \
+        --release                                    \
+        --                                           \
+        "$@"
+}
+
 lighthouse_beacon_node() {
-    exec cargo run                                                      \
-        --bin lighthouse                                                \
-        --manifest-path "$lighthouse_dir"/Cargo.toml                    \
-        --release                                                       \
-        --                                                              \
-        --datadir /tmp/lighthouse_beacon_node_"$LIGHTHOUSE_LIBP2P_PORT" \
-        --spec minimal                                                  \
-        beacon_node                                                     \
-        --dummy-eth1                                                    \
-        --http                                                          \
-        --http-port "$LIGHTHOUSE_HTTP_PORT"                             \
-        --libp2p-addresses /dns4/localhost/tcp/"$LIBP2P_PORT"           \
-        --port "$LIGHTHOUSE_LIBP2P_PORT"                                \
-        testnet                                                         \
-        --force                                                         \
+    lighthouse                                                \
+        --datadir /tmp/lighthouse_beacon_node                 \
+        --spec minimal                                        \
+        beacon_node                                           \
+        --dummy-eth1                                          \
+        --http                                                \
+        --http-port "$LIGHTHOUSE_HTTP_PORT"                   \
+        --libp2p-addresses /dns4/localhost/tcp/"$LIBP2P_PORT" \
+        --port "$LIGHTHOUSE_LIBP2P_PORT"                      \
+        testnet                                               \
+        --force                                               \
         quick "$VALIDATOR_COUNT" "$genesis_time"
 }
 
 lighthouse_validator_client() {
-    exec cargo run                                        \
-        --bin lighthouse                                  \
-        --manifest-path "$lighthouse_dir"/Cargo.toml      \
-        --release                                         \
-        --                                                \
+    lighthouse                                            \
         --datadir /tmp/lighthouse_validator_client        \
         --spec minimal                                    \
         validator_client                                  \

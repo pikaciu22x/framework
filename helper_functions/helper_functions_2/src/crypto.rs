@@ -32,13 +32,13 @@ pub fn bls_verify_multiple(
 ) -> Result<bool, DecodeError> {
     let sg = AggregateSignature::from_bytes(signature.as_bytes().as_slice())?;
 
-    let mut pks: Vec<AggregatePublicKey> = Vec::new();
-    for pk_bytes in pubkeys {
-        let pk = AggregatePublicKey::from_bytes(pk_bytes.as_bytes().as_slice())?;
-        pks.push(pk);
+    let mut apk = AggregatePublicKey::new();
+    for pkb in pubkeys {
+        let pk = (*pkb).try_into()?;
+        apk.add(&pk);
     }
 
-    Ok(sg.verify_multiple(messages, domain, &pks.iter().collect::<Vec<_>>()))
+    Ok(sg.verify_multiple(messages, domain, &[&apk]))
 }
 
 pub fn bls_aggregate_pubkeys(pubkeys: &[PublicKey]) -> AggregatePublicKey {

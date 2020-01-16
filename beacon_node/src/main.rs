@@ -4,7 +4,7 @@ use anyhow::Result;
 use eth2_core::ExpConst;
 use eth2_network_libp2p::Qutex;
 use futures::{Future as _, Stream as _};
-use log::error;
+use log::{error, Level};
 use serde::de::DeserializeOwned;
 use tokio::runtime::current_thread;
 use types::config::{Config, MainnetConfig, MinimalConfig};
@@ -21,7 +21,7 @@ mod runtime_config;
 mod slot_timer;
 
 fn main() {
-    simple_logger::init().expect("logger was already initialized");
+    simple_logger::init_with_level(Level::Info).expect("logger was already initialized");
     if let Err(error) = parse_args_and_run_node() {
         error!("{}", error);
         process::exit(1);

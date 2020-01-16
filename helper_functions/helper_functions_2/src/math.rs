@@ -1,4 +1,4 @@
-use crate::error::Error;
+use types::helper_functions_types::Error;
 use std::convert::TryInto;
 
 // inteface has changed

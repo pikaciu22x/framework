@@ -1,5 +1,4 @@
 use super::beacon_state_accessors as accessors;
-use super::error::Error;
 use crate::beacon_state_accessors::get_current_epoch;
 use crate::beacon_state_accessors::get_validator_churn_limit;
 use crate::misc::compute_activation_exit_epoch;
@@ -10,6 +9,7 @@ use types::beacon_state::BeaconState;
 use types::config::Config;
 use types::config::MainnetConfig;
 use types::consts::FAR_FUTURE_EPOCH;
+use types::helper_functions_types::Error;
 use types::primitives::{Epoch, Gwei, ValidatorIndex};
 
 pub fn increase_balance<C: Config>(

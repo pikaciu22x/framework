@@ -178,9 +178,12 @@ mod tests {
     use std::thread;
 
     use futures::{future, sync::mpsc, Async, Future as _};
+    use test_case::test_case;
     use tokio::runtime::Builder;
     use types::config::MinimalConfig;
     use void::ResultVoidExt as _;
+
+    use crate::fake_time::{FakeInstant, FakeSystemTime, Timespec};
 
     use super::*;
 
@@ -229,16 +232,6 @@ mod tests {
 
         Ok(())
     }
-}
-
-#[cfg(test)]
-mod next_tick_with_instant_tests {
-    use test_case::test_case;
-    use types::config::MinimalConfig;
-
-    use crate::fake_time::{FakeInstant, FakeSystemTime, Timespec};
-
-    use super::*;
 
     #[test_case(100, Tick::SlotStart(1),    777; "0th slot start before genesis")]
     #[test_case(777, Tick::SlotStart(1),    777; "0th slot start at genesis")]
@@ -247,7 +240,11 @@ mod next_tick_with_instant_tests {
     #[test_case(781, Tick::SlotStart(2),    783; "1st slot start 4 seconds after genesis")]
     #[test_case(783, Tick::SlotStart(2),    783; "1st slot start 6 seconds after genesis")]
     #[test_case(784, Tick::SlotMidpoint(2), 786; "1st slot midpoint 7 seconds after genesis")]
-    fn produces(now: UnixSeconds, expected_tick: Tick, expected_timestamp: UnixSeconds) {
+    fn next_tick_with_instant_produces(
+        now: UnixSeconds,
+        expected_tick: Tick,
+        expected_timestamp: UnixSeconds,
+    ) {
         let now_timespec = Timespec::from_secs(now);
         let expected_instant = FakeInstant(Timespec::from_secs(expected_timestamp));
 

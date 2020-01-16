@@ -2,9 +2,7 @@
 pub enum Error {
     SlotOutOfRange,
     IndexOutOfRange,
-    CustodyBit1Set,
-    CustodyBitIndicesNotSorted,
-    CustodyBitIndicesIntersect,
+    IndicesNotSorted,
     IndicesExceedMaxValidators,
     InvalidSignature,
     NumberExceedsCapacity,

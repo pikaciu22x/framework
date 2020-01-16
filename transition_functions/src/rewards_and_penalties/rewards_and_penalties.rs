@@ -51,9 +51,11 @@ where
             / T::base_rewards_per_epoch()) as Gwei;
     }
 
-    fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
-        let previous_epoch = self.get_previous_epoch();
-        let total_balance = self.get_total_active_balance().unwrap();
+    fn get_attestation_deltas(
+        &self
+    ) -> (Vec<Gwei>, Vec<Gwei>) {
+        let previous_epoch = get_previous_epoch(self);
+        let total_balance = get_total_active_balance(self).unwrap();
         let mut rewards = Vec::new();
         let mut penalties = Vec::new();
         let mut eligible_validator_indices: Vec<ValidatorIndex> = Vec::new();
@@ -95,27 +97,13 @@ where
         }
 
         //# Proposer and inclusion delay micro-rewards
-        for index in self
-            .get_unslashed_attesting_indices(matching_source_attestations.clone())
-            .iter()
-        {
-            let attestation = matching_source_attestations
-                .iter()
-                .fold(None, |min, x| match min {
+        for index in self.get_unslashed_attesting_indices(matching_source_attestations.clone()).iter() {
+            let attestation = matching_source_attestations.iter().fold(None, |min, x| match min {
                     None => Some(x),
                     Some(y) => Some(
-                        if get_attesting_indices(self, &x.data, &x.aggregation_bits)
-                            .unwrap()
-                            .any(|&x| x == *index)
-                            && x.inclusion_delay < y.inclusion_delay
-                        {
-                            x
-                        } else {
-                            y
-                        },
-                    ),
-                })
-                .unwrap();
+                        if get_attesting_indices(self, &x.data, &x.aggregation_bits).unwrap().contains(index)
+                            && x.inclusion_delay < y.inclusion_delay { x } else { y }),
+                }).unwrap();
 
             let proposer_reward =
                 (self.get_base_reward(*index) / T::proposer_reward_quotient()) as Gwei;
