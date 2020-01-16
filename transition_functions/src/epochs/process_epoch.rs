@@ -6,8 +6,9 @@ use helper_functions::{
         get_randao_mix,
         get_total_active_balance,
         get_validator_churn_limit,
-        BeaconStateAccessor,
         get_current_epoch,
+        get_previous_epoch,
+        get_block_root
     },
     beacon_state_mutators::{
         initiate_validator_exit,
@@ -202,14 +203,17 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 fn process_rewards_and_penalties<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
+    let mut state_copy = state.clone();
+
+
     if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
 
     let (rewards, penalties) = state.get_attestation_deltas();
     for (index, validator) in state.validators.iter_mut().enumerate() {
-        increase_balance(validator, rewards[index]).unwrap();
-        decrease_balance(validator, penalties[index]).unwrap();
+        increase_balance(&mut state_copy, index as u64, rewards[index]).unwrap();
+        decrease_balance(&mut state_copy, index as u64, penalties[index]).unwrap();
     }
 
     Ok(())
@@ -220,7 +224,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for validator in state.validators.clone().iter_mut() {
+    for (index,validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
             && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
         {
@@ -229,7 +233,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
             let penalty_numerator = validator.effective_balance / increment
                 * cmp::min(slashings_sum * 3, total_balance);
             let penalty = penalty_numerator / total_balance * increment;
-            decrease_balance(validator, penalty).unwrap();
+            decrease_balance(state, index as u64, penalty).unwrap();
         }
     }
 }
