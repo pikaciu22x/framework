@@ -273,7 +273,7 @@ pub fn get_attesting_indices<C: Config>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ssz_types::{typenum, FixedVector};
+    use ssz_types::{typenum, FixedVector, VariableList};
     use types::config::MinimalConfig;
     use types::types::Validator;
 

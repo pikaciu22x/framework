@@ -186,7 +186,7 @@ mod tests {
                 epoch: 0,
                 root: H256([0; 32]),
             },
-            crosslink: default_crosslink(),
+            // crosslink: default_crosslink(),
             index: 0,
             slot: 0,
         }
@@ -406,6 +406,7 @@ mod tests {
         use super::*;
         use bls::{AggregateSignature, SecretKey, Signature};
         use types::config::MainnetConfig;
+        use types::types::AttestationDataAndCustodyBit;
 
         #[test]
         fn custody_bit1_set() {
