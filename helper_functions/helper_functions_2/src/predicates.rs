@@ -143,446 +143,446 @@ pub fn is_valid_merkle_branch(
     Ok(H256::from_slice(&value_bytes) == *root)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use bls::{PublicKey, SecretKey};
-    //use std::u64::max_value() as epoch_max;
-    const EPOCH_MAX: u64 = u64::max_value();
-    use types::primitives::H256;
-    use types::types::{Checkpoint, Crosslink};
-
-    fn default_validator() -> Validator {
-        Validator {
-            effective_balance: 0,
-            slashed: false,
-            activation_eligibility_epoch: EPOCH_MAX,
-            activation_epoch: EPOCH_MAX,
-            exit_epoch: EPOCH_MAX,
-            withdrawable_epoch: EPOCH_MAX,
-            withdrawal_credentials: H256([0; 32]),
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
-        }
-    }
-
-    const fn default_crosslink() -> Crosslink {
-        Crosslink {
-            shard: 0,
-            parent_root: H256([0; 32]),
-            start_epoch: 0,
-            end_epoch: 1,
-            data_root: H256([0; 32]),
-        }
-    }
-
-    const fn default_attestation_data() -> AttestationData {
-        AttestationData {
-            beacon_block_root: H256([0; 32]),
-            source: Checkpoint {
-                epoch: 0,
-                root: H256([0; 32]),
-            },
-            target: Checkpoint {
-                epoch: 0,
-                root: H256([0; 32]),
-            },
-            // crosslink: default_crosslink(),
-            index: 0,
-            slot: 0,
-        }
-    }
-
-    #[test]
-    fn test_not_activated() {
-        let validator = default_validator();
-        let epoch: u64 = 10;
-
-        assert!(!is_active_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_activated() {
-        let mut validator = default_validator();
-        validator.activation_epoch = 4;
-        let epoch: u64 = 10;
-
-        assert!(is_active_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_exited() {
-        let mut validator = default_validator();
-        validator.activation_epoch = 1;
-        validator.exit_epoch = 10;
-        let epoch: u64 = 10;
-
-        assert!(!is_active_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_already_slashed() {
-        let mut validator = default_validator();
-        validator.activation_epoch = 1;
-        validator.slashed = true;
-        let epoch: u64 = 10;
-
-        assert!(!is_slashable_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_not_slashable_not_active() {
-        let validator = default_validator();
-        let epoch: u64 = 10;
-
-        assert!(!is_slashable_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_not_slashable_withdrawable() {
-        let mut validator = default_validator();
-        validator.activation_epoch = 1;
-        validator.withdrawable_epoch = 9;
-        let epoch: u64 = 10;
-
-        assert!(!is_slashable_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_slashable() {
-        let mut validator = default_validator();
-        validator.activation_epoch = 1;
-        validator.withdrawable_epoch = 11;
-        let epoch: u64 = 10;
-
-        assert!(is_slashable_validator(&validator, epoch));
-    }
-
-    #[test]
-    fn test_double_vote_attestation_data() {
-        let mut data_1 = default_attestation_data();
-        let data_2 = default_attestation_data();
-        data_1.target.root = H256([1; 32]);
-
-        assert!(is_slashable_attestation_data(&data_1, &data_2));
-    }
-
-    #[test]
-    fn test_equal_attestation_data() {
-        let data_1 = default_attestation_data();
-        let data_2 = default_attestation_data();
-
-        assert!(!is_slashable_attestation_data(&data_1, &data_2));
-    }
-
-    #[test]
-    fn test_surround_vote_attestation_data() {
-        let mut data_1 = default_attestation_data();
-        let mut data_2 = default_attestation_data();
-        data_1.source.epoch = 0;
-        data_2.source.epoch = 1;
-        data_1.target.epoch = 4;
-        data_2.target.epoch = 3;
-
-        assert!(is_slashable_attestation_data(&data_1, &data_2));
-    }
-
-    #[test]
-    fn test_not_slashable_attestation_data() {
-        let mut data_1 = default_attestation_data();
-        let mut data_2 = default_attestation_data();
-        data_1.source.epoch = 0;
-        data_1.target.epoch = 4;
-        data_2.source.epoch = 4;
-        data_2.target.epoch = 5;
-        data_2.source.root = H256([1; 32]);
-        data_2.target.root = H256([1; 32]);
-
-        assert!(!is_slashable_attestation_data(&data_1, &data_2));
-    }
-
-    fn hash_concat(v1: H256, v2: H256) -> H256 {
-        let mut val = v1.as_bytes().to_vec();
-        val.append(&mut v2.as_bytes().to_vec());
-        H256::from_slice(crypto::hash(val.as_slice()).as_slice())
-    }
-
-    #[test]
-    fn test_valid_merkle_branch() {
-        let leaf_b00 = H256::from([0xAA; 32]);
-        let leaf_b01 = H256::from([0xBB; 32]);
-        let leaf_b10 = H256::from([0xCC; 32]);
-        let leaf_b11 = H256::from([0xDD; 32]);
-
-        let node_b0x = hash_concat(leaf_b00, leaf_b01);
-        let node_b1x = hash_concat(leaf_b10, leaf_b11);
-
-        let root = hash_concat(node_b0x, node_b1x);
-
-        assert!(
-            is_valid_merkle_branch(&leaf_b00, &[leaf_b01, node_b1x], 2, 0, &root)
-                .expect("Unexpected error")
-        );
-
-        assert!(
-            is_valid_merkle_branch(&leaf_b01, &[leaf_b00, node_b1x], 2, 1, &root)
-                .expect("Unexpected error")
-        );
-
-        assert!(
-            is_valid_merkle_branch(&leaf_b10, &[leaf_b11, node_b0x], 2, 2, &root)
-                .expect("Unexpected error")
-        );
-
-        assert!(
-            is_valid_merkle_branch(&leaf_b11, &[leaf_b10, node_b0x], 2, 3, &root)
-                .expect("Unexpected error")
-        );
-    }
-
-    #[test]
-    fn test_merkle_branch_depth() {
-        let leaf_b00 = H256::from([0xAF; 32]);
-        let leaf_b01 = H256::from([0xBB; 32]);
-        let leaf_b10 = H256::from([0xCE; 32]);
-        let leaf_b11 = H256::from([0xDB; 32]);
-
-        let node_b0x = hash_concat(leaf_b00, leaf_b01);
-        let node_b1x = hash_concat(leaf_b10, leaf_b11);
-
-        let root = hash_concat(node_b0x, node_b1x);
-
-        assert!(
-            is_valid_merkle_branch(&leaf_b00, &[leaf_b01], 1, 0, &node_b0x)
-                .expect("Unexpected error")
-        );
-
-        assert_eq!(
-            is_valid_merkle_branch(&leaf_b00, &[leaf_b01], 3, 0, &root),
-            Err(Error::IndexOutOfRange)
-        );
-    }
-
-    #[test]
-    fn test_invalid_merkle_branch() {
-        let leaf_b00 = H256::from([0xFF; 32]);
-        let leaf_b01 = H256::from([0xAB; 32]);
-        let leaf_b10 = H256::from([0xCE; 32]);
-        let leaf_b11 = H256::from([0xDB; 32]);
-
-        let node_b0x = hash_concat(leaf_b00, leaf_b01);
-        let node_b1x = hash_concat(leaf_b10, leaf_b11);
-
-        let root = hash_concat(node_b0x, node_b1x);
-
-        assert!(!is_valid_merkle_branch(
-            &leaf_b00,
-            &[leaf_b01, node_b0x], // should be node_b1x
-            2,
-            0,
-            &root
-        )
-        .expect("Unexpected error"));
-
-        assert!(!is_valid_merkle_branch(
-            &leaf_b11,
-            &[leaf_b10, node_b0x],
-            2,
-            3,
-            &H256::from([0xFF; 32])
-        ) // Wrong root
-        .expect("Unexpected error"));
-
-        assert!(!is_valid_merkle_branch(
-            &leaf_b11,
-            &[leaf_b10, node_b0x],
-            2,
-            0, // Wrong index
-            &root
-        )
-        .expect("Unexpected error"));
-    }
-
-    mod validate_indexed_attestation_tests {
-        use super::*;
-        use bls::{AggregateSignature, SecretKey, Signature};
-        use types::config::MainnetConfig;
-        use types::types::AttestationDataAndCustodyBit;
-
-        #[test]
-        fn custody_bit1_set() {
-            let state: BeaconState<MainnetConfig> = BeaconState::default();
-            let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
-            attestation
-                .custody_bit_1_indices
-                .push(1)
-                .expect("Unable to add custody bit index");
-
-            assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
-                Err(Error::CustodyBit1Set)
-            );
-        }
-
-        #[test]
-        fn index_set_not_sorted() {
-            let state: BeaconState<MainnetConfig> = BeaconState::default();
-            let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
-            attestation
-                .custody_bit_0_indices
-                .push(2)
-                .expect("Unable to add custody bit index");
-            attestation
-                .custody_bit_0_indices
-                .push(1)
-                .expect("Unable to add custody bit index");
-            attestation
-                .custody_bit_0_indices
-                .push(3)
-                .expect("Unable to add custody bit index");
-
-            assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
-                Err(Error::IndicesNotSorted)
-            );
-        }
-
-        #[test]
-        fn non_existent_validators() {
-            let state: BeaconState<MainnetConfig> = BeaconState::default();
-            let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
-            attestation
-                .custody_bit_0_indices
-                .push(0)
-                .expect("Unable to add custody bit index");
-
-            assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
-                Err(Error::IndexOutOfRange)
-            );
-        }
-
-        #[test]
-        fn invalid_signature() {
-            let mut state: BeaconState<MainnetConfig> = BeaconState::default();
-            let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
-            attestation
-                .custody_bit_0_indices
-                .push(0)
-                .expect("Unable to add custody bit index");
-            attestation
-                .custody_bit_0_indices
-                .push(1)
-                .expect("Unable to add custody bit index");
-            attestation
-                .custody_bit_0_indices
-                .push(2)
-                .expect("Unable to add custody bit index");
-
-            // default_validator() generates randome public key
-            state
-                .validators
-                .push(default_validator())
-                .expect("Expected successfull push to validator collection");
-            state
-                .validators
-                .push(default_validator())
-                .expect("Expected successfull push to validator collection");
-            state
-                .validators
-                .push(default_validator())
-                .expect("Expected successfull push to validator collection");
-
-            assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
-                Err(Error::InvalidSignature)
-            );
-        }
-
-        #[test]
-        fn valid_signature() {
-            let mut state: BeaconState<MainnetConfig> = BeaconState::default();
-            let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
-            attestation
-                .custody_bit_0_indices
-                .push(0)
-                .expect("Unable to add custody bit index");
-            attestation
-                .custody_bit_0_indices
-                .push(1)
-                .expect("Unable to add custody bit index");
-
-            let skey1 = SecretKey::random();
-            let pkey1 = PublicKey::from_secret_key(&skey1);
-            let v1 = Validator {
-                pubkey: pkey1,
-                ..default_validator()
-            };
-
-            let skey2 = SecretKey::random();
-            let pkey2 = PublicKey::from_secret_key(&skey2);
-            let v2 = Validator {
-                pubkey: pkey2,
-                ..default_validator()
-            };
-
-            state
-                .validators
-                .push(v1)
-                .expect("Expectected successfull push");
-            state
-                .validators
-                .push(v2)
-                .expect("Expectected successfull push");
-
-            attestation.data.beacon_block_root = H256([0xFF; 32]);
-
-            let digest1 = AttestationDataAndCustodyBit {
-                data: attestation.data.clone(),
-                custody_bit: false,
-            }
-            .tree_hash_root();
-
-            let sig1 = Signature::new(
-                digest1.as_slice(),
-                //TODO: should pass DOMAIN_BEACON_ATTESTER domain type (does not exist in config)
-                accessors::get_domain(
-                    &state,
-                    DOMAIN_BEACON_ATTESTER,
-                    Some(attestation.data.target.epoch),
-                ),
-                &skey1,
-            );
-            let sig2 = Signature::new(
-                digest1.as_slice(),
-                //TODO: should pass DOMAIN_BEACON_ATTESTER domain type (does not exist in config)
-                accessors::get_domain(
-                    &state,
-                    DOMAIN_BEACON_ATTESTER,
-                    Some(attestation.data.target.epoch),
-                ),
-                &skey2,
-            );
-
-            let mut asig = AggregateSignature::new();
-            asig.add(&sig1);
-            asig.add(&sig2);
-
-            attestation.signature = asig;
-
-            let aggr_pubkey =
-                aggregate_validator_public_keys(&attestation.custody_bit_0_indices, &state)
-                    .expect("Success");
-            assert!(attestation.signature.verify(
-                &digest1,
-                accessors::get_domain(
-                    &state,
-                    DOMAIN_BEACON_ATTESTER,
-                    Some(attestation.data.target.epoch)
-                ),
-                &aggr_pubkey,
-            ));
-
-            assert_eq!(validate_indexed_attestation(&state, &attestation), Ok(()));
-        }
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use bls::{PublicKey, SecretKey};
+//     //use std::u64::max_value() as epoch_max;
+//     const EPOCH_MAX: u64 = u64::max_value();
+//     use types::primitives::H256;
+//     use types::types::{Checkpoint, Crosslink};
+
+//     fn default_validator() -> Validator {
+//         Validator {
+//             effective_balance: 0,
+//             slashed: false,
+//             activation_eligibility_epoch: EPOCH_MAX,
+//             activation_epoch: EPOCH_MAX,
+//             exit_epoch: EPOCH_MAX,
+//             withdrawable_epoch: EPOCH_MAX,
+//             withdrawal_credentials: H256([0; 32]),
+//             pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+//         }
+//     }
+
+//     const fn default_crosslink() -> Crosslink {
+//         Crosslink {
+//             shard: 0,
+//             parent_root: H256([0; 32]),
+//             start_epoch: 0,
+//             end_epoch: 1,
+//             data_root: H256([0; 32]),
+//         }
+//     }
+
+//     const fn default_attestation_data() -> AttestationData {
+//         AttestationData {
+//             beacon_block_root: H256([0; 32]),
+//             source: Checkpoint {
+//                 epoch: 0,
+//                 root: H256([0; 32]),
+//             },
+//             target: Checkpoint {
+//                 epoch: 0,
+//                 root: H256([0; 32]),
+//             },
+//             // crosslink: default_crosslink(),
+//             index: 0,
+//             slot: 0,
+//         }
+//     }
+
+//     #[test]
+//     fn test_not_activated() {
+//         let validator = default_validator();
+//         let epoch: u64 = 10;
+
+//         assert!(!is_active_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_activated() {
+//         let mut validator = default_validator();
+//         validator.activation_epoch = 4;
+//         let epoch: u64 = 10;
+
+//         assert!(is_active_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_exited() {
+//         let mut validator = default_validator();
+//         validator.activation_epoch = 1;
+//         validator.exit_epoch = 10;
+//         let epoch: u64 = 10;
+
+//         assert!(!is_active_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_already_slashed() {
+//         let mut validator = default_validator();
+//         validator.activation_epoch = 1;
+//         validator.slashed = true;
+//         let epoch: u64 = 10;
+
+//         assert!(!is_slashable_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_not_slashable_not_active() {
+//         let validator = default_validator();
+//         let epoch: u64 = 10;
+
+//         assert!(!is_slashable_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_not_slashable_withdrawable() {
+//         let mut validator = default_validator();
+//         validator.activation_epoch = 1;
+//         validator.withdrawable_epoch = 9;
+//         let epoch: u64 = 10;
+
+//         assert!(!is_slashable_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_slashable() {
+//         let mut validator = default_validator();
+//         validator.activation_epoch = 1;
+//         validator.withdrawable_epoch = 11;
+//         let epoch: u64 = 10;
+
+//         assert!(is_slashable_validator(&validator, epoch));
+//     }
+
+//     #[test]
+//     fn test_double_vote_attestation_data() {
+//         let mut data_1 = default_attestation_data();
+//         let data_2 = default_attestation_data();
+//         data_1.target.root = H256([1; 32]);
+
+//         assert!(is_slashable_attestation_data(&data_1, &data_2));
+//     }
+
+//     #[test]
+//     fn test_equal_attestation_data() {
+//         let data_1 = default_attestation_data();
+//         let data_2 = default_attestation_data();
+
+//         assert!(!is_slashable_attestation_data(&data_1, &data_2));
+//     }
+
+//     #[test]
+//     fn test_surround_vote_attestation_data() {
+//         let mut data_1 = default_attestation_data();
+//         let mut data_2 = default_attestation_data();
+//         data_1.source.epoch = 0;
+//         data_2.source.epoch = 1;
+//         data_1.target.epoch = 4;
+//         data_2.target.epoch = 3;
+
+//         assert!(is_slashable_attestation_data(&data_1, &data_2));
+//     }
+
+//     #[test]
+//     fn test_not_slashable_attestation_data() {
+//         let mut data_1 = default_attestation_data();
+//         let mut data_2 = default_attestation_data();
+//         data_1.source.epoch = 0;
+//         data_1.target.epoch = 4;
+//         data_2.source.epoch = 4;
+//         data_2.target.epoch = 5;
+//         data_2.source.root = H256([1; 32]);
+//         data_2.target.root = H256([1; 32]);
+
+//         assert!(!is_slashable_attestation_data(&data_1, &data_2));
+//     }
+
+//     fn hash_concat(v1: H256, v2: H256) -> H256 {
+//         let mut val = v1.as_bytes().to_vec();
+//         val.append(&mut v2.as_bytes().to_vec());
+//         H256::from_slice(crypto::hash(val.as_slice()).as_slice())
+//     }
+
+//     #[test]
+//     fn test_valid_merkle_branch() {
+//         let leaf_b00 = H256::from([0xAA; 32]);
+//         let leaf_b01 = H256::from([0xBB; 32]);
+//         let leaf_b10 = H256::from([0xCC; 32]);
+//         let leaf_b11 = H256::from([0xDD; 32]);
+
+//         let node_b0x = hash_concat(leaf_b00, leaf_b01);
+//         let node_b1x = hash_concat(leaf_b10, leaf_b11);
+
+//         let root = hash_concat(node_b0x, node_b1x);
+
+//         assert!(
+//             is_valid_merkle_branch(&leaf_b00, &[leaf_b01, node_b1x], 2, 0, &root)
+//                 .expect("Unexpected error")
+//         );
+
+//         assert!(
+//             is_valid_merkle_branch(&leaf_b01, &[leaf_b00, node_b1x], 2, 1, &root)
+//                 .expect("Unexpected error")
+//         );
+
+//         assert!(
+//             is_valid_merkle_branch(&leaf_b10, &[leaf_b11, node_b0x], 2, 2, &root)
+//                 .expect("Unexpected error")
+//         );
+
+//         assert!(
+//             is_valid_merkle_branch(&leaf_b11, &[leaf_b10, node_b0x], 2, 3, &root)
+//                 .expect("Unexpected error")
+//         );
+//     }
+
+//     #[test]
+//     fn test_merkle_branch_depth() {
+//         let leaf_b00 = H256::from([0xAF; 32]);
+//         let leaf_b01 = H256::from([0xBB; 32]);
+//         let leaf_b10 = H256::from([0xCE; 32]);
+//         let leaf_b11 = H256::from([0xDB; 32]);
+
+//         let node_b0x = hash_concat(leaf_b00, leaf_b01);
+//         let node_b1x = hash_concat(leaf_b10, leaf_b11);
+
+//         let root = hash_concat(node_b0x, node_b1x);
+
+//         assert!(
+//             is_valid_merkle_branch(&leaf_b00, &[leaf_b01], 1, 0, &node_b0x)
+//                 .expect("Unexpected error")
+//         );
+
+//         assert_eq!(
+//             is_valid_merkle_branch(&leaf_b00, &[leaf_b01], 3, 0, &root),
+//             Err(Error::IndexOutOfRange)
+//         );
+//     }
+
+//     #[test]
+//     fn test_invalid_merkle_branch() {
+//         let leaf_b00 = H256::from([0xFF; 32]);
+//         let leaf_b01 = H256::from([0xAB; 32]);
+//         let leaf_b10 = H256::from([0xCE; 32]);
+//         let leaf_b11 = H256::from([0xDB; 32]);
+
+//         let node_b0x = hash_concat(leaf_b00, leaf_b01);
+//         let node_b1x = hash_concat(leaf_b10, leaf_b11);
+
+//         let root = hash_concat(node_b0x, node_b1x);
+
+//         assert!(!is_valid_merkle_branch(
+//             &leaf_b00,
+//             &[leaf_b01, node_b0x], // should be node_b1x
+//             2,
+//             0,
+//             &root
+//         )
+//         .expect("Unexpected error"));
+
+//         assert!(!is_valid_merkle_branch(
+//             &leaf_b11,
+//             &[leaf_b10, node_b0x],
+//             2,
+//             3,
+//             &H256::from([0xFF; 32])
+//         ) // Wrong root
+//         .expect("Unexpected error"));
+
+//         assert!(!is_valid_merkle_branch(
+//             &leaf_b11,
+//             &[leaf_b10, node_b0x],
+//             2,
+//             0, // Wrong index
+//             &root
+//         )
+//         .expect("Unexpected error"));
+//     }
+
+//     mod validate_indexed_attestation_tests {
+//         use super::*;
+//         use bls::{AggregateSignature, SecretKey, Signature};
+//         use types::config::MainnetConfig;
+//         use types::types::AttestationDataAndCustodyBit;
+
+//         #[test]
+//         fn custody_bit1_set() {
+//             let state: BeaconState<MainnetConfig> = BeaconState::default();
+//             let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+//             attestation
+//                 .custody_bit_1_indices
+//                 .push(1)
+//                 .expect("Unable to add custody bit index");
+
+//             assert_eq!(
+//                 validate_indexed_attestation(&state, &attestation),
+//                 Err(Error::CustodyBit1Set)
+//             );
+//         }
+
+//         #[test]
+//         fn index_set_not_sorted() {
+//             let state: BeaconState<MainnetConfig> = BeaconState::default();
+//             let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(2)
+//                 .expect("Unable to add custody bit index");
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(1)
+//                 .expect("Unable to add custody bit index");
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(3)
+//                 .expect("Unable to add custody bit index");
+
+//             assert_eq!(
+//                 validate_indexed_attestation(&state, &attestation),
+//                 Err(Error::IndicesNotSorted)
+//             );
+//         }
+
+//         #[test]
+//         fn non_existent_validators() {
+//             let state: BeaconState<MainnetConfig> = BeaconState::default();
+//             let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(0)
+//                 .expect("Unable to add custody bit index");
+
+//             assert_eq!(
+//                 validate_indexed_attestation(&state, &attestation),
+//                 Err(Error::IndexOutOfRange)
+//             );
+//         }
+
+//         #[test]
+//         fn invalid_signature() {
+//             let mut state: BeaconState<MainnetConfig> = BeaconState::default();
+//             let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(0)
+//                 .expect("Unable to add custody bit index");
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(1)
+//                 .expect("Unable to add custody bit index");
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(2)
+//                 .expect("Unable to add custody bit index");
+
+//             // default_validator() generates randome public key
+//             state
+//                 .validators
+//                 .push(default_validator())
+//                 .expect("Expected successfull push to validator collection");
+//             state
+//                 .validators
+//                 .push(default_validator())
+//                 .expect("Expected successfull push to validator collection");
+//             state
+//                 .validators
+//                 .push(default_validator())
+//                 .expect("Expected successfull push to validator collection");
+
+//             assert_eq!(
+//                 validate_indexed_attestation(&state, &attestation),
+//                 Err(Error::InvalidSignature)
+//             );
+//         }
+
+//         #[test]
+//         fn valid_signature() {
+//             let mut state: BeaconState<MainnetConfig> = BeaconState::default();
+//             let mut attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(0)
+//                 .expect("Unable to add custody bit index");
+//             attestation
+//                 .custody_bit_0_indices
+//                 .push(1)
+//                 .expect("Unable to add custody bit index");
+
+//             let skey1 = SecretKey::random();
+//             let pkey1 = PublicKey::from_secret_key(&skey1);
+//             let v1 = Validator {
+//                 pubkey: pkey1,
+//                 ..default_validator()
+//             };
+
+//             let skey2 = SecretKey::random();
+//             let pkey2 = PublicKey::from_secret_key(&skey2);
+//             let v2 = Validator {
+//                 pubkey: pkey2,
+//                 ..default_validator()
+//             };
+
+//             state
+//                 .validators
+//                 .push(v1)
+//                 .expect("Expectected successfull push");
+//             state
+//                 .validators
+//                 .push(v2)
+//                 .expect("Expectected successfull push");
+
+//             attestation.data.beacon_block_root = H256([0xFF; 32]);
+
+//             let digest1 = AttestationDataAndCustodyBit {
+//                 data: attestation.data.clone(),
+//                 custody_bit: false,
+//             }
+//             .tree_hash_root();
+
+//             let sig1 = Signature::new(
+//                 digest1.as_slice(),
+//                 //TODO: should pass DOMAIN_BEACON_ATTESTER domain type (does not exist in config)
+//                 accessors::get_domain(
+//                     &state,
+//                     DOMAIN_BEACON_ATTESTER,
+//                     Some(attestation.data.target.epoch),
+//                 ),
+//                 &skey1,
+//             );
+//             let sig2 = Signature::new(
+//                 digest1.as_slice(),
+//                 //TODO: should pass DOMAIN_BEACON_ATTESTER domain type (does not exist in config)
+//                 accessors::get_domain(
+//                     &state,
+//                     DOMAIN_BEACON_ATTESTER,
+//                     Some(attestation.data.target.epoch),
+//                 ),
+//                 &skey2,
+//             );
+
+//             let mut asig = AggregateSignature::new();
+//             asig.add(&sig1);
+//             asig.add(&sig2);
+
+//             attestation.signature = asig;
+
+//             let aggr_pubkey =
+//                 aggregate_validator_public_keys(&attestation.custody_bit_0_indices, &state)
+//                     .expect("Success");
+//             assert!(attestation.signature.verify(
+//                 &digest1,
+//                 accessors::get_domain(
+//                     &state,
+//                     DOMAIN_BEACON_ATTESTER,
+//                     Some(attestation.data.target.epoch)
+//                 ),
+//                 &aggr_pubkey,
+//             ));
+
+//             assert_eq!(validate_indexed_attestation(&state, &attestation), Ok(()));
+//         }
+//     }
+// }
