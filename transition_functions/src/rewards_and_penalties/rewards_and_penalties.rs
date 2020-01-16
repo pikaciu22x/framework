@@ -3,7 +3,10 @@ use core::consts::ExpConst;
 use helper_functions::{
     beacon_state_accessors::{
         get_attesting_indices,
-        BeaconStateAccessor,
+        get_total_active_balance,
+        get_current_epoch,
+        get_total_balance,
+        get_previous_epoch,
     },
     beacon_state_mutators::{
         decrease_balance, 
@@ -44,7 +47,7 @@ where
     T: Config + ExpConst,
 {
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei {
-        let total_balance = self.get_total_active_balance().unwrap();
+        let total_balance = get_total_active_balance(self).unwrap();
         let effective_balance = self.validators[index as usize].effective_balance;
         return (effective_balance * T::base_reward_factor()
             / integer_squareroot(total_balance)
@@ -81,8 +84,7 @@ where
 
         for attestations in vec.into_iter() {
             let unslashed_attesting_indices = self.get_unslashed_attesting_indices(attestations);
-            let attesting_balance = self
-                .get_total_balance(&unslashed_attesting_indices)
+            let attesting_balance = get_total_balance(self, &unslashed_attesting_indices)
                 .unwrap();
 
             for index in eligible_validator_indices.iter() {
@@ -130,13 +132,13 @@ where
     }
 
     fn process_rewards_and_penalties(&mut self) {
-        if self.get_current_epoch() == T::genesis_epoch() {
+        if get_current_epoch(self) == T::genesis_epoch() {
             return;
         }
         let (rewards, penalties) = self.get_attestation_deltas();
         for (index, validator) in self.validators.iter_mut().enumerate() {
-            increase_balance(validator, rewards[index]).unwrap();
-            decrease_balance(validator, penalties[index]).unwrap();
+            increase_balance(self, index as u64, rewards[index]).unwrap();
+            decrease_balance(self, index as u64, penalties[index]).unwrap();
         }
     }
 }

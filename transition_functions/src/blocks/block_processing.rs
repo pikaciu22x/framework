@@ -120,11 +120,11 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     // let pubkey = bls::PublicKey::from_bytes(&deposit.data.pubkey.clone().as_bytes()).unwrap();
     let amount = deposit.data.amount;
 
-    for validator in state.validators.iter_mut() {
+    for (index, validator) in state.validators.iter_mut().enumerate() {
         // if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
         if validator.pubkey == pubkey {
             //# Increase balance by deposit amount
-            increase_balance(validator, amount).unwrap();
+            increase_balance(state, index as u64, amount).unwrap();
             return;
         }
     }

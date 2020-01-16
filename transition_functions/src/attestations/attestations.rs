@@ -60,8 +60,8 @@ where
         &self,
         epoch: Epoch,
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
-        assert!(epoch == self.get_previous_epoch() || epoch == self.get_current_epoch());
-        if epoch == self.get_current_epoch() {
+        assert!(epoch == get_previous_epoch(self) || epoch == get_current_epoch(self));
+        if epoch == get_current_epoch(self) {
             return self.current_epoch_attestations.clone();
         } else {
             return self.previous_epoch_attestations.clone();
@@ -124,8 +124,7 @@ where
         &self,
         attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch>,
     ) -> Gwei {
-        return self
-            .get_total_balance(&self.get_unslashed_attesting_indices(attestations))
+        return get_total_balance(self, &self.get_unslashed_attesting_indices(attestations))
             .unwrap();
     }
 }
