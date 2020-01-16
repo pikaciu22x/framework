@@ -33,7 +33,7 @@ use helper_functions::{
         is_active_validator, 
         is_slashable_attestation_data, 
         is_slashable_validator,
-        is_valid_indexed_attestation, 
+        validate_indexed_attestation, 
         is_valid_merkle_branch,
     },
 };

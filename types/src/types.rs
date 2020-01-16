@@ -132,22 +132,22 @@ impl<C: Config> Default for BeaconBlockBody<C> {
     }
 }
 
-impl<C: Config> Default for BeaconBlockBody<C> {
-    fn default() -> Self {
-        #[allow(clippy::default_trait_access)]
-        Self {
-            randao_reveal: Signature::empty_signature(),
-            eth1_data: Default::default(),
-            graffiti: Default::default(),
-            proposer_slashings: Default::default(),
-            attester_slashings: Default::default(),
-            attestations: Default::default(),
-            deposits: Default::default(),
-            voluntary_exits: Default::default(),
-            transfers: Default::default(),
-        }
-    }
-}
+// impl<C: Config> Default for BeaconBlockBody<C> {
+//     fn default() -> Self {
+//         #[allow(clippy::default_trait_access)]
+//         Self {
+//             randao_reveal: Signature::empty_signature(),
+//             eth1_data: Default::default(),
+//             graffiti: Default::default(),
+//             proposer_slashings: Default::default(),
+//             attester_slashings: Default::default(),
+//             attestations: Default::default(),
+//             deposits: Default::default(),
+//             voluntary_exits: Default::default(),
+//             transfers: Default::default(),
+//         }
+//     }
+// }
 
 #[derive(
     Clone,

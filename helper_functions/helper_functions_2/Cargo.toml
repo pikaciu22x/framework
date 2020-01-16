@@ -1,5 +1,5 @@
 [package]
-name = "helper_functions2"
+name = "helper_functions"
 version = "0.1.0"
 authors = ["Tadas Vaitiekūnas", "Vidmantas Bakštys", "Olga Joana Šmitaitė"]
 edition = "2018"
