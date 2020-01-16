@@ -136,7 +136,7 @@ where
             return;
         }
         let (rewards, penalties) = self.get_attestation_deltas();
-        for (index, validator) in self.validators.iter_mut().enumerate() {
+        for (index, validator) in self.validators.clone().iter_mut().enumerate() {
             increase_balance(self, index as u64, rewards[index]).unwrap();
             decrease_balance(self, index as u64, penalties[index]).unwrap();
         }
