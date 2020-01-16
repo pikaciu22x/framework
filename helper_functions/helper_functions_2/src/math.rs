@@ -1,5 +1,5 @@
-use types::helper_functions_types::Error;
 use std::convert::TryInto;
+use types::helper_functions_types::Error;
 
 // inteface has changed
 pub fn xor_str(bytes_1: &str, bytes_2: &str) -> String {

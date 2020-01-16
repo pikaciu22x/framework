@@ -1,28 +1,14 @@
 use core::ExpConst;
-use helper_functions::{
-    beacon_state_accessors::{
-        get_attesting_indices,
-        get_block_root,
-        get_block_root_at_slot,
-        get_current_epoch,
-        get_previous_epoch,
-        get_randao_mix,
-        get_total_active_balance,
-        get_total_balance,
-        get_validator_churn_limit,
-    },
+use helper_functions::beacon_state_accessors::{
+    get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
+    get_previous_epoch, get_randao_mix, get_total_active_balance, get_total_balance,
+    get_validator_churn_limit,
 };
 use ssz_types::VariableList;
 use types::{
-    beacon_state::{
-        BeaconState,
-    },
+    beacon_state::BeaconState,
     config::Config,
-    primitives::{
-        Epoch, 
-        Gwei, 
-        ValidatorIndex
-    },
+    primitives::{Epoch, Gwei, ValidatorIndex},
     types::PendingAttestation,
 };
 
@@ -75,10 +61,7 @@ where
             PendingAttestation<T>,
             T::MaxAttestationsPerEpoch,
         > = VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
             if attestation.data.target.root == get_block_root(self, epoch).unwrap() {
                 target_attestations.push(attestation.clone()).unwrap();
             }
@@ -91,11 +74,10 @@ where
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
         let mut head_attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> =
             VariableList::from(vec![]);
-        for attestation in self
-            .get_matching_source_attestations(epoch)
-            .iter()
-        {
-            if attestation.data.beacon_block_root == get_block_root_at_slot(self, attestation.data.slot).unwrap() {
+        for attestation in self.get_matching_source_attestations(epoch).iter() {
+            if attestation.data.beacon_block_root
+                == get_block_root_at_slot(self, attestation.data.slot).unwrap()
+            {
                 head_attestations.push(attestation.clone()).unwrap();
             }
         }

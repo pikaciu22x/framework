@@ -4,27 +4,12 @@ use core::consts::ExpConst;
 // use core::*;
 use epochs::process_epoch::process_epoch;
 // use ethereum_types::H256 as Hash256;
-use helper_functions::{
-    crypto::{
-        hash_tree_root,
-        signed_root,
-    },
-};
+use helper_functions::crypto::{hash_tree_root, signed_root};
 use types::{
-    beacon_state::{
-        BeaconState,
-    },
-    config::{
-        Config, 
-        // MainnetConfig
-    },
-    primitives::{
-        Slot,
-        H256,
-    },
-    types::{
-        BeaconBlock,
-    },
+    beacon_state::BeaconState,
+    config::Config,
+    primitives::{Slot, H256},
+    types::BeaconBlock,
 };
 #[derive(Debug, PartialEq)]
 pub enum Error {}
@@ -74,8 +59,10 @@ fn process_slot<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         state.latest_block_header.state_root = previous_state_root;
     }
     // Cache block root
-    let previous_block_root = signed_root(&state.latest_block_header); // Old doc
-    // let previous_block_root = hash_tree_root(&state.latest_block_header); // New doc
+    // Old doc
+    let previous_block_root = signed_root(&state.latest_block_header);
+    // New doc
+    // let previous_block_root = hash_tree_root(&state.latest_block_header);
     state.block_roots[(state.slot as usize) % (T::slots_per_historical_root() as usize)] =
         previous_block_root;
 }

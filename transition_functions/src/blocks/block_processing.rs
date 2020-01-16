@@ -2,70 +2,30 @@ use core::consts::ExpConst;
 
 use helper_functions::{
     beacon_state_accessors::{
-        get_current_epoch,
-        get_domain,
-        get_beacon_proposer_index,
-        get_randao_mix,
-        get_indexed_attestation,
-        get_beacon_committee,
-        get_committee_count_at_slot,
-        get_previous_epoch,
+        get_beacon_committee, get_beacon_proposer_index, get_committee_count_at_slot,
+        get_current_epoch, get_domain, get_indexed_attestation, get_previous_epoch, get_randao_mix,
     },
-    beacon_state_mutators::{
-        slash_validator,
-        initiate_validator_exit,
-        increase_balance,
-    },
-    crypto::{
-        bls_verify, 
-        hash, 
-        hash_tree_root, 
-        signed_root,
-    },
-    math::{
-        xor,
-    },
-    misc::{
-        compute_domain,
-        compute_epoch_at_slot,
-    },
+    beacon_state_mutators::{increase_balance, initiate_validator_exit, slash_validator},
+    crypto::{bls_verify, hash, hash_tree_root, signed_root},
+    math::xor,
+    misc::{compute_domain, compute_epoch_at_slot},
     predicates::{
-        is_active_validator, 
-        is_slashable_attestation_data, 
-        is_slashable_validator,
-        validate_indexed_attestation, 
-        is_valid_merkle_branch,
+        is_active_validator, is_slashable_attestation_data, is_slashable_validator,
+        is_valid_merkle_branch, validate_indexed_attestation,
     },
 };
 use std::collections::BTreeSet;
 use std::convert::TryInto;
 use types::{
-    beacon_state::{
-        BeaconState,
-        Error,
-    },
-    config::{
-        Config, 
-        // MainnetConfig
-    },
+    beacon_state::{BeaconState, Error},
+    config::Config,
     consts::{
-        MAX_DEPOSITS,
+        DEPOSIT_CONTRACT_TREE_DEPTH, EPOCHS_PER_HISTORICAL_VECTOR, MAX_DEPOSITS,
         SLOTS_PER_ETH1_VOTING_PERIOD,
-        EPOCHS_PER_HISTORICAL_VECTOR,
-        DEPOSIT_CONTRACT_TREE_DEPTH,
     },
     types::{
-        VoluntaryExit,
-        BeaconBlock,
-        BeaconBlockBody,
-        PendingAttestation,
-        Attestation,
-        AttestationData,
-        AttesterSlashing,
-        BeaconBlockHeader,
-        ProposerSlashing,
-        Deposit,
-        Validator,
+        Attestation, AttestationData, AttesterSlashing, BeaconBlock, BeaconBlockBody,
+        BeaconBlockHeader, Deposit, PendingAttestation, ProposerSlashing, Validator, VoluntaryExit,
     },
 };
 
@@ -207,7 +167,10 @@ fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Beaco
     //# Mix in RANDAO reveal
     let mix = xor(
         get_randao_mix(&state, epoch).unwrap().as_fixed_bytes(),
-        &hash(&body.randao_reveal.as_bytes()).as_slice().try_into().unwrap(),
+        &hash(&body.randao_reveal.as_bytes())
+            .as_slice()
+            .try_into()
+            .unwrap(),
     );
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
@@ -398,22 +361,12 @@ fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &B
 mod block_processing_tests {
     // use crate::{config::*};
     use super::*;
-    use bls::{
-        PublicKey,
-        SecretKey
-    };
+    use bls::{PublicKey, SecretKey};
     use ethereum_types::H256;
     use ssz_types::VariableList;
     use types::{
-        // beacon_state::*,
-        config::{
-            // Config,
-            MainnetConfig
-        },
-        types::{
-            BeaconBlock,
-            BeaconBlockHeader
-        },
+        config::MainnetConfig,
+        types::{BeaconBlock, BeaconBlockHeader},
     };
 
     const EPOCH_MAX: u64 = u64::max_value();
@@ -463,5 +416,4 @@ mod block_processing_tests {
         );
         assert_eq!(bs.latest_block_header.state_root, block.state_root);
     }
-
 }

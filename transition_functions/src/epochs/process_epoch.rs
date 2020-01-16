@@ -3,62 +3,24 @@ use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
 use core::consts::ExpConst;
 use helper_functions::{
     beacon_state_accessors::{
-        get_randao_mix,
-        get_total_active_balance,
-        get_validator_churn_limit,
-        get_current_epoch,
-        get_previous_epoch,
-        get_block_root
+        get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
+        get_total_active_balance, get_validator_churn_limit,
     },
-    beacon_state_mutators::{
-        initiate_validator_exit,
-        increase_balance,
-        decrease_balance,
-    },
-    crypto::{
-        // bls_verify,
-        // hash,
-        hash_tree_root,
-        // signed_root
-    },
+    beacon_state_mutators::{decrease_balance, increase_balance, initiate_validator_exit},
+    crypto::hash_tree_root,
     misc::compute_activation_exit_epoch,
     predicates::is_active_validator,
 };
-use itertools::{
-    Either,
-    Itertools
-};
+use itertools::{Either, Itertools};
 use ssz_types::VariableList;
-use std::{
-    cmp,
-    // mem
-};
+use std::cmp;
 
 use types::{
-    beacon_state::{
-        BeaconState,
-        Error,
-    },
-    config::{
-        Config,
-        // MainnetConfig
-    },
-    consts::{
-        EPOCHS_PER_HISTORICAL_VECTOR,
-        SLOTS_PER_ETH1_VOTING_PERIOD,
-    },
-    primitives::{
-        Gwei,
-        Epoch,
-        // ValidatorIndex,
-    },
-    types::{
-        Checkpoint,
-        // Eth1Data, 
-        HistoricalBatch,
-        // PendingAttestation,
-        Validator,
-    },
+    beacon_state::{BeaconState, Error},
+    config::Config,
+    consts::{EPOCHS_PER_HISTORICAL_VECTOR, SLOTS_PER_ETH1_VOTING_PERIOD},
+    primitives::{Epoch, Gwei},
+    types::{Checkpoint, HistoricalBatch, Validator},
 };
 
 // Matches Documentation
@@ -69,7 +31,6 @@ pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     process_slashings(state);
     process_final_updates(state);
 }
-
 
 // Matches new doc
 fn process_justification_and_finalization<T: Config + ExpConst>(
@@ -87,7 +48,7 @@ fn process_justification_and_finalization<T: Config + ExpConst>(
     // Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint.clone();
     state.justification_bits.shift_up(1)?;
-    //Previous epoch
+    // Previous epoch
     let matching_target_attestations = state.get_matching_target_attestations(previous_epoch);
     if state.get_attesting_balance(matching_target_attestations) * 3
         >= get_total_active_balance(state)? * 2
@@ -203,17 +164,16 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 fn process_rewards_and_penalties<T: Config + ExpConst>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
-    let mut state_copy = state.clone();
-
+    // let mut state_copy = state.clone();
 
     if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
 
     let (rewards, penalties) = state.get_attestation_deltas();
-    for (index, validator) in state.validators.iter_mut().enumerate() {
-        increase_balance(&mut state_copy, index as u64, rewards[index]).unwrap();
-        decrease_balance(&mut state_copy, index as u64, penalties[index]).unwrap();
+    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
+        increase_balance(state, index as u64, rewards[index]).unwrap();
+        decrease_balance(state, index as u64, penalties[index]).unwrap();
     }
 
     Ok(())
@@ -224,7 +184,7 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (index,validator) in state.validators.clone().iter_mut().enumerate() {
+    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
             && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
         {
@@ -281,12 +241,9 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
 
 #[cfg(test)]
 mod process_epoch_tests {
-     use super::*;
-    //  use mockall::mock;
-     use types::{
-        //  beacon_state::*,
-         config::MainnetConfig
-    };
+    use super::*;
+    // use mockall::mock;
+    use types::config::MainnetConfig;
     /*
     mock! {
         BeaconState<C: Config + 'static> {}

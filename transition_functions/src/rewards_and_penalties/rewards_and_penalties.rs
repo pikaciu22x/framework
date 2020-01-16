@@ -2,35 +2,17 @@ use crate::attestations::attestations::AttestableBlock;
 use core::consts::ExpConst;
 use helper_functions::{
     beacon_state_accessors::{
-        get_attesting_indices,
-        get_total_active_balance,
-        get_current_epoch,
+        get_attesting_indices, get_current_epoch, get_previous_epoch, get_total_active_balance,
         get_total_balance,
-        get_previous_epoch,
     },
-    beacon_state_mutators::{
-        decrease_balance, 
-        increase_balance,
-    },
-    math::{
-        integer_squareroot,
-    },
-    predicates::{
-        is_active_validator,
-    },
+    beacon_state_mutators::{decrease_balance, increase_balance},
+    math::integer_squareroot,
+    predicates::is_active_validator,
 };
 use types::{
-    beacon_state::{
-        BeaconState,
-    },
-    config::{
-        Config, 
-        // MainnetConfig
-    },
-    primitives::{
-        Gwei, 
-        ValidatorIndex,
-    },
+    beacon_state::BeaconState,
+    config::Config,
+    primitives::{Gwei, ValidatorIndex},
 };
 
 pub trait StakeholderBlock<T>
@@ -54,9 +36,7 @@ where
             / T::base_rewards_per_epoch()) as Gwei;
     }
 
-    fn get_attestation_deltas(
-        &self
-    ) -> (Vec<Gwei>, Vec<Gwei>) {
+    fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
         let previous_epoch = get_previous_epoch(self);
         let total_balance = get_total_active_balance(self).unwrap();
         let mut rewards = Vec::new();
@@ -84,8 +64,7 @@ where
 
         for attestations in vec.into_iter() {
             let unslashed_attesting_indices = self.get_unslashed_attesting_indices(attestations);
-            let attesting_balance = get_total_balance(self, &unslashed_attesting_indices)
-                .unwrap();
+            let attesting_balance = get_total_balance(self, &unslashed_attesting_indices).unwrap();
 
             for index in eligible_validator_indices.iter() {
                 if unslashed_attesting_indices.contains(&index) {
@@ -99,13 +78,27 @@ where
         }
 
         //# Proposer and inclusion delay micro-rewards
-        for index in self.get_unslashed_attesting_indices(matching_source_attestations.clone()).iter() {
-            let attestation = matching_source_attestations.iter().fold(None, |min, x| match min {
+        for index in self
+            .get_unslashed_attesting_indices(matching_source_attestations.clone())
+            .iter()
+        {
+            let attestation = matching_source_attestations
+                .iter()
+                .fold(None, |min, x| match min {
                     None => Some(x),
                     Some(y) => Some(
-                        if get_attesting_indices(self, &x.data, &x.aggregation_bits).unwrap().contains(index)
-                            && x.inclusion_delay < y.inclusion_delay { x } else { y }),
-                }).unwrap();
+                        if get_attesting_indices(self, &x.data, &x.aggregation_bits)
+                            .unwrap()
+                            .contains(index)
+                            && x.inclusion_delay < y.inclusion_delay
+                        {
+                            x
+                        } else {
+                            y
+                        },
+                    ),
+                })
+                .unwrap();
 
             let proposer_reward =
                 (self.get_base_reward(*index) / T::proposer_reward_quotient()) as Gwei;
