@@ -1,23 +1,20 @@
-use crate::attestations::attestations::AttestableBlock;
-use core::consts::ExpConst;
-use helper_functions::{
-    beacon_state_accessors::{
-        get_attesting_indices, get_current_epoch, get_previous_epoch, get_total_active_balance,
-        get_total_balance,
-    },
-    beacon_state_mutators::{decrease_balance, increase_balance},
-    math::integer_squareroot,
-    predicates::is_active_validator,
-};
+use helper_functions;
+use types::consts::*;
 use types::{
-    beacon_state::BeaconState,
-    config::Config,
-    primitives::{Gwei, ValidatorIndex},
+    beacon_state::*,
+    config::{Config, MainnetConfig},
 };
+// use types::types::*;
+use crate::attestations::attestations::AttestableBlock;
+use helper_functions::beacon_state_accessors::*;
+use helper_functions::beacon_state_mutators::*;
+use helper_functions::math::*;
+use helper_functions::predicates::*;
+use types::primitives::*;
 
 pub trait StakeholderBlock<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei;
     fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>);
@@ -26,14 +23,14 @@ where
 
 impl<T> StakeholderBlock<T> for BeaconState<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei {
-        let total_balance = get_total_active_balance(self).unwrap();
+        let total_balance = get_total_active_balance(&self).unwrap();
         let effective_balance = self.validators[index as usize].effective_balance;
         return (effective_balance * T::base_reward_factor()
             / integer_squareroot(total_balance)
-            / T::base_rewards_per_epoch()) as Gwei;
+            / BASE_REWARDS_PER_EPOCH) as Gwei;
     }
 
     fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
@@ -44,8 +41,6 @@ where
         let mut eligible_validator_indices: Vec<ValidatorIndex> = Vec::new();
 
         for (index, v) in self.validators.iter().enumerate() {
-            rewards.push(0 as Gwei);
-            penalties.push(0 as Gwei);
             if is_active_validator(v, previous_epoch)
                 || (v.slashed && previous_epoch + 1 < v.withdrawable_epoch)
             {
@@ -111,12 +106,12 @@ where
         if finality_delay > T::min_epochs_to_inactivity_penalty() {
             let matching_target_attesting_indices =
                 self.get_unslashed_attesting_indices(matching_target_attestations);
-            for index in eligible_validator_indices.iter() {
-                penalties[*index as usize] +=
-                    (T::base_rewards_per_epoch() * self.get_base_reward(*index)) as Gwei;
-                if !(matching_target_attesting_indices.contains(index)) {
-                    penalties[*index as usize] +=
-                        ((self.validators[*index as usize].effective_balance * finality_delay)
+            for index in eligible_validator_indices {
+                penalties[index as usize] +=
+                    (BASE_REWARDS_PER_EPOCH * self.get_base_reward(index)) as Gwei;
+                if !(matching_target_attesting_indices.contains(&index)) {
+                    penalties[index as usize] +=
+                        ((self.validators[index as usize].effective_balance * finality_delay)
                             / T::inactivity_penalty_quotient()) as Gwei;
                 }
             }
@@ -125,7 +120,7 @@ where
     }
 
     fn process_rewards_and_penalties(&mut self) {
-        if get_current_epoch(self) == T::genesis_epoch() {
+        if get_current_epoch(&self) == T::genesis_epoch() {
             return;
         }
         let (rewards, penalties) = self.get_attestation_deltas();
@@ -139,51 +134,16 @@ where
 #[cfg(test)]
 mod process_slot_tests {
     use types::types::Validator;
-    use types::{beacon_state::*, config::MainnetConfig};
-
-    // use crate::{config::*};
-    use super::*;
-    #[test]
-    fn test_base_reward() {
-        assert_eq!(1, 1);
-        let mut bs: BeaconState<MainnetConfig> = BeaconState {
-            ..BeaconState::default()
-        };
-        let mut val: Validator = Validator {
-            ..Validator::default()
-        };
-        val.effective_balance = 5;
-        val.slashed = false;
-        bs.validators.push(val).unwrap();
-        let index = 0;
-        assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
-    }
-
-    fn test_get_attestation_deltas() {
-        let mut bs: BeaconState<MainnetConfig> = BeaconState {
-            slot: 1,
-            ..BeaconState::default()
-        };
-        let mut val: Validator = Validator {
-            ..Validator::default()
-        };
-        val.effective_balance = 5;
-        let mut val2: Validator = Validator {
-            ..Validator::default()
-        };
-        val.effective_balance = 5;
-        val2.effective_balance = 4;
-        val.slashed = false;
-        val2.slashed = true;
-        bs.validators.push(val).unwrap();
-        bs.validators.push(val2).unwrap();
-        // let base_reward1 = 5*64/4;
-        // let base_reward2 = 4*64/4;
-
-        // let reward1 = base_reward1;
-        // let penalty1 = 0;
-        // let reward2= 0;
-        // let penalty2 = base_reward2;
-        // bs.process_rewards_and_penalties();
-    }
+    assert_eq!(1, 1);
+    let mut bs: BeaconState<MainnetConfig> = BeaconState {
+        ..BeaconState::default()
+    };
+    let mut val: Validator = Validator {
+        ..Validator::default()
+    };
+    val.effective_balance = 5;
+    val.slashed = false;
+    bs.validators.push(val).unwrap();
+    let mut index = 0;
+    assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
 }

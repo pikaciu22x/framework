@@ -5,12 +5,11 @@
 //! offending object or return `Err`. All other operations that can raise exceptions in Python
 //! (like indexing into `dict`s) are represented by statements that panic on failure.
 
-use core::{cmp::Ordering, mem};
+use core::{cmp::Ordering, convert::TryInto as _, mem};
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{ensure, Result};
 use error_utils::DebugAsError;
-use eth2_core::ExpConst;
 use helper_functions::{beacon_state_accessors, crypto, misc, predicates};
 use log::info;
 use maplit::hashmap;
@@ -62,7 +61,7 @@ pub struct Store<C: Config> {
     delayed_until_slot: BTreeMap<Slot, Vec<DelayedObject<C>>>,
 }
 
-impl<C: Config + ExpConst> Store<C> {
+impl<C: Config> Store<C> {
     /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#get_genesis_store>
     pub fn new(genesis_state: BeaconState<C>) -> Self {
         // The way the genesis block is constructed makes it possible for many parties to
@@ -267,13 +266,19 @@ impl<C: Config + ExpConst> Store<C> {
             .into_iter()
             .filter_map(|index| {
                 let latest_message = self.latest_messages.get(&index)?;
-                Some((index, latest_message))
-            })
-            .filter(|(_, latest_message)| {
                 let latest_message_block = &self.blocks[&latest_message.root];
-                self.ancestor(latest_message.root, latest_message_block, block.slot) == root
+                if self.ancestor(latest_message.root, latest_message_block, block.slot) == root {
+                    // The `Result::expect` call would be avoidable if there were a function like
+                    // `beacon_state_accessors::get_active_validator_indices` that returned
+                    // references to the validators in addition to their indices.
+                    let index: usize = index
+                        .try_into()
+                        .expect("validator index should fit in usize");
+                    Some(justified_state.validators[index].effective_balance)
+                } else {
+                    None
+                }
             })
-            .map(|(index, _)| justified_state.validators[index as usize].effective_balance)
             .sum()
     }
 

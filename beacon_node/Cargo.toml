@@ -6,7 +6,6 @@ edition = '2018'
 [dependencies]
 anyhow = '1.0.25'
 beacon_fork_choice = { path = '../beacon_fork_choice' }
-eth2_core = { path = '../core', package = 'core' }
 eth2_network = { path = '../eth2_network' }
 eth2_network_libp2p = { path = '../eth2_network_libp2p' }
 futures = '0.1.29'

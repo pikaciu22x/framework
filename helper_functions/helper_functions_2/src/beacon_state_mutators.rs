@@ -7,7 +7,6 @@ use std::convert::TryFrom;
 use typenum::Unsigned;
 use types::beacon_state::BeaconState;
 use types::config::Config;
-use types::config::MainnetConfig;
 use types::consts::FAR_FUTURE_EPOCH;
 use types::helper_functions_types::Error;
 use types::primitives::{Epoch, Gwei, ValidatorIndex};
@@ -76,7 +75,6 @@ pub fn slash_validator<C: Config>(
     Ok(())
 }
 
-// function uses Mainnetconfig implementation to access static Config function - it seems that there is no workaround
 pub fn initiate_validator_exit<C: Config>(
     state: &mut BeaconState<C>,
     index: ValidatorIndex,
@@ -119,8 +117,7 @@ pub fn initiate_validator_exit<C: Config>(
 
     // change validator's exit epoch in the beacon chain
     validator.exit_epoch = exit_queue_epoch;
-    validator.withdrawable_epoch =
-        validator.exit_epoch + MainnetConfig::min_validator_withdrawability_delay();
+    validator.withdrawable_epoch = validator.exit_epoch + C::min_validator_withdrawability_delay();
     state.validators[usize::try_from(index).expect("")] = validator;
     Ok(())
 }

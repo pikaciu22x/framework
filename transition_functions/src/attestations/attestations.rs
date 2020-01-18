@@ -1,8 +1,12 @@
-use core::ExpConst;
-use helper_functions::beacon_state_accessors::{
-    get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
-    get_previous_epoch, get_randao_mix, get_total_active_balance, get_total_balance,
-    get_validator_churn_limit,
+use helper_functions::{
+    beacon_state_accessors::{
+        get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
+        get_previous_epoch, get_randao_mix, get_total_active_balance, get_total_balance,
+        get_validator_churn_limit,
+    },
+    beacon_state_mutators::{decrease_balance, initiate_validator_exit},
+    misc::compute_activation_exit_epoch,
+    predicates::is_active_validator,
 };
 use ssz_types::VariableList;
 use types::{
@@ -14,7 +18,7 @@ use types::{
 
 pub trait AttestableBlock<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_matching_source_attestations(
         &self,
@@ -40,7 +44,7 @@ where
 
 impl<T> AttestableBlock<T> for BeaconState<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_matching_source_attestations(
         &self,

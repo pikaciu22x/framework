@@ -1,7 +1,6 @@
 use std::{env, fs::File, process};
 
 use anyhow::Result;
-use eth2_core::ExpConst;
 use eth2_network_libp2p::Qutex;
 use futures::{Future as _, Stream as _};
 use log::{error, Level};
@@ -37,7 +36,7 @@ fn parse_args_and_run_node() -> Result<()> {
     }
 }
 
-fn run_node<C: Config + ExpConst + DeserializeOwned>(config: RuntimeConfig) -> Result<()> {
+fn run_node<C: Config + DeserializeOwned>(config: RuntimeConfig) -> Result<()> {
     let genesis_state_file = File::open(config.genesis_state_path)?;
     let genesis_state = serde_yaml::from_reader(genesis_state_file)?;
 

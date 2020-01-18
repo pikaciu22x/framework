@@ -1,6 +1,6 @@
 use crate::attestations::attestations::AttestableBlock;
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
-use core::consts::ExpConst;
+use helper_functions::beacon_state_accessors::*;
 use helper_functions::{
     beacon_state_accessors::{
         get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
@@ -14,7 +14,11 @@ use helper_functions::{
 use itertools::{Either, Itertools};
 use ssz_types::VariableList;
 use std::cmp;
-
+use typenum::Unsigned as _;
+use types::consts::*;
+use types::primitives::*;
+use types::primitives::{Gwei, ValidatorIndex};
+use types::types::{Eth1Data, HistoricalBatch};
 use types::{
     beacon_state::{BeaconState, Error},
     config::Config,
@@ -23,17 +27,15 @@ use types::{
     types::{Checkpoint, HistoricalBatch, Validator},
 };
 
-// Matches Documentation
-pub fn process_epoch<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-    process_justification_and_finalization(state).unwrap();
-    process_rewards_and_penalties(state).unwrap();
+pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {
+    process_justification_and_finalization(state);
+    process_rewards_and_penalties(state);
     process_registry_updates(state);
     process_slashings(state);
     process_final_updates(state);
 }
 
-// Matches new doc
-fn process_justification_and_finalization<T: Config + ExpConst>(
+fn process_justification_and_finalization<T: Config>(
     state: &mut BeaconState<T>,
 ) -> Result<(), Error> {
     if get_current_epoch(state) <= T::genesis_epoch() + 1 {
@@ -100,12 +102,11 @@ fn process_justification_and_finalization<T: Config + ExpConst>(
     Ok(())
 }
 
-// IDK if matches doc, too complicated for me to understand atm
-fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
+fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
     let state_copy = state.clone();
 
     let is_eligible = |validator: &Validator| {
-        validator.activation_eligibility_epoch == T::far_future_epoch()
+        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
             && validator.effective_balance == T::max_effective_balance()
     };
 
@@ -139,8 +140,8 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         .validators
         .iter()
         .enumerate()
-        .filter(|(_, validator)| {
-            validator.activation_eligibility_epoch != T::far_future_epoch()
+        .filter(|(index, validator)| {
+            validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
                 && validator.activation_epoch
                     >= compute_activation_exit_epoch::<T>(state.finalized_checkpoint.epoch)
         })
@@ -154,18 +155,13 @@ fn process_registry_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         compute_activation_exit_epoch::<T>(get_current_epoch(state) as u64);
     for index in activation_queue.into_iter().take(churn_limit as usize) {
         let validator = &mut state.validators[index];
-        if validator.activation_epoch == T::far_future_epoch() {
+        if validator.activation_epoch == FAR_FUTURE_EPOCH {
             validator.activation_epoch = delayed_activation_epoch;
         }
     }
 }
 
-// Matches new doc
-fn process_rewards_and_penalties<T: Config + ExpConst>(
-    state: &mut BeaconState<T>,
-) -> Result<(), Error> {
-    // let mut state_copy = state.clone();
-
+fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Result<(), Error> {
     if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
@@ -179,14 +175,13 @@ fn process_rewards_and_penalties<T: Config + ExpConst>(
     Ok(())
 }
 
-// Matches new doc
-fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
+fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
     for (index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
-            && epoch + T::epochs_per_slashings_vector() / 2 == validator.withdrawable_epoch
+            && epoch + T::EpochsPerSlashingsVector::U64 / 2 == validator.withdrawable_epoch
         {
             let increment = T::effective_balance_increment();
             let slashings_sum = state.slashings.iter().sum::<u64>();
@@ -198,11 +193,11 @@ fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
     }
 }
 
-fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
+fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
     let current_epoch = get_current_epoch(&state);
     let next_epoch = current_epoch + 1 as Epoch;
     //# Reset eth1 data votes
-    if (state.slot + 1) % (SLOTS_PER_ETH1_VOTING_PERIOD as u64) == 0 {
+    if (state.slot + 1) % T::SlotsPerEth1VotingPeriod::U64 == 0 {
         state.eth1_data_votes = VariableList::from(vec![]);
     }
     //# Update effective balances with hysteresis
@@ -219,12 +214,12 @@ fn process_final_updates<T: Config + ExpConst>(state: &mut BeaconState<T>) {
         }
     }
     //# Reset slashings
-    state.slashings[(next_epoch % T::epochs_per_slashings_vector()) as usize] = 0 as Gwei;
+    state.slashings[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] = 0 as Gwei;
     //# Set randao mix
-    state.randao_mixes[(next_epoch % EPOCHS_PER_HISTORICAL_VECTOR) as usize] =
+    state.randao_mixes[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] =
         get_randao_mix(&state, current_epoch).unwrap();
     //# Set historical root accumulator
-    if next_epoch % (T::slots_per_historical_root() / T::slots_per_epoch()) == 0 {
+    if next_epoch % (T::SlotsPerHistoricalRoot::U64 / T::SlotsPerEpoch::U64) == 0 {
         let historical_batch = HistoricalBatch::<T> {
             block_roots: state.block_roots.clone(),
             state_roots: state.state_roots.clone(),
