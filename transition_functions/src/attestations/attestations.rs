@@ -117,14 +117,14 @@ where
 #[cfg(test)]
 
 mod attestations_tests {
+    use crate::attestations::attestations::AttestableBlock;
+    use ssz_types::{BitList, FixedVector, VariableList};
     use types::{
         beacon_state::BeaconState,
         config::{Config, MainnetConfig},
         primitives::{Epoch, Gwei, ValidatorIndex},
         types::PendingAttestation,
     };
-    use ssz_types::{BitList, FixedVector, VariableList};
-    use crate::attestations::attestations::AttestableBlock;
 
     #[test]
     fn test_get_matching_source_attestations_1() {
@@ -155,4 +155,19 @@ mod attestations_tests {
         assert_eq!(result, bs.previous_epoch_attestations);
         // assert_ne!(result, bs.previous_epoch_attestations);
     }
+
+    // #[test]
+    // fn test_get_matching_target_attestations_1() {
+    //     let mut bs: BeaconState<MainnetConfig> = BeaconState {
+    //         ..BeaconState::default()
+    //     };
+    //     let mut pa: PendingAttestation<MainnetConfig> = PendingAttestation {
+    //         ..PendingAttestation::default()
+    //     };
+    //     bs.slot = 1;
+    //     bs.current_epoch_attestations.push(pa);
+
+    //     let result = bs.get_matching_target_attestations(0);
+    //     assert_eq!(result, bs.current_epoch_attestations);
+    // }
 }
