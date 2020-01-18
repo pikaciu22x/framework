@@ -15,10 +15,7 @@ use types::types::*;
 use types::{
     beacon_state::{BeaconState, Error},
     config::Config,
-    consts::{
-        DEPOSIT_CONTRACT_TREE_DEPTH, EPOCHS_PER_HISTORICAL_VECTOR, MAX_DEPOSITS,
-        SLOTS_PER_ETH1_VOTING_PERIOD,
-    },
+    consts::DEPOSIT_CONTRACT_TREE_DEPTH,
     types::{
         Attestation, AttestationData, AttesterSlashing, BeaconBlock, BeaconBlockBody,
         BeaconBlockHeader, Deposit, PendingAttestation, ProposerSlashing, Validator, VoluntaryExit,

@@ -17,14 +17,11 @@ use std::cmp;
 use typenum::Unsigned as _;
 use types::consts::*;
 use types::primitives::*;
-use types::primitives::{Gwei, ValidatorIndex};
-use types::types::{Eth1Data, HistoricalBatch};
 use types::{
     beacon_state::{BeaconState, Error},
     config::Config,
-    consts::{EPOCHS_PER_HISTORICAL_VECTOR, SLOTS_PER_ETH1_VOTING_PERIOD},
-    primitives::{Epoch, Gwei},
-    types::{Checkpoint, HistoricalBatch, Validator},
+    primitives::{Epoch, Gwei, ValidatorIndex},
+    types::{Checkpoint, Eth1Data, HistoricalBatch, Validator},
 };
 
 pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {

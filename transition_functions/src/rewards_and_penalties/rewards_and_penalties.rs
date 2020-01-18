@@ -134,16 +134,18 @@ where
 #[cfg(test)]
 mod process_slot_tests {
     use types::types::Validator;
-    assert_eq!(1, 1);
-    let mut bs: BeaconState<MainnetConfig> = BeaconState {
-        ..BeaconState::default()
-    };
-    let mut val: Validator = Validator {
-        ..Validator::default()
-    };
-    val.effective_balance = 5;
-    val.slashed = false;
-    bs.validators.push(val).unwrap();
-    let mut index = 0;
-    assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+
+    fn test() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            ..BeaconState::default()
+        };
+        let mut val: Validator = Validator {
+            ..Validator::default()
+        };
+        val.effective_balance = 5;
+        val.slashed = false;
+        bs.validators.push(val).unwrap();
+        let mut index = 0;
+        assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+    }
 }
