@@ -115,7 +115,7 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
             slashed: false,
         })
         .unwrap();
-    &state.balances.push(*amount);
+    &state.balances.push(amount);
 }
 
 fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
