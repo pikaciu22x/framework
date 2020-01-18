@@ -133,7 +133,12 @@ where
 
 #[cfg(test)]
 mod process_slot_tests {
-    use types::types::Validator;
+    use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
+    use types::{
+        beacon_state::*,
+        config::{Config, MainnetConfig},
+        types::Validator,
+    };
 
     fn test() {
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
