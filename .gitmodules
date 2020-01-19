@@ -1,0 +1,3 @@
+[submodule "lighthouse"]
+	path = lighthouse
+	url = git@github.com:sigp/lighthouse.git
