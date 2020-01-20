@@ -66,7 +66,7 @@ fn process_justification_and_finalization<T: Config>(
     {
         state.current_justified_checkpoint = Checkpoint {
             epoch: current_epoch,
-            root: get_block_root(state, previous_epoch)?,
+            root: get_block_root(state, current_epoch)?,
         };
         state.justification_bits.set(0, true)?;
     }

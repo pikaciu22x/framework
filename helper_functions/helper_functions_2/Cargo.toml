@@ -13,6 +13,7 @@ eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
 ring = "0.16.9"
 ethereum-types = '0.8'
 typenum = '1.11.2'
+integer-sqrt = '0.1.2'
 itertools = '0.8.1'
 tree_hash = '0.1'
 eth2_ssz_types = { git = 'https://github.com/sigp/lighthouse' }

@@ -1,3 +1,4 @@
+use integer_sqrt::IntegerSquareRoot as _;
 use std::convert::TryInto;
 use types::helper_functions_types::Error;
 
@@ -39,13 +40,7 @@ pub fn integer_squareroot(n: u64) -> u64 {
     }
     sqrt_floor
      */
-    let mut x = 0;
-    loop {
-        if (x + 1) * (x + 1) > n {
-            return x;
-        }
-        x += 1;
-    }
+    n.integer_sqrt()
 }
 
 pub fn int_to_bytes(n: u64, length: usize) -> Result<Vec<u8>, Error> {

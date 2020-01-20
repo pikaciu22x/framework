@@ -80,22 +80,15 @@ where
             .iter()
         {
             let attestation = matching_source_attestations
-                .iter()
-                .fold(None, |min, x| match min {
-                    None => Some(x),
-                    Some(y) => Some(
-                        if get_attesting_indices(self, &x.data, &x.aggregation_bits)
-                            .unwrap()
-                            .contains(index)
-                            && x.inclusion_delay < y.inclusion_delay
-                        {
-                            x
-                        } else {
-                            y
-                        },
-                    ),
+                .into_iter()
+                .filter(|attestation| {
+                    get_attesting_indices(self, &attestation.data, &attestation.aggregation_bits)
+                        .expect("get_attesting_indices should succeed")
+                        .contains(index)
                 })
-                .unwrap();
+                .min_by_key(|attestation| attestation.inclusion_delay)
+                .expect("at least one matching attestation should exist");
+
             let proposer_reward =
                 (self.get_base_reward(*index) / T::proposer_reward_quotient()) as Gwei;
             rewards[attestation.proposer_index as usize] += proposer_reward;
