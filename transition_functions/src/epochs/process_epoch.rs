@@ -25,17 +25,11 @@ use types::{
 };
 
 pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {
-    println!("PROCESS_EPOCH: CALL JUSTIFICATION_AND_FINALIZATION");
     process_justification_and_finalization(state);
-    println!("PROCESS_EPOCH: CALL REWARDS_AND_PENALTIES");
     process_rewards_and_penalties(state);
-    println!("PROCESS_EPOCH: CALL REGISTRY_UPDATES");
     process_registry_updates(state);
-    println!("PROCESS_EPOCH: CALL SLASHINGS");
     process_slashings(state);
-    println!("PROCESS_EPOCH: CALL FINAL_UPDATES");
     process_final_updates(state);
-    println!("PROCESS_EPOCH: FINISHED");
 }
 
 fn process_justification_and_finalization<T: Config>(
@@ -165,20 +159,14 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
 }
 
 fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Result<(), Error> {
-    println!("REWARDS_AND_PENALTIES: CALL GET_CURRENT_EPOCH");
     if get_current_epoch(state) == T::genesis_epoch() {
-        println!("REWARDS_AND_PENALTIES: FINISHED");
         return Ok(());
     }
-    println!("REWARDS_AND_PENALTIES: CALL GET_ATTESTATION_DELTAS");
     let (rewards, penalties) = state.get_attestation_deltas();
     for (index, validator) in state.validators.clone().iter_mut().enumerate() {
-        println!("REWARDS_AND_PENALTIES: CALL INCREASE_BALANCE");
         increase_balance(state, index as u64, rewards[index]).unwrap();
-        println!("REWARDS_AND_PENALTIES: CALL DECREASE_BALANCE");
         decrease_balance(state, index as u64, penalties[index]).unwrap();
     }
-    println!("REWARDS_AND_PENALTIES: FINISHED");
     Ok(())
 }
 

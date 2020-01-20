@@ -122,7 +122,6 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
-    println!("PROCESS_BLOCK_HEADER: block.parent root = {} signed_root = {}", block.parent_root, signed_root(&state.latest_block_header));
     assert!(block.parent_root == signed_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader {

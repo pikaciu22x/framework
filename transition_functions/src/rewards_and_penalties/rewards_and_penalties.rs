@@ -26,25 +26,20 @@ where
     T: Config,
 {
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei {
-        println!("GET_BASE_REWARD: CALL GET_TOTAL_ACTIVE_BALANCE");
         let total_balance = get_total_active_balance(&self).unwrap();
         let effective_balance = self.validators[index as usize].effective_balance;
-        println!("GET_BASE_REWARD: FINISHED");
         return (effective_balance * T::base_reward_factor()
             / integer_squareroot(total_balance)
             / BASE_REWARDS_PER_EPOCH) as Gwei;
     }
 
     fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
-        println!("ATTESTATION_DELTAS: CALL GET_PREVIOUS_EPOCH");
         let previous_epoch = get_previous_epoch(self);
-        println!("ATTESTATION_DELTAS: CALL GET_TOTAL_ACTIVE_BALANCE");
         let total_balance = get_total_active_balance(self).unwrap();
         let mut rewards = Vec::new();
         let mut penalties = Vec::new();
         let mut eligible_validator_indices: Vec<ValidatorIndex> = Vec::new();
 
-        println!("ATTESTATION_DELTAS: CREATE ACTIVE VALIDATOR VECTOR");
         for (index, v) in self.validators.iter().enumerate() {
             if is_active_validator(v, previous_epoch)
                 || (v.slashed && previous_epoch + 1 < v.withdrawable_epoch)
@@ -55,11 +50,8 @@ where
             }
         }
         //# Micro-incentives for matching FFG source, FFG target, and head
-        println!("ATTESTATION_DELTAS: CALL GET_MATCHING_SOURCE_ATTESTATIONS");
         let matching_source_attestations = self.get_matching_source_attestations(previous_epoch);
-        println!("ATTESTATION_DELTAS: CALL GET_MATCHING_TARGET_ATTESTATIONS");
         let matching_target_attestations = self.get_matching_target_attestations(previous_epoch);
-        println!("ATTESTATION_DELTAS: CALL GET_MATCHING_HEAD_ATTESTATIONS");
         let matching_head_attestations = self.get_matching_head_attestations(previous_epoch);
         let vec = vec![
             matching_source_attestations.clone(),
@@ -67,38 +59,26 @@ where
             matching_head_attestations.clone(),
         ];
 
-        println!("ATTESTATION_DELTAS: ITERATE ATTESTATIONS");
         for attestations in vec.into_iter() {
-            println!("ATTESTATION_DELTAS: CALL GET_UNSLASHED_ATTESTING_INDICES");
             let unslashed_attesting_indices = self.get_unslashed_attesting_indices(attestations);
-            println!("ATTESTATION_DELTAS: CALL GET_TOTAL_BALANCE");
             let attesting_balance = get_total_balance(self, &unslashed_attesting_indices).unwrap();
 
-            println!("ATTESTATION_DELTAS: ITERATE ELIGIBLE VALIDATORS");
             for &index in &eligible_validator_indices {
-                println!("ATTESTATION_DELTAS: index is: {}", index);
                 if unslashed_attesting_indices.contains(&index) {
-                    println!("ATTESTATION_DELTAS: TRUE, CALL GET_BASE_REWARD");
-                    println!("ATTESTATION_DELTAS: TOTAL_BALANCE IS {}", total_balance);
-                    println!("ATTESTATION_DELTAS: BASE_REWARD IS {}", self.get_base_reward(index));
                     rewards[index as usize] += ((self.get_base_reward(index) * attesting_balance)
                         / total_balance)
                         as ValidatorIndex;
                 } else {
-                    println!("ATTESTATION_DELTAS: FALSE, CALL GET_BASE_REWARD");
-                    println!("ATTESTATION_DELTAS: BASE_REWARD IS {}", self.get_base_reward(index));
                     penalties[index as usize] += self.get_base_reward(index);
                 }
             }
         }
 
         //# Proposer and inclusion delay micro-rewards
-        println!("ATTESTATION_DELTAS: CALL GET_UNSLASHED_ATTESTING_INDICES");
         for index in self
             .get_unslashed_attesting_indices(matching_source_attestations.clone())
             .iter()
         {
-            println!("ATTESTATION_DELTAS: CALL GET_ATTESTING_INDICES");
             let attestation = matching_source_attestations
                 .iter()
                 .fold(None, |min, x| match min {
@@ -116,22 +96,18 @@ where
                     ),
                 })
                 .unwrap();
-            println!("ATTESTATION_DELTAS: CALL GET_BASE_REWARD");
             let proposer_reward =
                 (self.get_base_reward(*index) / T::proposer_reward_quotient()) as Gwei;
             rewards[attestation.proposer_index as usize] += proposer_reward;
-            println!("ATTESTATION_DELTAS: CALL GET_BASE_REWARD");
             let max_attester_reward = self.get_base_reward(*index) - proposer_reward;
             rewards[*index as usize] += (max_attester_reward / attestation.inclusion_delay) as Gwei;
         }
         //# Inactivity penalty
         let finality_delay = previous_epoch - self.finalized_checkpoint.epoch;
         if finality_delay > T::min_epochs_to_inactivity_penalty() {
-            println!("ATTESTATION_DELTAS: CALL GET_UNSLASHED_ATTESTING_INDICES");
             let matching_target_attesting_indices =
                 self.get_unslashed_attesting_indices(matching_target_attestations);
             for index in eligible_validator_indices {
-                println!("ATTESTATION_DELTAS: CALL GET_BASE_REWARD");
                 penalties[index as usize] +=
                     (BASE_REWARDS_PER_EPOCH * self.get_base_reward(index)) as Gwei;
                 if !(matching_target_attesting_indices.contains(&index)) {
@@ -141,7 +117,6 @@ where
                 }
             }
         }
-        println!("ATTESTATION_DELTAS: FINISHED");
         return (rewards, penalties);
     }
 
