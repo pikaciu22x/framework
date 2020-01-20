@@ -52,7 +52,7 @@ fn process_slot<T: Config>(state: &mut BeaconState<T>) {
     state.state_roots[(state.slot as usize) % T::SlotsPerHistoricalRoot::USIZE] =
         previous_state_root;
     // Cache latest block header state root
-    if state.latest_block_header.state_root == H256::from([0 as u8; 32]) {
+    if state.latest_block_header.state_root == H256::from_low_u64_be(0) {
         state.latest_block_header.state_root = previous_state_root;
     }
     // Cache block root

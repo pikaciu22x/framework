@@ -16,6 +16,7 @@ use types::{
     beacon_state::{BeaconState, Error},
     config::Config,
     consts::DEPOSIT_CONTRACT_TREE_DEPTH,
+    primitives::H256,
     types::{
         Attestation, AttestationData, AttesterSlashing, BeaconBlock, BeaconBlockBody,
         BeaconBlockHeader, Deposit, PendingAttestation, ProposerSlashing, Validator, VoluntaryExit,
@@ -129,6 +130,7 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
         parent_root: block.parent_root,
         //# `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root: hash_tree_root(&block.body),
+        state_root: H256::from_low_u64_be(0),
         ..BeaconBlockHeader::default()
     };
     //# Verify proposer is not slashed
