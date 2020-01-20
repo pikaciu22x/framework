@@ -39,9 +39,9 @@ pub fn integer_squareroot(n: u64) -> u64 {
     }
     sqrt_floor
      */
-    let mut x = 1;
+    let mut x = 0;
     loop {
-        if (x + 1) ^ 2 > n {
+        if (x + 1) * (x + 1) > n {
             return x;
         }
         x += 1;

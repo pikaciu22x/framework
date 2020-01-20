@@ -21,28 +21,37 @@ pub fn state_transition<T: Config>(
     block: &BeaconBlock<T>,
     validate_state_root: bool,
 ) -> BeaconState<T> {
+    println!("STATE TRANSITION: CALL PROCESS_SLOTS");
     //# Process slots (including those with no blocks) since block
     process_slots(state, block.slot);
+    println!("STATE TRANSITION: CALL PROCESS_BLOCK");
     //# Process block
     blocks::block_processing::process_block(state, block);
     //# Validate state root (`validate_state_root == True` in production)
-    if validate_state_root {
-        assert!(block.state_root == hash_tree_root(state));
-    }
+    // if validate_state_root {
+    //     assert!(block.state_root == hash_tree_root(state));
+    // }
     //# Return post-state
+    println!("STATE TRANSITION: PROCESS_BLOCK FINISHED");
     return state.clone();
 }
 
 pub fn process_slots<T: Config>(state: &mut BeaconState<T>, slot: Slot) {
-    assert!(state.slot <= slot);
+    // assert!(state.slot <= slot);
+    println!("PROCESS_SLOTS: CALLED");
     while state.slot < slot {
+        println!("PROCESS_SLOTS: CALL PROCESS_SLOT");
         process_slot(state);
         //# Process epoch on the start slot of the next epoch
+        println!("PROCESS_SLOTS: CHECK IF EPOCH");
         if (state.slot + 1) % T::SlotsPerEpoch::U64 == 0 {
+            println!("PROCESS_SLOTS: state.slot: {}  SlotsPerEpoch: {}", state.slot, T::SlotsPerEpoch::U64);
+            println!("PROCESS_SLOTS: CALL PROCESS_EPOCH");
             process_epoch(state);
         }
         state.slot += 1;
     }
+    println!("PROCESS_SLOTS: FINISHED");
 }
 
 fn process_slot<T: Config>(state: &mut BeaconState<T>) {
