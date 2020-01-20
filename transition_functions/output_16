@@ -1,0 +1,98 @@
+2020-01-20 13:24:12,242 INFO 
+[beacon_node::node] received beacon block: BeaconBlock { 
+    slot: 16,
+    parent_root: 0xb4e6171d6827efd87d8aca980a5ca75c332a0cc7cceb0a858096b829e6032608,
+    state_root: 0xe43d28d296d7f69583126917886b1e98795b455e7f29a1fa58e04f2468075dd8,
+    body: BeaconBlockBody {
+        randao_reveal: Signature {
+            signature: Signature {
+                point: ([04083D0D1A17184B65F1C994BD14A8CD4CFF7E7F36D912A28137178B32971E13240EC7069240D3904870EE0BC8550E6C,0BDDD6472B544F27DED6CF12B15F677933B327EE8BA01835DB396E70D1F6F9361F50835E0F5E439B890F653E26A314A1],
+                    [199E2785020ABE85F84D6A8078B90F92CA349BBD6978AF8841097DC91096078BF2A888D39B59A4E89338FCC99A78A462,0D5F3292F8E46EE9E04A2341E8DC30F86025642F29EC6D29D53F6390CB528EC43DB521F027C3EC4B0B7FB478C3893956])
+                },
+            is_empty: false
+        },
+        eth1_data: Eth1Data {
+            deposit_root: 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925,
+            deposit_count: 64,
+            block_hash: 0x2b32db6c2c0a6235fb1397e8225ea85e0f0e6e8c7b126d0016ccbde0e667151e
+        },
+        graffiti: [115, 105, 103, 112, 47, 108, 105, 103, 104, 116, 104, 111, 117, 115, 101, 45, 48, 46, 49, 46, 49, 45, 112, 114, 101, 114, 101, 108, 101, 97, 115, 101],
+        proposer_slashings: VariableList {
+            vec: [], _phantom: PhantomData
+        },
+        attester_slashings: VariableList {
+            vec: [], _phantom: PhantomData
+        },
+        attestations: VariableList {
+            vec: [Attestation {
+                aggregation_bits: Bitfield {
+                    bytes: [15],
+                    len: 4,
+                    _phantom: PhantomData
+                },
+                data: AttestationData {
+                    slot: 15,
+                    index: 1,
+                    beacon_block_root: 0xb4e6171d6827efd87d8aca980a5ca75c332a0cc7cceb0a858096b829e6032608,
+                    source: Checkpoint {
+                        epoch: 0,
+                        root: 0x0000000000000000000000000000000000000000000000000000000000000000
+                    },
+                    target: Checkpoint {
+                        epoch: 1,
+                        root: 0x69812f994e5263e5fde1da5231b202eaa1731307612cf5caa09254e34911fd83
+                    }
+                },
+                signature: AggregateSignature {
+                    aggregate_signature: AggregateSignature {
+                        point: ([17BF990B214EF7D55850F109A9E2C021BC883FDB9332E0919BD9EBE67BB99691D13BDECC34AEE47D7B93DCCDD3EE4AE2,0A08723AE030E0FC82C1E98AE8359B9E19B677D3ECF67E7F38134F4A81C49628407532C45481961C8BA5319FC64733F3],
+                            [0BAA9C4EAFFFC491DDBE67F893B478D5D52072212BE86535B8BD46D54A05A61956CB3BE77CF15B6FD3ADDAC932EB8D4D,0259411E960DA356E2FA06AB68E8D7883F8C61E9C9BF2184B3C40063F17EEDEA0CF4D80633B87F598BE0BA623CE3A54F])
+                    },
+                    is_empty: false
+                }
+            },
+            Attestation {
+                aggregation_bits: Bitfield {
+                    bytes: [15],
+                    len: 4,
+                    _phantom: PhantomData
+                },
+                data: AttestationData {
+                    slot: 15,
+                    index: 0,
+                    beacon_block_root: 0xb4e6171d6827efd87d8aca980a5ca75c332a0cc7cceb0a858096b829e6032608,
+                    source: Checkpoint {
+                        epoch: 0,
+                        root: 0x0000000000000000000000000000000000000000000000000000000000000000
+                    },
+                    target: Checkpoint {
+                        epoch: 1,
+                        root: 0x69812f994e5263e5fde1da5231b202eaa1731307612cf5caa09254e34911fd83
+                    }
+                },
+                signature: AggregateSignature {
+                    aggregate_signature: AggregateSignature {
+                        point: ([15EBABBF06306B2B4593D865150BEE85E635478D2E9E87EA1458CF5DDEA061FB30BC294537CE1B8C768585DB70C24103,114F1CD616C7CF891B082A875262D735228463DB19F417C7DA426E4BB466FA7B6E0D6BAFD8554EF73EA45065D71FD463],[1731CA0449B5FBEE79CC2296D9EDF32A3491159924230C0499A6CA2E9093ED201AFB678295A80FBDE813EF70455EB324,0D4A3DEAD05A8C0660BCC6D6DEE8EFEC296A8B6634118242D34DD0E62AED6551D5CB0A67FDEBC113BCD52802763F7380])
+                    },
+                    is_empty: false
+                }
+            }],
+            _phantom: PhantomData
+        },
+        deposits: VariableList {
+            vec: [],
+            _phantom: PhantomData
+        },
+        voluntary_exits: VariableList {
+            vec: [],
+            _phantom: PhantomData
+        }
+    },
+	signature: Signature {
+		signature: Signature {
+			point: ([06075BD7D1BCA2531960C6F5F0EDEE5B6DA6F038CBFA7B6B985DD432D5438C0ADAD9D5EAAB2AD0C013F6FFD61580B119,102B27ABC2A0DFE101F1D9B3C7433E8411E8EDCD58F55259A05CECD5B5709D826F1F61BBE4EBCA1CE99814620819B95D],
+				[175171A23313E75CA7C62EE970B4833E7F40B660A16418B2BFF93705E84CBC194A5032B94A65D76DD1BA1EA11060A287,0D50135AA2BA0CE4DE5EBD17DBA7F820DA9E7B9A6060889C73046EEE54D79D896E612DCFC5FF3F207B143D9A2DB16F41])
+		},
+		is_empty: false
+	}
+}
