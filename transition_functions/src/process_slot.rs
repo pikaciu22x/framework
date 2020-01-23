@@ -26,9 +26,9 @@ pub fn state_transition<T: Config>(
     //# Process block
     blocks::block_processing::process_block(state, block);
     //# Validate state root (`validate_state_root == True` in production)
-    // if validate_state_root {
-    //     assert!(block.state_root == hash_tree_root(state));
-    // }
+    if validate_state_root {
+        assert!(block.state_root == hash_tree_root(state));
+    }
     //# Return post-state
     return state.clone();
 }
@@ -76,30 +76,39 @@ fn process_slot<T: Config>(state: &mut BeaconState<T>) {
 //     Ok(())
 // }
 
-// #[cfg(test)]
-// mod process_slot_tests {
-//     use types::{beacon_state::*, config::MainnetConfig};
-//     // use crate::{config::*};
-//     use super::*;
+#[cfg(test)]
+mod process_slot_tests {
+    use ssz_types::FixedVector;
+    use std::iter;
+    use types::{beacon_state::*, config::MainnetConfig};
+    
+    // use crate::{config::*};
+    use super::*;
 
-//     #[test]
-//     fn process_good_slot() {
-//         let mut bs: BeaconState<MainnetConfig> = BeaconState {
-//             ..BeaconState::default()
-//         };
+    #[test]
+    fn process_good_slot() {
+        let mut temp: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(temp.clone()).unwrap(),
+            state_roots: FixedVector::new(temp.clone()).unwrap(),
+            ..BeaconState::default()
+        };
 
-//         process_slots(&mut bs, 1);
+        process_slots(&mut bs, 1);
 
-//         assert_eq!(bs.slot, 1);
-//     }
-//     #[test]
-//     fn process_good_slot_2() {
-//         let mut bs: BeaconState<MainnetConfig> = BeaconState {
-//             slot: 3,
-//             ..BeaconState::default()
-//         };
+        assert_eq!(bs.slot, 1);
+    }
+    #[test]
+    fn process_good_slot_2() {
+        let mut temp: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(temp.clone()).unwrap(),
+            state_roots: FixedVector::new(temp.clone()).unwrap(),
+            slot: 3,
+            ..BeaconState::default()
+        };
 
-//         process_slots(&mut bs, 4);
-//         //assert_eq!(bs.slot, 6);
-//     }
-// }
+        process_slots(&mut bs, 4);
+        //assert_eq!(bs.slot, 6);
+    }
+}
