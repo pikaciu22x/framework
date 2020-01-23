@@ -78,10 +78,11 @@ fn process_slot<T: Config>(state: &mut BeaconState<T>) {
 
 #[cfg(test)]
 mod process_slot_tests {
+    use helper_functions::beacon_state_accessors::get_current_epoch;
     use ssz_types::FixedVector;
     use std::iter;
     use types::{beacon_state::*, config::MainnetConfig};
-    
+
     // use crate::{config::*};
     use super::*;
 
@@ -107,8 +108,24 @@ mod process_slot_tests {
             slot: 3,
             ..BeaconState::default()
         };
-
         process_slots(&mut bs, 4);
-        //assert_eq!(bs.slot, 6);
+        assert_eq!(bs.slot, 4);
+    }
+
+    #[test]
+    fn process_epoch() {
+        let mut vec_1: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+        let mut vec_2: Vec<u64> = iter::repeat(0).take(8192).collect();
+        let mut vec_3: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(65536).collect();
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            state_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            slashings: FixedVector::new(vec_2.clone()).unwrap(),
+            randao_mixes: FixedVector::new(vec_3.clone()).unwrap(),
+            slot: 0,
+            ..BeaconState::default()
+        };
+        process_slots(&mut bs, 32);
+        assert_eq!(get_current_epoch(&bs), 1);
     }
 }
