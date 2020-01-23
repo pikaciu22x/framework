@@ -137,6 +137,13 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
     let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
     assert!(!proposer.slashed);
     //# Verify proposer signature
+    println!("{}", bls_verify(
+        &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
+        signed_root(block).as_bytes(),
+        &block.signature.clone().try_into().unwrap(),
+        get_domain(&state, T::domain_beacon_proposer() as u32, None)
+    )
+    .unwrap());
     assert!(bls_verify(
         &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
         signed_root(block).as_bytes(),
@@ -341,7 +348,9 @@ mod block_processing_tests {
     use super::*;
     use bls::{PublicKey, SecretKey};
     use ethereum_types::H256;
+    use ssz_types::FixedVector;
     use ssz_types::VariableList;
+    use std::iter;
     use types::{
         config::MainnetConfig,
         types::{BeaconBlock, BeaconBlockHeader},
@@ -365,7 +374,14 @@ mod block_processing_tests {
     #[test]
     fn process_block_header_test() {
         // preparation
+        let mut vec_1: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+        let mut vec_2: Vec<u64> = iter::repeat(0).take(8192).collect();
+        let mut vec_3: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(65536).collect();
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            state_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            slashings: FixedVector::new(vec_2.clone()).unwrap(),
+            randao_mixes: FixedVector::new(vec_3.clone()).unwrap(),
             slot: 0,
             latest_block_header: BeaconBlockHeader {
                 slot: 0,
