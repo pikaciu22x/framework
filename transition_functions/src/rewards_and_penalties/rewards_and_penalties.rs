@@ -36,8 +36,8 @@ where
     fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
         let previous_epoch = get_previous_epoch(self);
         let total_balance = get_total_active_balance(self).unwrap();
-        let mut rewards = Vec::new();
-        let mut penalties = Vec::new();
+        let mut rewards: Vec<Gwei> = vec![0; self.validators.len()];
+        let mut penalties: Vec<Gwei> = vec![0; self.validators.len()];
         let mut eligible_validator_indices: Vec<ValidatorIndex> = Vec::new();
 
         for (index, v) in self.validators.iter().enumerate() {
@@ -45,8 +45,6 @@ where
                 || (v.slashed && previous_epoch + 1 < v.withdrawable_epoch)
             {
                 eligible_validator_indices.push(index as ValidatorIndex);
-                rewards.push(0);
-                penalties.push(0);
             }
         }
         //# Micro-incentives for matching FFG source, FFG target, and head
