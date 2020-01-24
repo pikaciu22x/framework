@@ -338,3 +338,87 @@ mod scessing_tests {
         assert_eq!(2, 2);
     }
 }
+
+#[cfg(test)]
+mod spec_tests {
+    use std::panic::UnwindSafe;
+
+    use ssz::Decode;
+    use test_generator::test_resources;
+    use types::{beacon_state::BeaconState, config::MinimalConfig};
+
+    use crate::spec_test_utils;
+
+    use super::*;
+
+    // We do not honor `bls_setting` in operation tests. Some attestation tests set it to 2.
+    // This may result in tests falsely succeeding or failing.
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/pyspec_tests/*"
+    )]
+    fn minimal_block_header(case_directory: &str) {
+        run_case(case_directory, "block", process_block_header);
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/pyspec_tests/*"
+    )]
+    fn minimal_proposer_slashing(case_directory: &str) {
+        run_case(
+            case_directory,
+            "proposer_slashing",
+            process_proposer_slashing,
+        );
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/pyspec_tests/*"
+    )]
+    fn minimal_attester_slashing(case_directory: &str) {
+        run_case(
+            case_directory,
+            "attester_slashing",
+            process_attester_slashing,
+        );
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/pyspec_tests/*"
+    )]
+    fn minimal_attestation(case_directory: &str) {
+        run_case(case_directory, "attestation", process_attestation);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/pyspec_tests/*")]
+    fn minimal_deposit(case_directory: &str) {
+        run_case(case_directory, "deposit", process_deposit);
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/pyspec_tests/*"
+    )]
+    fn minimal_voluntary_exit(case_directory: &str) {
+        run_case(case_directory, "voluntary_exit", process_voluntary_exit);
+    }
+
+    fn run_case<D: Decode + UnwindSafe>(
+        case_directory: &str,
+        operation_file_name: &str,
+        processing_function: impl FnOnce(&mut BeaconState<MinimalConfig>, &D) + UnwindSafe,
+    ) {
+        let process_operation = || {
+            let mut state = spec_test_utils::pre(case_directory);
+            let operation = spec_test_utils::operation(case_directory, operation_file_name);
+            processing_function(&mut state, &operation);
+            state
+        };
+        match spec_test_utils::post(case_directory) {
+            Some(expected_post) => assert_eq!(process_operation(), expected_post),
+            // The state transition code as it is now panics on error instead of returning `Result`.
+            // We have to use `std::panic::catch_unwind` to verify that state transitions fail.
+            // This may result in tests falsely succeeding.
+            None => assert!(std::panic::catch_unwind(process_operation).is_err()),
+        }
+    }
+}

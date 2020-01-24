@@ -254,3 +254,66 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
 //     //     assert_eq!(5, bs.get_current_epoch());
 //     // }
 // }
+
+#[cfg(test)]
+mod spec_tests {
+    use core::fmt::Debug;
+
+    use test_generator::test_resources;
+    use types::{beacon_state::BeaconState, config::MinimalConfig};
+    use void::Void;
+
+    use crate::spec_test_utils;
+
+    use super::*;
+
+    // We do not honor `bls_setting` in epoch processing tests because none of them customize it.
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/pyspec_tests/*")]
+    fn minimal_justification_and_finalization(case_directory: &str) {
+        run_case(case_directory, process_justification_and_finalization);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/rewards_and_penalties/pyspec_tests/*")]
+    fn minimal_rewards_and_penalties(case_directory: &str) {
+        run_case(case_directory, process_rewards_and_penalties);
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/pyspec_tests/*"
+    )]
+    fn minimal_registry_updates(case_directory: &str) {
+        run_case(case_directory, wrap_in_ok(process_registry_updates));
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/pyspec_tests/*"
+    )]
+    fn minimal_slashings(case_directory: &str) {
+        run_case(case_directory, wrap_in_ok(process_slashings));
+    }
+
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/pyspec_tests/*"
+    )]
+    fn minimal_final_updates(case_directory: &str) {
+        run_case(case_directory, wrap_in_ok(process_final_updates));
+    }
+
+    fn wrap_in_ok<T>(
+        infallible_function: impl FnOnce(&mut T),
+    ) -> impl FnOnce(&mut T) -> Result<(), Void> {
+        |argument| Ok(infallible_function(argument))
+    }
+
+    fn run_case<E: Debug>(
+        case_directory: &str,
+        processing_function: impl FnOnce(&mut BeaconState<MinimalConfig>) -> Result<(), E>,
+    ) {
+        let mut state = spec_test_utils::pre(case_directory);
+        let expected_post = spec_test_utils::post(case_directory)
+            .expect("every epoch processing test should have a post-state");
+        processing_function(&mut state).expect("every epoch processing test should succeed");
+        assert_eq!(state, expected_post);
+    }
+}
