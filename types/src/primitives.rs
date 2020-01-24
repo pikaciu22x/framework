@@ -2,7 +2,6 @@ pub use bls::{AggregatePublicKey, AggregateSignature, PublicKey, SecretKey, Sign
 pub use bls::{PublicKeyBytes, SignatureBytes};
 pub use ethereum_types::H256;
 
-pub type CommitteeIndex = u64;
 pub type Epoch = u64;
 pub type Gwei = u64;
 pub type Shard = u64;

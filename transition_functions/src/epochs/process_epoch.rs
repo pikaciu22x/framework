@@ -156,13 +156,7 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
     }
 }
 
-<<<<<<< HEAD
-fn process_rewards_and_penalties<T: Config + ExpConst>(
-    state: &mut BeaconState<T>,
-) -> Result<(), Error> {
-=======
 fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Result<(), Error> {
->>>>>>> interop
     if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
@@ -176,11 +170,7 @@ fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Resul
     Ok(())
 }
 
-<<<<<<< HEAD
-fn process_slashings<T: Config + ExpConst>(state: &mut BeaconState<T>) {
-=======
 fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
->>>>>>> interop
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 

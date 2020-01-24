@@ -77,8 +77,6 @@ enum EventHandlerError {
         topics: Vec<TopicHash>,
         message: PubsubMessage,
     },
-    #[error("unexpectedly subscribed to peer {peer_id} for topic {topic}")]
-    UnexpectedTopicSubscription { peer_id: PeerId, topic: TopicHash },
     #[error("slot step is zero")]
     SlotStepIsZero,
     #[error("slot difference overflowed ({count} * {step})")]
