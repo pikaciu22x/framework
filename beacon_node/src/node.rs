@@ -4,7 +4,6 @@
 
 use anyhow::Result;
 use beacon_fork_choice::Store;
-use eth2_core::ExpConst;
 use eth2_network::{Networked, Status};
 use helper_functions::crypto;
 use log::info;
@@ -17,7 +16,7 @@ use types::{
 
 pub struct Node<C: Config>(Store<C>);
 
-impl<C: Config + ExpConst> Node<C> {
+impl<C: Config> Node<C> {
     pub fn new(beacon_state: BeaconState<C>) -> Self {
         Self(Store::new(beacon_state))
     }
@@ -36,7 +35,7 @@ impl<C: Config + ExpConst> Node<C> {
     }
 }
 
-impl<C: Config + ExpConst> Networked<C> for Node<C> {
+impl<C: Config> Networked<C> for Node<C> {
     fn accept_beacon_block(&mut self, block: BeaconBlock<C>) -> Result<()> {
         info!("received beacon block: {:?}", block);
         self.0.on_block(block)

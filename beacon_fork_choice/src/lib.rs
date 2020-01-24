@@ -1,16 +1,15 @@
 //! Based on the naive LMD-GHOST fork choice rule implementation in the specification:
-//! <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md>
+//! <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md>
 //!
 //! `assert`s from Python are represented by statements that either delay the processing of the
 //! offending object or return `Err`. All other operations that can raise exceptions in Python
 //! (like indexing into `dict`s) are represented by statements that panic on failure.
 
-use core::{cmp::Ordering, mem};
+use core::{cmp::Ordering, convert::TryInto as _, mem};
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{ensure, Result};
 use error_utils::DebugAsError;
-use eth2_core::ExpConst;
 use helper_functions::{beacon_state_accessors, crypto, misc, predicates};
 use log::info;
 use maplit::hashmap;
@@ -35,7 +34,7 @@ enum Error<C: Config> {
     },
 }
 
-/// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#latestmessage>
+/// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#latestmessage>
 type LatestMessage = Checkpoint;
 
 #[allow(clippy::large_enum_variant)]
@@ -45,7 +44,7 @@ enum DelayedObject<C: Config> {
     Attestation(Attestation<C>),
 }
 
-/// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#store>
+/// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#store>
 pub struct Store<C: Config> {
     slot: Slot,
     justified_checkpoint: Checkpoint,
@@ -62,8 +61,8 @@ pub struct Store<C: Config> {
     delayed_until_slot: BTreeMap<Slot, Vec<DelayedObject<C>>>,
 }
 
-impl<C: Config + ExpConst> Store<C> {
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#get_genesis_store>
+impl<C: Config> Store<C> {
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#get_genesis_store>
     pub fn new(genesis_state: BeaconState<C>) -> Self {
         // The way the genesis block is constructed makes it possible for many parties to
         // independently produce the same block. But why does the genesis block have to
@@ -95,7 +94,7 @@ impl<C: Config + ExpConst> Store<C> {
         }
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#get_head>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#get_head>
     ///
     /// Unlike the `get_head` function in the specification, this returns the [`BeaconState`]
     /// produced after processing the current head block.
@@ -123,7 +122,7 @@ impl<C: Config + ExpConst> Store<C> {
         &self.block_states[&head_root]
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#on_tick>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#on_tick>
     ///
     /// Unlike `on_tick` in the specification, this should be called at the start of a slot instead
     /// of every second. The fork choice rule doesn't need a precise timestamp.
@@ -139,11 +138,11 @@ impl<C: Config + ExpConst> Store<C> {
         self.retry_delayed_until_slot(slot)
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#on_block>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#on_block>
     pub fn on_block(&mut self, block: BeaconBlock<C>) -> Result<()> {
         // The specification uses 2 different ways to calculate what appears to be the same value:
-        // - <https://github.com/ethereum/eth2.0-specs/blame/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#L155>
-        // - <https://github.com/ethereum/eth2.0-specs/blame/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#L159>
+        // - <https://github.com/ethereum/eth2.0-specs/blame/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#L155>
+        // - <https://github.com/ethereum/eth2.0-specs/blame/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#L159>
         // We assume this is an oversight.
         let finalized_slot = Self::epoch_start_slot(self.finalized_checkpoint.epoch);
 
@@ -195,7 +194,7 @@ impl<C: Config + ExpConst> Store<C> {
         self.retry_delayed_until_block(block_root)
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#on_attestation>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#on_attestation>
     pub fn on_attestation(&mut self, attestation: Attestation<C>) -> Result<()> {
         let target = attestation.data.target;
 
@@ -239,13 +238,7 @@ impl<C: Config + ExpConst> Store<C> {
         predicates::validate_indexed_attestation(target_state, &indexed_attestation)
             .map_err(DebugAsError::new)?;
 
-        let validator_indices = indexed_attestation
-            .custody_bit_0_indices
-            .iter()
-            .chain(&indexed_attestation.custody_bit_1_indices)
-            .copied();
-
-        for index in validator_indices {
+        for index in indexed_attestation.attesting_indices.iter().copied() {
             let old_message = self.latest_messages.entry(index).or_default();
             if old_message.epoch < new_message.epoch {
                 *old_message = new_message;
@@ -259,7 +252,7 @@ impl<C: Config + ExpConst> Store<C> {
         self.blocks.get(&root)
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#get_latest_attesting_balance>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#get_latest_attesting_balance>
     ///
     /// The extra `block` parameter is used to avoid a redundant block lookup.
     fn latest_attesting_balance(&self, root: H256, block: &BeaconBlock<C>) -> Gwei {
@@ -273,17 +266,23 @@ impl<C: Config + ExpConst> Store<C> {
             .into_iter()
             .filter_map(|index| {
                 let latest_message = self.latest_messages.get(&index)?;
-                Some((index, latest_message))
-            })
-            .filter(|(_, latest_message)| {
                 let latest_message_block = &self.blocks[&latest_message.root];
-                self.ancestor(latest_message.root, latest_message_block, block.slot) == root
+                if self.ancestor(latest_message.root, latest_message_block, block.slot) == root {
+                    // The `Result::expect` call would be avoidable if there were a function like
+                    // `beacon_state_accessors::get_active_validator_indices` that returned
+                    // references to the validators in addition to their indices.
+                    let index: usize = index
+                        .try_into()
+                        .expect("validator index should fit in usize");
+                    Some(justified_state.validators[index].effective_balance)
+                } else {
+                    None
+                }
             })
-            .map(|(index, _)| justified_state.validators[index as usize].effective_balance)
             .sum()
     }
 
-    /// <https://github.com/ethereum/eth2.0-specs/blob/40cb72ec112903a28cbfc9e310e14844680476e5/specs/core/0_fork-choice.md#get_ancestor>
+    /// <https://github.com/ethereum/eth2.0-specs/blob/65b615a4d4cf75a50b29d25c53f1bc5422770ae5/specs/core/0_fork-choice.md#get_ancestor>
     ///
     /// The extra `block` parameter is used to avoid adding `block` to `self.blocks` before
     /// verifying it. See <https://github.com/ethereum/eth2.0-specs/issues/1288>.

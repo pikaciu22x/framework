@@ -1,5 +1,6 @@
-use types::helper_functions_types::Error;
+use integer_sqrt::IntegerSquareRoot as _;
 use std::convert::TryInto;
+use types::helper_functions_types::Error;
 
 // inteface has changed
 pub fn xor_str(bytes_1: &str, bytes_2: &str) -> String {
@@ -39,13 +40,7 @@ pub fn integer_squareroot(n: u64) -> u64 {
     }
     sqrt_floor
      */
-    let mut x = 1;
-    loop {
-        if (x + 1) ^ 2 > n {
-            return x;
-        }
-        x += 1;
-    }
+    n.integer_sqrt()
 }
 
 pub fn int_to_bytes(n: u64, length: usize) -> Result<Vec<u8>, Error> {
@@ -63,18 +58,15 @@ pub fn int_to_bytes(n: u64, length: usize) -> Result<Vec<u8>, Error> {
         rez_vec.push((num % 256).try_into().expect(""));
         num /= 256;
     }
-    rez_vec.reverse();
     Ok(rez_vec)
 }
 
 pub fn bytes_to_int(bytes: &[u8]) -> Result<u64, Error> {
     let length = bytes.len();
-    let mut nums: Vec<u8> = bytes.to_vec();
-    nums.reverse();
     let mut result: u64 = 0;
     let mut mult = 1;
     let mut i = 0;
-    let iter = nums.iter().take(length);
+    let iter = bytes.iter().take(length);
     for j in iter {
         result += mult * (u64::from(*j));
         if i < length - 1 {

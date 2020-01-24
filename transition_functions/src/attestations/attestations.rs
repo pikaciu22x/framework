@@ -1,4 +1,3 @@
-use core::ExpConst;
 use helper_functions::{
     beacon_state_accessors::{
         get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
@@ -19,7 +18,7 @@ use types::{
 
 pub trait AttestableBlock<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_matching_source_attestations(
         &self,
@@ -45,7 +44,7 @@ where
 
 impl<T> AttestableBlock<T> for BeaconState<T>
 where
-    T: Config + ExpConst,
+    T: Config,
 {
     fn get_matching_source_attestations(
         &self,

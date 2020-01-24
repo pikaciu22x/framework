@@ -7,8 +7,6 @@ use std::convert::TryInto;
 use typenum::marker_traits::Unsigned;
 use types::beacon_state::BeaconState;
 use types::config::Config;
-use types::config::MainnetConfig;
-use types::consts::SHUFFLE_ROUND_COUNT;
 use types::helper_functions_types::Error;
 use types::primitives::{Domain, DomainType, Epoch, Slot, ValidatorIndex, Version, H256};
 
@@ -21,7 +19,7 @@ pub fn compute_start_slot_at_epoch<C: Config>(epoch: Epoch) -> Slot {
 }
 
 pub fn compute_activation_exit_epoch<C: Config>(epoch: Epoch) -> Epoch {
-    epoch + 1 + MainnetConfig::min_seed_lookahead()
+    epoch + 1 + C::min_seed_lookahead()
 }
 
 pub fn compute_domain(domain_type: DomainType, fork_version: Option<&Version>) -> Domain {
@@ -29,11 +27,8 @@ pub fn compute_domain(domain_type: DomainType, fork_version: Option<&Version>) -
     let mut domain_bytes = [0, 0, 0, 0, 0, 0, 0, 0];
     for i in 0..4 {
         domain_bytes[i] = domain_type_bytes[i];
-        match fork_version {
-            Some(f) => {
-                domain_bytes[i + 4] = f[i];
-            }
-            None => return bytes_to_int(&domain_bytes).expect(""),
+        if let Some(f) = fork_version {
+            domain_bytes[i + 4] = f[i];
         }
     }
     bytes_to_int(&domain_bytes).expect("")
@@ -49,7 +44,7 @@ pub fn compute_shuffled_index<C: Config>(
     }
 
     let mut ind = index;
-    for current_round in 0..SHUFFLE_ROUND_COUNT {
+    for current_round in 0..C::shuffle_round_count() {
         // compute pivot
         let seed_bytes = seed.as_bytes();
         let round_bytes: Vec<u8> = int_to_bytes(current_round, 1).expect("");
@@ -69,7 +64,7 @@ pub fn compute_shuffled_index<C: Config>(
         // compute flip
         let flip = (pivot + index_count - ind) % index_count;
         // compute position
-        let position = if index > flip { ind } else { flip };
+        let position = if ind > flip { ind } else { flip };
         // compute source
         let addition_to_sum: Vec<u8> = int_to_bytes(position / 256, 4).expect("");
         let iter = addition_to_sum.iter();
@@ -80,12 +75,7 @@ pub fn compute_shuffled_index<C: Config>(
         // compute byte
         let byte = source[usize::try_from((position % 256) / 8).expect("")];
         // compute bit
-        let divisor: u8 = u8::try_from(2 * (position % 8)).expect("");
-        let bit: u8 = if divisor == 0 {
-            0
-        } else {
-            (byte / divisor) % 2
-        };
+        let bit: u8 = (byte >> (position % 8)) % 2;
         // flip or not?
         if bit == 1 {
             ind = flip;
@@ -124,7 +114,7 @@ pub fn compute_proposer_index<C: Config>(
         let effective_balance =
             state.validators[usize::try_from(candidate_index).expect("")].effective_balance;
         if effective_balance * max_random_byte
-            >= MainnetConfig::max_effective_balance() * u64::from(random_byte)
+            >= C::max_effective_balance() * u64::from(random_byte)
         {
             return Ok(candidate_index);
         }

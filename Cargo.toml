@@ -7,8 +7,7 @@ members = [
     'eth2_network_libp2p',
     'types',
     'transition_functions',
-    'core',
-    'helper_functions/helper_functions_1',
+    'helper_functions/helper_functions_2',
 ]
 
 [profile.release]

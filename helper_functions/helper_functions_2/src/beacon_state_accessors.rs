@@ -3,10 +3,11 @@ use crate::math::*;
 use crate::misc::*;
 use crate::predicates::is_active_validator;
 use ethereum_types::H256;
-use ssz_types::{BitList, VariableList};
+use ssz_types::BitList;
 use std::cmp::max;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
+use typenum::Unsigned as _;
 use types::beacon_state::BeaconState;
 use types::config::Config;
 use types::consts::*;
@@ -35,12 +36,12 @@ pub fn get_block_root_at_slot<C: Config>(
     state: &BeaconState<C>,
     slot: Slot,
 ) -> Result<H256, Error> {
-    if !(slot < state.slot && state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT) {
+    if !(slot < state.slot && state.slot <= slot + C::SlotsPerHistoricalRoot::U64) {
         return Err(Error::SlotOutOfRange);
     }
 
     let index =
-        usize::try_from(slot % SLOTS_PER_HISTORICAL_ROOT).expect("Expected successfull cast");
+        usize::try_from(slot % C::SlotsPerHistoricalRoot::U64).expect("Expected successfull cast");
 
     if index >= state.block_roots.len() {
         return Err(Error::IndexOutOfRange);
@@ -50,8 +51,8 @@ pub fn get_block_root_at_slot<C: Config>(
 }
 
 pub fn get_randao_mix<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result<H256, Error> {
-    let index =
-        usize::try_from(epoch % EPOCHS_PER_HISTORICAL_VECTOR).expect("Expected successfull cast");
+    let index = usize::try_from(epoch % C::EpochsPerHistoricalVector::U64)
+        .expect("Expected successfull cast");
     if index >= state.randao_mixes.len() {
         return Err(Error::IndexOutOfRange);
     }
@@ -102,8 +103,8 @@ pub fn get_validator_churn_limit<C: Config>(state: &BeaconState<C>) -> Result<u6
     let active_validator_indices = get_active_validator_indices(state, get_current_epoch(state));
     let active_validator_count = active_validator_indices.len() as u64;
     Ok(max(
-        MIN_PER_EPOCH_CHURN_LIMIT,
-        active_validator_count / CHURN_LIMIT_QUOTIENT,
+        C::min_per_epoch_churn_limit(),
+        active_validator_count / C::churn_limit_quotient(),
     ))
 }
 
@@ -112,7 +113,7 @@ pub fn get_seed<C: Config>(
     epoch: Epoch,
     domain_type: DomainType,
 ) -> Result<H256, Error> {
-    let domain_bytes = int_to_bytes(domain_type.into(), 8);
+    let domain_bytes = int_to_bytes(domain_type.into(), 4);
     if domain_bytes.is_err() {
         return Err(domain_bytes.err().expect("Should be error"));
     }
@@ -126,16 +127,16 @@ pub fn get_seed<C: Config>(
 
     let mix = get_randao_mix(
         state,
-        epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1,
+        epoch + C::EpochsPerHistoricalVector::U64 - C::min_seed_lookahead() - 1,
     );
     if mix.is_err() {
         return Err(mix.err().expect("Should be error"));
     }
 
-    let mut seed: [u8; 48] = [0; 48];
-    seed[0..8].copy_from_slice(&domain_b[..]);
-    seed[8..16].copy_from_slice(&epoch_b[..]);
-    seed[16..48].copy_from_slice(&(mix.expect("Expected success"))[..]);
+    let mut seed: [u8; 44] = [0; 44];
+    seed[0..4].copy_from_slice(&domain_b[..]);
+    seed[4..12].copy_from_slice(&epoch_b[..]);
+    seed[12..44].copy_from_slice(&(mix.expect("Expected success"))[..]);
 
     Ok(H256::from_slice(&hash(&seed)))
 }
@@ -145,9 +146,11 @@ pub fn get_committee_count_at_slot<C: Config>(
     slot: Slot,
 ) -> Result<u64, Error> {
     let epoch = compute_epoch_at_slot::<C>(slot);
-    let active_count = get_active_validator_indices(state, epoch).len() as u64;
-    let mut count = if MAX_COMMITTEES_PER_SLOT < active_count {
-        MAX_COMMITTEES_PER_SLOT
+    let active_count = get_active_validator_indices(state, epoch).len() as u64
+        / C::SlotsPerEpoch::U64
+        / C::target_committee_size();
+    let mut count = if C::max_committees_per_slot() < active_count {
+        C::max_committees_per_slot()
     } else {
         active_count
     };
@@ -168,29 +171,36 @@ pub fn get_beacon_committee<C: Config>(
         return Err(committees_per_slot.err().expect("Should be error"));
     }
 
-    let indices = &[];
-    let seed = get_seed(state, epoch, DOMAIN_BEACON_ATTESTER);
+    let indices = get_active_validator_indices(state, epoch);
+    let seed = get_seed(state, epoch, C::domain_attestation());
     if seed.is_err() {
         return Err(seed.err().expect("Should be error"));
     }
 
     let committees = committees_per_slot.expect("Expected seed");
-    let i = (slot % SLOTS_PER_EPOCH) * committees + index;
-    let count = committees * SLOTS_PER_EPOCH;
-    compute_committee::<C>(indices, &seed.expect("Expected seed"), i, count)
+    let i = (slot % C::SlotsPerEpoch::U64) * committees + index;
+    let count = committees * C::SlotsPerEpoch::U64;
+
+    compute_committee::<C>(indices.as_slice(), &seed.expect("Expected seed"), i, count)
 }
 
 pub fn get_beacon_proposer_index<C: Config>(
     state: &BeaconState<C>,
 ) -> Result<ValidatorIndex, Error> {
     let epoch = get_current_epoch(state);
-    let seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER);
+    let seed = get_seed(state, epoch, C::domain_beacon_proposer());
     if seed.is_err() {
         return Err(seed.err().expect("Should be error"));
     }
 
     let indices = get_active_validator_indices(state, epoch);
-    compute_proposer_index(state, &indices, &seed.expect("Expected success"))
+
+    let mut seed_with_slot = [0; 40];
+    seed_with_slot[..32].copy_from_slice(seed?.as_bytes());
+    seed_with_slot[32..].copy_from_slice(&state.slot.to_le_bytes());
+    let seed = H256::from_slice(hash(&seed_with_slot).as_slice());
+
+    compute_proposer_index(state, &indices, &seed)
 }
 
 pub fn get_total_balance<C: Config>(
@@ -237,41 +247,11 @@ pub fn get_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     attestation: &Attestation<C>,
 ) -> Result<IndexedAttestation<C>, Error> {
-    let custody_bit_0_indices =
-        get_attesting_indices(state, &(attestation.data), &(attestation.aggregation_bits));
-    if custody_bit_0_indices.is_err() {
-        return Err(custody_bit_0_indices.err().expect("Expected success"));
-    }
-
-    let custody_bit_1_indices =
-        get_attesting_indices(state, &(attestation.data), &(attestation.custody_bits));
-    if custody_bit_1_indices.is_err() {
-        return Err(custody_bit_1_indices.err().expect("Expected success"));
-    }
-
-    let custody_bit_0_indices_list = VariableList::new(
-        custody_bit_0_indices
-            .expect("Expected success getting custody indices")
-            .into_iter()
-            .collect(),
-    );
-    if custody_bit_0_indices_list.is_err() {
-        return Err(Error::IndexOutOfRange);
-    }
-
-    let custody_bit_1_indices_list = VariableList::new(
-        custody_bit_1_indices
-            .expect("Expected success getting custody indices")
-            .into_iter()
-            .collect(),
-    );
-    if custody_bit_1_indices_list.is_err() {
-        return Err(Error::IndexOutOfRange);
-    }
+    let attesting_indices =
+        get_attesting_indices(state, &attestation.data, &attestation.aggregation_bits)?;
 
     let att = IndexedAttestation {
-        custody_bit_0_indices: custody_bit_0_indices_list.expect("Expected success"),
-        custody_bit_1_indices: custody_bit_1_indices_list.expect("Expected success"),
+        attesting_indices: attesting_indices.into_iter().collect::<Vec<_>>().into(),
         data: attestation.data.clone(),
         signature: attestation.signature.clone(),
     };
@@ -293,7 +273,10 @@ pub fn get_attesting_indices<C: Config>(
         .into_iter()
         .enumerate()
     {
-        if bitlist.get(i).is_ok() {
+        if bitlist
+            .get(i)
+            .expect("bitfield length should match committee size")
+        {
             validators.insert(v);
         }
     }
@@ -303,7 +286,7 @@ pub fn get_attesting_indices<C: Config>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ssz_types::{typenum, FixedVector};
+    use ssz_types::{typenum, FixedVector, VariableList};
     use types::config::MinimalConfig;
     use types::types::Validator;
 
@@ -354,8 +337,8 @@ mod tests {
         let state = BeaconState::<MinimalConfig>::default();
         let result = get_validator_churn_limit::<MinimalConfig>(&state);
         assert_eq!(
-            result.expect("Expected MIN_PER_EPOCH_CHURN_LIMIT"),
-            MIN_PER_EPOCH_CHURN_LIMIT
+            result.expect("Expected min_per_epoch_churn_limit"),
+            MinimalConfig::min_per_epoch_churn_limit()
         );
     }
 

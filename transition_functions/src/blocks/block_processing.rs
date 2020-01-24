@@ -1,4 +1,3 @@
-use core::consts::ExpConst;
 use helper_functions::beacon_state_accessors::*;
 use helper_functions::beacon_state_mutators::*;
 use helper_functions::crypto::{bls_verify, hash, hash_tree_root, signed_root};
@@ -10,6 +9,7 @@ use helper_functions::predicates::{
 };
 use std::collections::BTreeSet;
 use std::convert::TryInto;
+use typenum::Unsigned as _;
 use types::consts::*;
 use types::types::*;
 use types::{
@@ -18,19 +18,19 @@ use types::{
     types::VoluntaryExit,
 };
 
-pub fn process_block<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
+pub fn process_block<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
     process_block_header(state, &block);
     process_randao(state, &block.body);
     process_eth1_data(state, &block.body);
     process_operations(state, &block.body);
 }
 
-fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>, exit: &VoluntaryExit) {
+fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &VoluntaryExit) {
     let validator = &state.validators[exit.validator_index as usize];
     // Verify the validator is active
     assert!(is_active_validator(&validator, get_current_epoch(state)));
     // Verify the validator has not yet exited
-    assert!(validator.exit_epoch == T::far_future_epoch());
+    assert!(validator.exit_epoch == FAR_FUTURE_EPOCH);
     // Exits must specify an epoch when they become valid; they are not valid before then
     assert!(get_current_epoch(state) >= exit.epoch);
     // Verify the validator has been active long enough
@@ -50,7 +50,7 @@ fn process_voluntary_exit<T: Config + ExpConst>(state: &mut BeaconState<T>, exit
     initiate_validator_exit(state, exit.validator_index).unwrap();
 }
 
-fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &Deposit) {
+fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Verify the Merkle branch  is_valid_merkle_branch
 
     assert!(is_valid_merkle_branch(
@@ -98,10 +98,10 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
         .push(Validator {
             pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
             withdrawal_credentials: deposit.data.withdrawal_credentials,
-            activation_eligibility_epoch: T::far_future_epoch(),
-            activation_epoch: T::far_future_epoch(),
-            exit_epoch: T::far_future_epoch(),
-            withdrawable_epoch: T::far_future_epoch(),
+            activation_eligibility_epoch: FAR_FUTURE_EPOCH,
+            activation_epoch: FAR_FUTURE_EPOCH,
+            exit_epoch: FAR_FUTURE_EPOCH,
+            withdrawable_epoch: FAR_FUTURE_EPOCH,
             effective_balance: std::cmp::min(
                 amount - (amount % T::effective_balance_increment()),
                 T::max_effective_balance(),
@@ -112,7 +112,7 @@ fn process_deposit<T: Config + ExpConst>(state: &mut BeaconState<T>, deposit: &D
     &state.balances.push(*amount);
 }
 
-fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
+fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
@@ -123,9 +123,7 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
         parent_root: block.parent_root,
         //# `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root: hash_tree_root(&block.body),
-        //# `signature` is zeroed
-        signature: block.signature.clone(),   //# Placeholder
-        state_root: block.state_root.clone(), //# Placeholder so the compiler doesn't scream at me as much
+        ..BeaconBlockHeader::default()
     };
     //# Verify proposer is not slashed
     let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
@@ -140,7 +138,7 @@ fn process_block_header<T: Config + ExpConst>(state: &mut BeaconState<T>, block:
     .unwrap());
 }
 
-fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
+fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
     let epoch = get_current_epoch(&state);
     //# Verify RANDAO reveal
     let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
@@ -162,10 +160,11 @@ fn process_randao<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Beaco
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
     array.copy_from_slice(mix);
-    state.randao_mixes[(epoch % EPOCHS_PER_HISTORICAL_VECTOR) as usize] = array.try_into().unwrap();
+    state.randao_mixes[(epoch % T::EpochsPerHistoricalVector::U64) as usize] =
+        array.try_into().unwrap();
 }
 
-fn process_proposer_slashing<T: Config + ExpConst>(
+fn process_proposer_slashing<T: Config>(
     state: &mut BeaconState<T>,
     proposer_slashing: &ProposerSlashing,
 ) {
@@ -203,7 +202,7 @@ fn process_proposer_slashing<T: Config + ExpConst>(
     slash_validator(state, proposer_slashing.proposer_index, None).unwrap();
 }
 
-fn process_attester_slashing<T: Config + ExpConst>(
+fn process_attester_slashing<T: Config>(
     state: &mut BeaconState<T>,
     attester_slashing: &AttesterSlashing<T>,
 ) {
@@ -220,15 +219,13 @@ fn process_attester_slashing<T: Config + ExpConst>(
 
     // Turns attesting_indices into a binary tree set. It's a set and it's ordered :)
     let attesting_indices_1 = attestation_1
-        .custody_bit_0_indices
+        .attesting_indices
         .iter()
-        .chain(&attestation_1.custody_bit_1_indices)
         .cloned()
         .collect::<BTreeSet<_>>();
     let attesting_indices_2 = attestation_2
-        .custody_bit_0_indices
+        .attesting_indices
         .iter()
-        .chain(&attestation_2.custody_bit_1_indices)
         .cloned()
         .collect::<BTreeSet<_>>();
 
@@ -245,41 +242,21 @@ fn process_attester_slashing<T: Config + ExpConst>(
     assert!(slashed_any);
 }
 
-fn get_attestation_data_index<T: Config + ExpConst>(
-    state: &BeaconState<T>,
-    attestation_data: &AttestationData,
-) -> Result<u64, Error> {
-    for (index, x) in state.current_epoch_attestations.iter().enumerate() {
-        if x.data == *attestation_data {
-            return Ok(index as u64);
-        }
-    }
-    return Err(Error::SlotOutOfBounds);
-}
-
-fn process_attestation<T: Config + ExpConst>(
-    state: &mut BeaconState<T>,
-    attestation: &Attestation<T>,
-) {
+fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Attestation<T>) {
     let data = &attestation.data;
-    let index = get_attestation_data_index(state, data).unwrap();
     let attestation_slot = data.slot;
-    assert!(index < get_committee_count_at_slot(state, attestation_slot).unwrap()); //# Nėra index ir slot. ¯\_(ツ)_/¯
+    assert!(data.index < get_committee_count_at_slot(state, attestation_slot).unwrap()); //# Nėra index ir slot. ¯\_(ツ)_/¯
     assert!(
         data.target.epoch == get_previous_epoch(state)
             || data.target.epoch == get_current_epoch(state)
     );
     assert!(
         attestation_slot + T::min_attestation_inclusion_delay() <= state.slot
-            && state.slot <= attestation_slot + T::slots_per_epoch()
+            && state.slot <= attestation_slot + T::SlotsPerEpoch::U64
     );
 
-    let committee = get_beacon_committee(state, attestation_slot, index).unwrap();
-    assert_eq!(
-        attestation.aggregation_bits.len(),
-        attestation.custody_bits.len()
-    );
-    assert_eq!(attestation.custody_bits.len(), committee.len());
+    let committee = get_beacon_committee(state, attestation_slot, data.index).unwrap();
+    assert_eq!(attestation.aggregation_bits.len(), committee.len());
 
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
@@ -310,7 +287,7 @@ fn process_attestation<T: Config + ExpConst>(
     .is_ok());
 }
 
-fn process_eth1_data<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
+fn process_eth1_data<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
     state.eth1_data_votes.push(body.eth1_data.clone()).unwrap();
     let num_votes = state
         .eth1_data_votes
@@ -318,17 +295,17 @@ fn process_eth1_data<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &Be
         .filter(|vote| *vote == &body.eth1_data)
         .count();
 
-    if num_votes * 2 > SLOTS_PER_ETH1_VOTING_PERIOD {
+    if num_votes * 2 > T::SlotsPerEth1VotingPeriod::USIZE {
         state.eth1_data = body.eth1_data.clone();
     }
 }
 
-fn process_operations<T: Config + ExpConst>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
+fn process_operations<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
     //# Verify that outstanding deposits are processed up to the maximum number of deposits
     assert_eq!(
         body.deposits.len(),
         std::cmp::min(
-            MAX_DEPOSITS,
+            T::MaxDeposits::USIZE,
             (state.eth1_data.deposit_count - state.eth1_deposit_index) as usize
         )
     );

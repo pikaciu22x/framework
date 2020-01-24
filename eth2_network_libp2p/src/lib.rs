@@ -8,7 +8,7 @@ use eth2_libp2p::{
         ErrorMessage, RPCError, RPCErrorResponse, RPCRequest, RPCResponse, RequestId,
         ResponseTermination,
     },
-    Libp2pEvent, PeerId, PubsubMessage, RPCEvent, Service, Topic, TopicHash,
+    Libp2pEvent, MessageId, PeerId, PubsubMessage, RPCEvent, Service, Topic, TopicHash,
 };
 use eth2_network::{Network, Networked, Status};
 use ethereum_types::H32;
@@ -68,9 +68,9 @@ enum EventHandlerError {
         peer_id: PeerId,
         error_message: ErrorMessage,
     },
-    #[error("unsupported gossiped object type (id: {id:?}, peer_id: {peer_id}, topics: {topics:?}, message: {message:?})")]
+    #[error("unsupported gossiped object type (message_id: {message_id:?}, peer_id: {peer_id}, topics: {topics:?}, message: {message:?})")]
     UnsupportedGossipedObjectType {
-        id: String,
+        message_id: MessageId,
         // `eth2-libp2p` calls this `source` rather than `peer_id`, but we cannot use that name
         // because `thiserror` treats `source` fields specially and provides no way to opt out.
         peer_id: PeerId,
@@ -103,6 +103,8 @@ enum Gossip<C: Config> {
 
 pub struct Sender<C: Config>(UnboundedSender<Gossip<C>>);
 
+// The implementation of `<EventHandler<C, N> as Future>::poll` relies on `UnboundedReceiver` not
+// panicking if it is polled after being exhausted.
 pub struct Receiver<C: Config>(UnboundedReceiver<Gossip<C>>);
 
 impl<C: Config> Network<C> for Sender<C> {
@@ -137,7 +139,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
             Libp2pEvent::RPC(
                 peer_id,
                 RPCEvent::Request(request_id, RPCRequest::Status(status_message)),
-            ) => self.handle_status_request(peer_id, request_id, status_message),
+            ) => self.handle_status_request(peer_id, request_id, &status_message),
             Libp2pEvent::RPC(peer_id, RPCEvent::Request(_, RPCRequest::Goodbye(reason))) => {
                 self.handle_goodbye_request(&peer_id, &reason)
             }
@@ -167,7 +169,8 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 message,
             } => self.handle_pubsub_message(id, source, topics, message),
             Libp2pEvent::PeerSubscribed(peer_id, topic) => {
-                bail!(EventHandlerError::UnexpectedTopicSubscription { peer_id, topic });
+                info!("subscribed to peer {} for topic {}", peer_id, topic);
+                Ok(Box::new(future::ok(())))
             }
         }
     }
@@ -176,9 +179,9 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
         &mut self,
         peer_id: PeerId,
         status_request_id: RequestId,
-        status_message: StatusMessage,
+        status_message: &StatusMessage,
     ) -> Result<EventFuture> {
-        let remote = status_message_into_status(status_message);
+        let remote = status_message_to_status(status_message);
 
         info!(
             "received Status request (peer_id: {}, remote: {:?})",
@@ -376,7 +379,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
     ) -> Result<EventFuture> {
         match response {
             RPCErrorResponse::Success(RPCResponse::Status(status_message)) => {
-                let remote = status_message_into_status(status_message);
+                let remote = status_message_to_status(&status_message);
 
                 info!(
                     "received Status response (peer_id: {}, remote: {:?})",
@@ -398,11 +401,17 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
                 ))
             }
             RPCErrorResponse::Success(RPCResponse::BlocksByRange(bytes)) => {
+                info!(
+                    "received BlocksByRange response chunk (peer_id: {}, bytes: {})",
+                    peer_id,
+                    Hs(bytes.as_slice()),
+                );
+
                 let beacon_block =
                     BeaconBlock::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
                 info!(
-                    "received BlocksByRange response chunk (peer_id: {}, beacon_block: {:?})",
+                    "decoded BlocksByRange response chunk (peer_id: {}, beacon_block: {:?})",
                     peer_id, beacon_block,
                 );
 
@@ -469,34 +478,41 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
 
     fn handle_pubsub_message(
         &self,
-        id: String,
+        message_id: MessageId,
         source: PeerId,
         topics: Vec<TopicHash>,
         message: PubsubMessage,
     ) -> Result<EventFuture> {
         match message {
             PubsubMessage::Block(bytes) => {
+                info!("received beacon block as gossip: {}", Hs(bytes.as_slice()));
+
                 let beacon_block =
                     BeaconBlock::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
-                info!("received beacon block as gossip: {:?}", beacon_block);
+                info!("decoded gossiped beacon block: {:?}", beacon_block);
 
                 Ok(Box::new(self.lock_networked().and_then(|mut networked| {
                     networked.accept_beacon_block(beacon_block)
                 })))
             }
             PubsubMessage::Attestation(bytes) => {
+                info!(
+                    "received beacon attestation as gossip: {}",
+                    Hs(bytes.as_slice()),
+                );
+
                 let attestation =
                     Attestation::from_ssz_bytes(bytes.as_slice()).map_err(DebugAsError::new)?;
 
-                info!("received beacon attestation as gossip: {:?}", attestation);
+                info!("decoded gossiped beacon attestation: {:?}", attestation);
 
                 Ok(Box::new(self.lock_networked().and_then(|mut networked| {
                     networked.accept_beacon_attestation(attestation)
                 })))
             }
             _ => bail!(EventHandlerError::UnsupportedGossipedObjectType {
-                id,
+                message_id,
                 peer_id: source,
                 topics,
                 message,
@@ -529,7 +545,7 @@ impl<C: Config, N: Networked<C>> EventHandler<C, N> {
 // ```
 // let handle_events = service.for_each(|libp2p_event| …);
 // let publish_gossip = self.networked_receiver.0.for_each(|gossip| …);
-// handle_events.select(publish_gossip)
+// handle_events.join(publish_gossip)
 // ```
 impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
     type Item = ();
@@ -556,6 +572,10 @@ impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
         }
 
         // Publish all `Gossip`s received through `networked_receiver`.
+        //
+        // This will keep polling the `UnboundedReceiver` after it has been exhausted.
+        // `UnboundedReceiver` does not panic in that scenario, so there is no need to use
+        // `Stream::fuse`.
         let swarm = &mut try_ready!(self.lock_service().poll()).swarm;
         while let Some(gossip) = try_ready!(self
             .networked_receiver
@@ -577,7 +597,7 @@ impl<C: Config, N: Networked<C>> Future for EventHandler<C, N> {
             }
         }
 
-        Ok(Async::Ready(()))
+        Ok(Async::NotReady)
     }
 }
 
@@ -602,14 +622,14 @@ pub fn run_network<C: Config, N: Networked<C>>(
     })
 }
 
-fn status_message_into_status(status_message: StatusMessage) -> Status {
+fn status_message_to_status(status_message: &StatusMessage) -> Status {
     let StatusMessage {
         fork_version,
         finalized_root,
         finalized_epoch,
         head_root,
         head_slot,
-    } = status_message;
+    } = *status_message;
     Status {
         fork_version,
         finalized_root,
