@@ -35,13 +35,13 @@ pub fn validate_indexed_attestation<C: Config>(
 
     // Verify max number of indices
     if indices.len() >= C::MaxValidatorsPerCommittee::to_usize() {
-        return Err(Error::MaxIndicesExceeded);
+        return Err(Error::IndicesExceedMaxValidators);
     }
 
     // Verify indices are sorted
     let is_sorted = indices.windows(2).all(|w| w[0] <= w[1]);
     if !is_sorted {
-        return Err(Error::BadValidatorIndicesOrdering);
+        return Err(Error::IndicesNotSorted);
     }
 
     // let pubkeys = state
@@ -76,7 +76,6 @@ pub fn is_valid_merkle_branch(
     root: &H256,
 ) -> Result<bool, Error> {
     let mut value: H256 = *leaf;
-
     match usize::try_from(depth) {
         Ok(depth_usize) => {
             for (i, node) in branch.iter().enumerate().take(depth_usize) {

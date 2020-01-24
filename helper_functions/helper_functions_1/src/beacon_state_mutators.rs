@@ -5,10 +5,11 @@ use crate::misc::compute_activation_exit_epoch;
 use std::cmp;
 use std::convert::TryFrom;
 use typenum::marker_traits::Unsigned;
-use types::helper_functions_types::Error;
 use types::{
     beacon_state::BeaconState,
     config::Config,
+    consts::FAR_FUTURE_EPOCH,
+    helper_functions_types::Error,
     primitives::{Gwei, ValidatorIndex},
 };
 
@@ -55,7 +56,7 @@ pub fn initiate_validator_exit<C: Config>(
                 return Err(Error::IndexOutOfRange);
             }
 
-            if state.validators[id].exit_epoch != C::far_future_epoch() {
+            if state.validators[id].exit_epoch != FAR_FUTURE_EPOCH {
                 return Err(Error::ValidatorExitAlreadyInitiated);
             }
 
@@ -63,7 +64,7 @@ pub fn initiate_validator_exit<C: Config>(
                 .validators
                 .into_iter()
                 .filter_map(|v| {
-                    if v.exit_epoch == C::far_future_epoch() {
+                    if v.exit_epoch == FAR_FUTURE_EPOCH {
                         None
                     } else {
                         Some(v.exit_epoch)

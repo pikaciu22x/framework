@@ -30,8 +30,7 @@ pub fn get_previous_epoch<C: Config>(state: &BeaconState<C>) -> Epoch {
 }
 
 pub fn get_block_root<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result<H256, Error> {
-    // todo: change to compute start slot of epoch when implemented
-    get_block_root_at_slot(state, epoch * C::SlotsPerEpoch::to_u64())
+    get_block_root_at_slot(state, compute_start_slot_at_epoch::<C>(epoch))
 }
 
 pub fn get_block_root_at_slot<C: Config>(
@@ -41,7 +40,6 @@ pub fn get_block_root_at_slot<C: Config>(
     if !(slot < state.slot && state.slot <= slot + C::SlotsPerHistoricalRoot::to_u64()) {
         return Err(Error::SlotOutOfRange);
     }
-
     match usize::try_from(slot % C::SlotsPerHistoricalRoot::to_u64()) {
         Err(_err) => Err(Error::IndexOutOfRange),
         Ok(id) => match state.block_roots.get(id) {
@@ -52,9 +50,9 @@ pub fn get_block_root_at_slot<C: Config>(
 }
 
 pub fn get_randao_mix<C: Config>(state: &BeaconState<C>, epoch: Epoch) -> Result<H256, Error> {
-    match usize::try_from(epoch) {
+    match usize::try_from(epoch % C::EpochsPerHistoricalVector::to_u64()) {
         Err(_err) => Err(Error::IndexOutOfRange),
-        Ok(id) => Ok(state.randao_mixes[id % C::EpochsPerHistoricalVector::to_usize()]),
+        Ok(id) => Ok(state.randao_mixes[id]),
     }
 }
 
@@ -65,7 +63,7 @@ pub fn get_active_validator_indices<C: Config>(
     let mut active_validator_indices = Vec::new();
     for (i, v) in state.validators.iter().enumerate() {
         if is_active_validator(v, epoch) {
-            active_validator_indices.push(i as u64);
+            active_validator_indices.push(i as ValidatorIndex);
         }
     }
     active_validator_indices
@@ -82,6 +80,8 @@ pub fn get_validator_churn_limit<C: Config>(state: &BeaconState<C>) -> Result<u6
     ))
 }
 
+
+// check
 pub fn get_seed<C: Config>(
     state: &BeaconState<C>,
     epoch: Epoch,
@@ -126,20 +126,34 @@ pub fn get_committee_count_at_slot<C: Config>(
     state: &BeaconState<C>,
     slot: Slot,
 ) -> Result<u64, Error> {
+    // let epoch = compute_epoch_at_slot::<C>(slot);
+
+    // let committees_per_slot = cmp::min(
+    //     C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
+    //     get_active_validator_indices(state, epoch).len() as u64,
+    // );
+
+    // Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
+    // REWRITE
     let epoch = compute_epoch_at_slot::<C>(slot);
+    let active_count = get_active_validator_indices(state, epoch).len() as u64
+        / C::SlotsPerEpoch::U64
+        / C::target_committee_size();
+    let mut count = if C::max_committees_per_slot() < active_count {
+        C::max_committees_per_slot()
+    } else {
+        active_count
+    };
 
-    let committees_per_slot = cmp::min(
-        C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
-        get_active_validator_indices(state, epoch).len() as u64,
-    );
+    count = if 1 > count { 1 } else { count };
 
-    Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
+    Ok(count)
 }
 
 pub fn get_beacon_committee<C: Config>(
     state: &BeaconState<C>,
     slot: Slot,
-    index: CommitteeIndex,
+    index: u64,
 ) -> Result<Vec<ValidatorIndex>, Error> {
     let epoch = compute_epoch_at_slot::<C>(slot);
     let committees_per_slot = get_committee_count_at_slot(state, slot)?;
@@ -198,10 +212,6 @@ pub fn get_indexed_attestation<C: Config>(
 
     Ok(IndexedAttestation {
         attesting_indices: VariableList::from(vec),
-        // temp
-        custody_bit_0_indices: VariableList::default(),
-        custody_bit_1_indices: VariableList::default(),
-        //
         data: attestation.data.clone(),
         signature: attestation.signature.clone(),
     })

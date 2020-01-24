@@ -8,4 +8,7 @@ pub enum Error {
     NumberExceedsCapacity,
     ArrayIsEmpty,
     NotAHash,
+    AttestationBitsInvalid,
+    ConversionToUsize,
+    ValidatorExitAlreadyInitiated,
 }

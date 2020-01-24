@@ -4,6 +4,7 @@ use crate::{
 };
 use std::cmp::max;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use typenum::marker_traits::Unsigned;
 use types::helper_functions_types::Error;
 use types::{beacon_state::BeaconState, config::Config, primitives::*};
@@ -15,7 +16,7 @@ pub fn compute_shuffled_index<C: Config>(
     index_count: u64,
     seed: &H256,
 ) -> Result<ValidatorIndex, Error> {
-    if index >= index_count {
+    if index > index_count {
         return Err(Error::IndexOutOfRange);
     }
     let mut index = index;
@@ -69,13 +70,19 @@ pub fn compute_committee<'a, C: Config>(
     index: u64,
     count: u64,
 ) -> Result<Vec<ValidatorIndex>, Error> {
-    let start = count * index;
-    let end = count * (index + 1);
+    let start = ((indices.len() as u64) * index) / count;
+    let end = ((indices.len() as u64) * (index + 1)) / count;
 
     let mut committee = Vec::new();
-
     for i in start..end {
-        match compute_shuffled_index::<C>(i, count, seed) {
+        match compute_shuffled_index::<C>(
+                i, 
+                usize::try_from(indices.len())
+                    .expect("")
+                    .try_into()
+                    .expect(""),
+                seed
+            ) {
             Ok(id) => match usize::try_from(id) {
                 Ok(id_usize) => committee.push(indices[id_usize]),
                 Err(_) => return Err(Error::IndexOutOfRange),
