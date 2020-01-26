@@ -64,6 +64,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::result_unwrap_used)]
     fn test_bls_verify() {
         // https://github.com/sigp/milagro_bls#single-signatures
         let secret_key = SecretKey::from_bytes(&[

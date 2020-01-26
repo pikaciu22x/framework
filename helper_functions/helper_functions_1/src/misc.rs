@@ -76,13 +76,13 @@ pub fn compute_committee<'a, C: Config>(
     let mut committee = Vec::new();
     for i in start..end {
         match compute_shuffled_index::<C>(
-                i, 
-                usize::try_from(indices.len())
-                    .expect("")
-                    .try_into()
-                    .expect(""),
-                seed
-            ) {
+            i,
+            usize::try_from(indices.len())
+                .expect("")
+                .try_into()
+                .expect(""),
+            seed,
+        ) {
             Ok(id) => match usize::try_from(id) {
                 Ok(id_usize) => committee.push(indices[id_usize]),
                 Err(_) => return Err(Error::IndexOutOfRange),

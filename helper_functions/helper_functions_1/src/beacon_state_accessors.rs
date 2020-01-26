@@ -80,7 +80,6 @@ pub fn get_validator_churn_limit<C: Config>(state: &BeaconState<C>) -> Result<u6
     ))
 }
 
-
 // check
 pub fn get_seed<C: Config>(
     state: &BeaconState<C>,
@@ -226,14 +225,13 @@ pub fn get_attesting_indices<C: Config>(
     if bits.len() != committee.len() {
         return Err(Error::AttestationBitsInvalid);
     }
-    Ok(committee
-        .iter()
-        .enumerate()
-        .filter_map(|(i, index)| match bits.get(i) {
-            Ok(true) => Some(*index),
-            _ => None,
-        })
-        .collect())
+    let mut attesting_indices = BTreeSet::new();
+    for (i, index) in committee.iter().enumerate() {
+        if bits.get(i).is_ok() {
+            attesting_indices.insert(*index);
+        }
+    }
+    Ok(attesting_indices)
 }
 
 #[cfg(test)]
@@ -501,13 +499,11 @@ mod tests {
         };
 
         let aggregation_bits = BitList::with_capacity(64).expect("BitList creation failed");
-        let custody_bits = BitList::with_capacity(64).expect("BitList creation failed");
 
         let attestation: Attestation<MainnetConfig> = Attestation {
             aggregation_bits,
             data: AttestationData::default(),
-            custody_bits,
-            signature: Signature::default(),
+            signature: AggregateSignature::default(),
         };
 
         let expected: IndexedAttestation<MainnetConfig> = IndexedAttestation::default();

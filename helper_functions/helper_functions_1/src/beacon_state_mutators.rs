@@ -166,7 +166,7 @@ mod tests {
             balances: VariableList::from(vec![0]),
             ..BeaconState::default()
         };
-        increase_balance::<MainnetConfig>(&mut bs, 0, 1);
+        assert!(increase_balance::<MainnetConfig>(&mut bs, 0, 1).is_ok());
         assert_eq!(bs.balances[0], 1);
     }
 
@@ -176,7 +176,7 @@ mod tests {
             balances: VariableList::from(vec![5]),
             ..BeaconState::default()
         };
-        decrease_balance::<MainnetConfig>(&mut bs, 0, 3);
+        assert!(decrease_balance::<MainnetConfig>(&mut bs, 0, 3).is_ok());
         assert_eq!(bs.balances[0], 2);
     }
 
@@ -186,7 +186,7 @@ mod tests {
             balances: VariableList::from(vec![0]),
             ..BeaconState::default()
         };
-        decrease_balance::<MainnetConfig>(&mut bs, 0, 1);
+        assert!(decrease_balance::<MainnetConfig>(&mut bs, 0, 1).is_ok());
         assert_eq!(bs.balances[0], 0);
     }
 
