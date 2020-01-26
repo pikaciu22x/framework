@@ -125,28 +125,16 @@ pub fn get_committee_count_at_slot<C: Config>(
     state: &BeaconState<C>,
     slot: Slot,
 ) -> Result<u64, Error> {
-    // let epoch = compute_epoch_at_slot::<C>(slot);
-
-    // let committees_per_slot = cmp::min(
-    //     C::ShardCount::to_u64() / C::SlotsPerEpoch::to_u64(),
-    //     get_active_validator_indices(state, epoch).len() as u64,
-    // );
-
-    // Ok(cmp::max(1, committees_per_slot) * C::SlotsPerEpoch::to_u64())
-    // REWRITE
     let epoch = compute_epoch_at_slot::<C>(slot);
-    let active_count = get_active_validator_indices(state, epoch).len() as u64
-        / C::SlotsPerEpoch::U64
-        / C::target_committee_size();
-    let mut count = if C::max_committees_per_slot() < active_count {
-        C::max_committees_per_slot()
-    } else {
-        active_count
-    };
-
-    count = if 1 > count { 1 } else { count };
-
-    Ok(count)
+    Ok(cmp::max(
+        1,
+        cmp::min(
+            C::max_committees_per_slot(),
+            get_active_validator_indices(state, epoch).len() as u64
+                / C::SlotsPerEpoch::to_u64()
+                / C::target_committee_size(),
+        ),
+    ))
 }
 
 pub fn get_beacon_committee<C: Config>(
@@ -507,11 +495,11 @@ mod tests {
         };
 
         let indices = vec![
-            54, 57, 74, 136, 383, 406, 438, 440, 505, 509, 513, 519, 527, 549,
-            660, 672, 676, 682, 704, 722, 728, 742, 774, 777, 787, 800, 822, 830,
-            896, 910, 916, 956, 997, 1016, 1041, 1052, 1060, 1091, 1181, 1220, 1268, 1295,
-            1401, 1448, 1454, 1495, 1571, 1646, 1649, 1699, 1708, 1734, 1743, 1786, 1794, 1807,
-            1830, 1835, 1875, 1899, 1910, 1921, 1974, 2038
+            54, 57, 74, 136, 383, 406, 438, 440, 505, 509, 513, 519, 527, 549, 660, 672, 676, 682,
+            704, 722, 728, 742, 774, 777, 787, 800, 822, 830, 896, 910, 916, 956, 997, 1016, 1041,
+            1052, 1060, 1091, 1181, 1220, 1268, 1295, 1401, 1448, 1454, 1495, 1571, 1646, 1649,
+            1699, 1708, 1734, 1743, 1786, 1794, 1807, 1830, 1835, 1875, 1899, 1910, 1921, 1974,
+            2038,
         ];
 
         let expected: IndexedAttestation<MainnetConfig> = IndexedAttestation {
