@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn test_get_current_epoch() {
         let bs: BeaconState<MainnetConfig> = BeaconState {
-            slot: 9,
+            slot: 33,
             ..BeaconState::default()
         };
         assert_eq!(get_current_epoch::<MainnetConfig>(&bs), 1);
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_get_previous_epoch() {
         let bs: BeaconState<MainnetConfig> = BeaconState {
-            slot: 17,
+            slot: 65,
             ..BeaconState::default()
         };
         assert_eq!(get_previous_epoch(&bs), 1);
@@ -272,17 +272,17 @@ mod tests {
     fn test_get_block_root() {
         let mut block_roots_vec = Vec::new();
 
-        for x in 0..32 {
+        for x in 0..128 {
             block_roots_vec.push(H256::from([x; 32]));
         }
 
         let bs: BeaconState<MainnetConfig> = BeaconState {
-            slot: 32,
+            slot: 128,
             block_roots: FixedVector::from(block_roots_vec),
             ..BeaconState::default()
         };
 
-        assert_eq!(get_block_root(&bs, 3), Ok(H256::from([24; 32])));
+        assert_eq!(get_block_root(&bs, 3), Ok(H256::from([96; 32])));
     }
 
     #[test]

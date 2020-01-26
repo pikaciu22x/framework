@@ -16,7 +16,7 @@ pub fn compute_shuffled_index<C: Config>(
     index_count: u64,
     seed: &H256,
 ) -> Result<ValidatorIndex, Error> {
-    if index > index_count {
+    if index >= index_count {
         return Err(Error::IndexOutOfRange);
     }
     let mut index = index;
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     fn test_epoch_of_slot() {
         let expected_epoch = 2;
-        let calculated_epoch = compute_epoch_at_slot::<MainnetConfig>(17);
+        let calculated_epoch = compute_epoch_at_slot::<MainnetConfig>(65);
         assert_eq!(calculated_epoch, expected_epoch);
     }
 
