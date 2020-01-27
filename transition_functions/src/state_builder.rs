@@ -277,8 +277,8 @@ mod tests {
 
     use types::{
         beacon_state::*,
-        config::{Config, MainnetConfig, MinimalConfig},
-        types::{BeaconBlockHeader, Eth1Data, Fork, Validator},
+        config::MinimalConfig,
+        // types::{BeaconBlockHeader, Eth1Data, Fork, Validator},
     };
 
     #[test]

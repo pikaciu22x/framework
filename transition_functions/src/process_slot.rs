@@ -27,7 +27,7 @@ pub fn state_transition<T: Config>(
         assert!(block.state_root == hash_tree_root(state));
     }
     //# Return post-state
-    return state.clone();
+    state.clone()
 }
 
 pub fn process_slots<T: Config>(state: &mut BeaconState<T>, slot: Slot) {

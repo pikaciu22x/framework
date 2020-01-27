@@ -25,9 +25,9 @@ where
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei {
         let total_balance = get_total_active_balance(&self).unwrap();
         let effective_balance = self.validators[index as usize].effective_balance;
-        return effective_balance * T::base_reward_factor()
+        effective_balance * T::base_reward_factor()
             / integer_squareroot(total_balance)
-            / BASE_REWARDS_PER_EPOCH;
+            / BASE_REWARDS_PER_EPOCH
     }
 
     fn get_attestation_deltas(&self) -> (Vec<Gwei>, Vec<Gwei>) {
@@ -103,7 +103,7 @@ where
                 }
             }
         }
-        return (rewards, penalties);
+        (rewards, penalties)
     }
 
     fn process_rewards_and_penalties(&mut self) {
@@ -118,26 +118,26 @@ where
     }
 }
 
-#[cfg(test)]
-mod process_slot_tests {
-    use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
-    use types::{
-        beacon_state::*,
-        config::{Config, MainnetConfig},
-        types::Validator,
-    };
+// #[cfg(test)]
+// mod process_slot_tests {
+//     use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
+//     use types::{
+//         beacon_state::*,
+//         config::{Config, MainnetConfig},
+//         types::Validator,
+//     };
 
-    fn test() {
-        // let mut bs: BeaconState<MainnetConfig> = BeaconState {
-        //     ..BeaconState::default()
-        // };
-        // let mut val: Validator = Validator {
-        //     ..Validator::default()
-        // };
-        // val.effective_balance = 5;
-        // val.slashed = false;
-        // bs.validators.push(val).unwrap();
-        // let mut index = 0;
-        // assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
-    }
-}
+//     fn test() {
+//         let mut bs: BeaconState<MainnetConfig> = BeaconState {
+//             ..BeaconState::default()
+//         };
+//         let mut val: Validator = Validator {
+//             ..Validator::default()
+//         };
+//         val.effective_balance = 5;
+//         val.slashed = false;
+//         bs.validators.push(val).unwrap();
+//         let mut index = 0;
+//         assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+//     }
+// }
