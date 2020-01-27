@@ -42,7 +42,7 @@ fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &Voluntar
         get_current_epoch(state) >= validator.activation_epoch + T::persistent_committee_period()
     );
     // Verify signature
-    let domain = get_domain(state, T::domain_voluntary_exit() as u32, Some(exit.epoch));
+    let domain = get_domain(state, T::domain_voluntary_exit(), Some(exit.epoch));
     assert!(bls_verify(
         &(bls::PublicKeyBytes::from_bytes(&validator.pubkey.as_bytes()).unwrap()),
         signed_root(exit).as_bytes(),
@@ -84,7 +84,7 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Verify the deposit signature (proof of possession) for new validators.
     //# Note: The deposit contract does not check signatures.
     //# Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-    let domain = compute_domain(T::domain_deposit() as u32, None);
+    let domain = compute_domain(T::domain_deposit(), None);
 
     if !bls_verify(
         &pubkey.clone().try_into().unwrap(),
@@ -141,7 +141,7 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
             &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
             signed_root(block).as_bytes(),
             &block.signature.clone().try_into().unwrap(),
-            get_domain(&state, T::domain_beacon_proposer() as u32, None)
+            get_domain(&state, T::domain_beacon_proposer(), None)
         )
         .unwrap());
     }
@@ -155,7 +155,7 @@ fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<
         &(proposer.pubkey.clone()).try_into().unwrap(),
         hash_tree_root(&epoch).as_bytes(),
         &(body.randao_reveal.clone()).try_into().unwrap(),
-        get_domain(&state, T::domain_randao() as u32, None)
+        get_domain(&state, T::domain_randao(), None)
     )
     .unwrap());
     //# Mix in RANDAO reveal
@@ -195,7 +195,7 @@ fn process_proposer_slashing<T: Config>(
     for header in &headers {
         let domain = get_domain(
             state,
-            T::domain_beacon_proposer() as u32,
+            T::domain_beacon_proposer(),
             Some(compute_epoch_at_slot::<T>(header.slot)),
         );
         //# Sekanti eilutė tai ******* amazing. signed_root helperiuose užkomentuota
@@ -270,7 +270,7 @@ fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Atte
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
         aggregation_bits: attestation.aggregation_bits.clone(),
-        inclusion_delay: (state.slot - attestation_slot) as u64,
+        inclusion_delay: (state.slot - attestation_slot),
         proposer_index: get_beacon_proposer_index(state).unwrap(),
     };
 
