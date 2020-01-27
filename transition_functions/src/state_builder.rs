@@ -1,7 +1,7 @@
 use bls::{PublicKey, Signature};
 use ethereum_types::H256;
 use hex;
-use ssz_types::{FixedVector, VariableList};
+use ssz_types::{BitVector, Error as SzzError, FixedVector, VariableList};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
@@ -22,7 +22,7 @@ fn build_beaconState_from_yaml<T: Config>(
 
     let d = &docs[0];
 
-    let blet = PublicKey::from_bytes(
+    let asd = PublicKey::from_bytes(
         &hex::decode(
             (d["validators"][0]["pubkey"]
                 .as_str()
@@ -34,7 +34,7 @@ fn build_beaconState_from_yaml<T: Config>(
         .expect("Decoding failed")[..],
     );
 
-    println!("{:?}", blet);
+    println!("{:?}", asd);
 
     Ok(BeaconState::<T> {
         genesis_time: d["genesis_time"].as_i64().unwrap() as u64,
@@ -216,6 +216,39 @@ fn build_beaconState_from_yaml<T: Config>(
             .collect::<Vec<_>>()
             .to_vec(),
         ),
+        balances: VariableList::from(
+            (d["balances"].as_vec().unwrap().iter().map(|x| {
+                x.as_i64().unwrap() as u64
+            }))
+            .collect::<Vec<_>>(),
+        ),
+        randao_mixes: FixedVector::from(
+            (d["randao_mixes"].as_vec().unwrap().iter().map(|x| {
+                H256::from_slice(
+                    &hex::decode(x.as_str().unwrap().chars().skip(2).collect::<String>())
+                        .expect("Decoding failed")[..],
+                )
+            }))
+            .collect::<Vec<_>>()
+            .to_vec(),
+        ),
+        slashings: FixedVector::from(
+            (d["slashings"].as_vec().unwrap().iter().map(|x| {
+                x.as_i64().unwrap() as u64
+            }))
+            .collect::<Vec<_>>(),
+        ),
+        // justification_bits: BitVector::from_bytes(
+        //     &hex::decode(
+        //         (d["justification_bits"]
+        //             .as_str()
+        //             .unwrap()
+        //             .chars()
+        //             .skip(2)
+        //             .collect::<String>()),
+        //     )
+        //     .expect("Decoding failed")[..],
+        // ).unwrap(),
         ..BeaconState::<T>::default()
     })
     // println!("buf {:?}", contents);
