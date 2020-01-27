@@ -1,4 +1,7 @@
-use helper_functions::beacon_state_accessors::*;
+use helper_functions::beacon_state_accessors::{
+    get_beacon_committee, get_beacon_proposer_index, get_committee_count_at_slot,
+    get_current_epoch, get_domain, get_indexed_attestation, get_previous_epoch, get_randao_mix,
+};
 use helper_functions::beacon_state_mutators::*;
 use helper_functions::crypto::{bls_verify, hash, hash_tree_root, signed_root};
 use helper_functions::math::*;
