@@ -1,10 +1,13 @@
-use crate::attestations::{attestations::AttestableBlock, *};
+use crate::attestations::attestations::AttestableBlock;
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
 use helper_functions::beacon_state_accessors::*;
 use helper_functions::{
-    beacon_state_accessors::{get_randao_mix, get_total_active_balance, get_validator_churn_limit},
-    beacon_state_mutators::*,
-    crypto::{bls_verify, hash, hash_tree_root, signed_root},
+    beacon_state_accessors::{
+        get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
+        get_total_active_balance, get_validator_churn_limit,
+    },
+    beacon_state_mutators::{decrease_balance, increase_balance, initiate_validator_exit},
+    crypto::hash_tree_root,
     misc::compute_activation_exit_epoch,
     predicates::is_active_validator,
 };
@@ -14,12 +17,11 @@ use std::cmp;
 use typenum::Unsigned as _;
 use types::consts::*;
 use types::primitives::*;
-use types::primitives::{Gwei, ValidatorIndex};
-use types::types::{Eth1Data, HistoricalBatch};
 use types::{
-    beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::{Checkpoint, PendingAttestation, Validator},
+    beacon_state::{BeaconState, Error},
+    config::Config,
+    primitives::{Epoch, Gwei, ValidatorIndex},
+    types::{Checkpoint, Eth1Data, HistoricalBatch, Validator},
 };
 
 pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {
@@ -45,7 +47,7 @@ fn process_justification_and_finalization<T: Config>(
     // Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint.clone();
     state.justification_bits.shift_up(1)?;
-    //Previous epoch
+    // Previous epoch
     let matching_target_attestations = state.get_matching_target_attestations(previous_epoch);
     if state.get_attesting_balance(matching_target_attestations) * 3
         >= get_total_active_balance(state)? * 2
@@ -146,8 +148,7 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
     // Dequeued validators for activation up to churn limit (without resetting activation epoch)
 
     let churn_limit = get_validator_churn_limit(&state).unwrap();
-    let delayed_activation_epoch =
-        compute_activation_exit_epoch::<T>(get_current_epoch(state) as u64);
+    let delayed_activation_epoch = compute_activation_exit_epoch::<T>(get_current_epoch(state));
     for index in activation_queue.into_iter().take(churn_limit as usize) {
         let validator = &mut state.validators[index];
         if validator.activation_epoch == FAR_FUTURE_EPOCH {
@@ -160,13 +161,11 @@ fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Resul
     if get_current_epoch(state) == T::genesis_epoch() {
         return Ok(());
     }
-
     let (rewards, penalties) = state.get_attestation_deltas();
-    for index in 0..state.validators.len() {
-        increase_balance(state, index as ValidatorIndex, rewards[index]).unwrap();
-        decrease_balance(state, index as ValidatorIndex, penalties[index]).unwrap();
+    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
+        increase_balance(state, index as u64, rewards[index]).unwrap();
+        decrease_balance(state, index as u64, penalties[index]).unwrap();
     }
-
     Ok(())
 }
 
@@ -174,7 +173,7 @@ fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
     let total_balance = get_total_active_balance(state).unwrap();
 
-    for (index, validator) in state.validators.clone().iter().enumerate() {
+    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
             && epoch + T::EpochsPerSlashingsVector::U64 / 2 == validator.withdrawable_epoch
         {
@@ -190,7 +189,7 @@ fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
 
 fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
     let current_epoch = get_current_epoch(&state);
-    let next_epoch = current_epoch + 1 as Epoch;
+    let next_epoch = current_epoch + 1;
     //# Reset eth1 data votes
     if (state.slot + 1) % T::SlotsPerEth1VotingPeriod::U64 == 0 {
         state.eth1_data_votes = VariableList::from(vec![]);
@@ -209,7 +208,7 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
         }
     }
     //# Reset slashings
-    state.slashings[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] = 0 as Gwei;
+    state.slashings[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] = 0;
     //# Set randao mix
     state.randao_mixes[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] =
         get_randao_mix(&state, current_epoch).unwrap();
@@ -229,28 +228,34 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
     state.current_epoch_attestations = VariableList::from(vec![]);
 }
 
-// #[cfg(test)]
-// mod process_epoch_tests {
-//     use super::*;
-//     use mockall::mock;
-//     use types::{beacon_state::*, config::MainnetConfig};
-//     mock! {
-//         BeaconState<C: Config + 'static> {}
-//         trait BeaconStateAccessor {
-//             fn get_current_epoch(&self) -> Epoch;
-//             fn get_previous_epoch(&self) -> Epoch;
-//             fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
-//         }
-//     }
+#[cfg(test)]
+mod process_epoch_tests {
+    use super::*;
+    // use mockall::mock;
+    use types::config::MainnetConfig;
+    /*
+    mock! {
+        BeaconState<C: Config + 'static> {}
+        trait BeaconStateAccessor {
+            fn get_current_epoch(&self) -> Epoch;
+            fn get_previous_epoch(&self) -> Epoch;
+            fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
+        }
+    }
+    */
 
-//     // #[test]
-//     // fn test() {
-//     //     // let mut bs: BeaconState<MainnetConfig> = BeaconState {
-//     //     //     ..BeaconState::default()
-//     //     // };
-
-//     //     let mut bs = MockBeaconState::<MainnetConfig>::new();
-//     //     bs.expect_get_current_epoch().return_const(5_u64);
-//     //     assert_eq!(5, bs.get_current_epoch());
-//     // }
-// }
+    // #[test]
+    fn test_process_rewards_and_penalties() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            ..BeaconState::default()
+        };
+        let mut val: Validator = Validator {
+            ..Validator::default()
+        };
+        val.effective_balance = 5;
+        val.slashed = false;
+        bs.validators.push(val).unwrap();
+        let index = 0;
+        assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+    }
+}

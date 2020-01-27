@@ -38,19 +38,19 @@ pub enum Error {
     CurrentCommitteeCacheUninitialized,
     //RelativeEpochError(RelativeEpochError),
     //CommitteeCacheUninitialized(RelativeEpoch),
-    SszTypesError(ssz_types::Error),
-    HelperError(HelperError),
+    SszTypes(ssz_types::Error),
+    Helper(HelperError),
 }
 
 impl From<SzzError> for Error {
     fn from(error: SzzError) -> Self {
-        Error::SszTypesError(error)
+        Self::SszTypes(error)
     }
 }
 
 impl From<HelperError> for Error {
     fn from(error: HelperError) -> Self {
-        Error::HelperError(error)
+        Self::Helper(error)
     }
 }
 
@@ -93,6 +93,7 @@ pub struct BeaconState<C: Config> {
     pub finalized_checkpoint: Checkpoint,
 }
 
+#[allow(clippy::cast_possible_truncation)]
 impl<C: Config> BeaconState<C> {
     pub fn canonical_root(&self) -> Hash256 {
         Hash256::from_slice(&self.tree_hash_root()[..])
@@ -112,7 +113,7 @@ impl<C: Config> BeaconState<C> {
     }
 
     fn get_latest_state_roots_index(&self, slot: Slot) -> Result<usize, Error> {
-        if (slot < self.slot) && (self.slot <= slot + Slot::from(self.state_roots.len() as u64)) {
+        if (slot < self.slot) && (self.slot <= slot + self.state_roots.len() as u64) {
             let b = slot as usize;
             Ok(b % self.state_roots.len())
         } else {

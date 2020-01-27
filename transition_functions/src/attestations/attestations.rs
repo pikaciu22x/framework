@@ -10,7 +10,7 @@ use helper_functions::{
 };
 use ssz_types::VariableList;
 use types::{
-    beacon_state::*,
+    beacon_state::BeaconState,
     config::Config,
     primitives::{Epoch, Gwei, ValidatorIndex},
     types::PendingAttestation,
@@ -50,8 +50,8 @@ where
         &self,
         epoch: Epoch,
     ) -> VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch> {
-        assert!(epoch == get_previous_epoch(&self) || epoch == get_current_epoch(&self));
-        if epoch == get_current_epoch(&self) {
+        assert!(epoch == get_previous_epoch(self) || epoch == get_current_epoch(self));
+        if epoch == get_current_epoch(self) {
             return self.current_epoch_attestations.clone();
         } else {
             return self.previous_epoch_attestations.clone();
@@ -87,7 +87,6 @@ where
         }
         return head_attestations;
     }
-
     fn get_unslashed_attesting_indices(
         &self,
         attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch>,
@@ -96,7 +95,7 @@ where
             VariableList::from(vec![]);
         for attestation in attestations.iter() {
             let indices =
-                get_attesting_indices(&self, &attestation.data, &attestation.aggregation_bits)
+                get_attesting_indices(self, &attestation.data, &attestation.aggregation_bits)
                     .unwrap();
             for index in indices {
                 if !(self.validators[index as usize].slashed) {
@@ -110,7 +109,65 @@ where
         &self,
         attestations: VariableList<PendingAttestation<T>, T::MaxAttestationsPerEpoch>,
     ) -> Gwei {
-        return get_total_balance(&self, &self.get_unslashed_attesting_indices(attestations))
+        return get_total_balance(self, &self.get_unslashed_attesting_indices(attestations))
             .unwrap();
     }
+}
+
+#[cfg(test)]
+
+mod attestations_tests {
+    use crate::attestations::attestations::AttestableBlock;
+    use ssz_types::{BitList, FixedVector, VariableList};
+    use types::{
+        beacon_state::BeaconState,
+        config::{Config, MainnetConfig},
+        primitives::{Epoch, Gwei, ValidatorIndex},
+        types::PendingAttestation,
+    };
+
+    #[test]
+    fn test_get_matching_source_attestations_1() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            ..BeaconState::default()
+        };
+        let mut pa: PendingAttestation<MainnetConfig> = PendingAttestation {
+            ..PendingAttestation::default()
+        };
+        bs.slot = 0;
+        bs.current_epoch_attestations.push(pa);
+        let result = bs.get_matching_source_attestations(0);
+        assert_eq!(result, bs.current_epoch_attestations);
+    }
+
+    #[test]
+    fn test_get_matching_source_attestations_2() {
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            ..BeaconState::default()
+        };
+        let mut pa: PendingAttestation<MainnetConfig> = PendingAttestation {
+            ..PendingAttestation::default()
+        };
+        bs.slot = 32;
+        bs.current_epoch_attestations.push(pa);
+
+        let result = bs.get_matching_source_attestations(0);
+        assert_eq!(result, bs.previous_epoch_attestations);
+        // assert_ne!(result, bs.previous_epoch_attestations);
+    }
+
+    // #[test]
+    // fn test_get_matching_target_attestations_1() {
+    //     let mut bs: BeaconState<MainnetConfig> = BeaconState {
+    //         ..BeaconState::default()
+    //     };
+    //     let mut pa: PendingAttestation<MainnetConfig> = PendingAttestation {
+    //         ..PendingAttestation::default()
+    //     };
+    //     bs.slot = 1;
+    //     bs.current_epoch_attestations.push(pa);
+
+    //     let result = bs.get_matching_target_attestations(0);
+    //     assert_eq!(result, bs.current_epoch_attestations);
+    // }
 }

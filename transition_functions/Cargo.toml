@@ -19,3 +19,4 @@ types = { path = "../types" }
 rayon = "1.0"
 ethereum-types = "0.6"
 mockall = "0.5.2"
+yaml-rust = "0.4.3"

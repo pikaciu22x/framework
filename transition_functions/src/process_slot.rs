@@ -8,9 +8,10 @@ use typenum::Unsigned as _;
 use types::primitives::*;
 use types::types::*;
 use types::{
-    beacon_state::*,
-    config::{Config, MainnetConfig},
-    types::BeaconBlockHeader,
+    beacon_state::BeaconState,
+    config::Config,
+    primitives::{Slot, H256},
+    types::BeaconBlock,
 };
 #[derive(Debug, PartialEq)]
 pub enum Error {}
@@ -33,7 +34,7 @@ pub fn state_transition<T: Config>(
 }
 
 pub fn process_slots<T: Config>(state: &mut BeaconState<T>, slot: Slot) {
-    assert!(state.slot <= slot);
+    // assert!(state.slot <= slot);
     while state.slot < slot {
         process_slot(state);
         //# Process epoch on the start slot of the next epoch
@@ -51,60 +52,46 @@ fn process_slot<T: Config>(state: &mut BeaconState<T>) {
     state.state_roots[(state.slot as usize) % T::SlotsPerHistoricalRoot::USIZE] =
         previous_state_root;
     // Cache latest block header state root
-    if state.latest_block_header.state_root == H256::from([0 as u8; 32]) {
+    if state.latest_block_header.state_root == H256::from_low_u64_be(0) {
         state.latest_block_header.state_root = previous_state_root;
     }
     // Cache block root
+    // Old doc
     let previous_block_root = signed_root(&state.latest_block_header);
     state.block_roots[(state.slot as usize) % T::SlotsPerHistoricalRoot::USIZE] =
         previous_block_root;
 }
 
-/*
-pub fn process_slot<T: Config>(state: &mut BeaconState<T>, genesis_slot: u64) -> Result<(), Error> {
-    cache_state(state)?;
+// pub fn process_slot<T: Config>(state: &mut BeaconState<T>, genesis_slot: u64) -> Result<(), Error> {
+//     cache_state(state)?;
 
-    if state.slot > genesis_slot
-    && (state.slot + 1) % T::slots_per_epoch() == 0
-    {
-        process_epoch(state);
-    }
+//     if state.slot > genesis_slot
+//     && (state.slot + 1) % T::slots_per_epoch() == 0
+//     {
+//         process_epoch(state);
+//     }
 
-    state.slot += 1;
+//     state.slot += 1;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-fn cache_state<T: Config>(state: &mut BeaconState<T>) -> Result<(), Error> {
-    let previous_state_root = state.update_tree_hash_cache().unwrap(); //?;
-    let previous_slot = state.slot;
-
-    // ! FIX THIS :( @pikaciu22x
-    state.slot += 1;
-
-    state.set_state_root(previous_slot, previous_state_root); //?;
-
-    if state.latest_block_header.state_root == Hash256::zero() {
-        state.latest_block_header.state_root = previous_state_root;
-    }
-
-    let latest_block_root = state.latest_block_header.canonical_root();
-    state.set_block_root(previous_slot, latest_block_root); //?;
-
-    state.slot -= 1;
-
-    Ok(())
-}
-*/
 #[cfg(test)]
 mod process_slot_tests {
+    use helper_functions::beacon_state_accessors::get_current_epoch;
+    use ssz_types::FixedVector;
+    use std::iter;
     use types::{beacon_state::*, config::MainnetConfig};
+
     // use crate::{config::*};
     use super::*;
 
     #[test]
     fn process_good_slot() {
+        let mut temp: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(temp.clone()).unwrap(),
+            state_roots: FixedVector::new(temp.clone()).unwrap(),
             ..BeaconState::default()
         };
 
@@ -114,12 +101,51 @@ mod process_slot_tests {
     }
     #[test]
     fn process_good_slot_2() {
+        let mut temp: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(temp.clone()).unwrap(),
+            state_roots: FixedVector::new(temp.clone()).unwrap(),
             slot: 3,
             ..BeaconState::default()
         };
-
         process_slots(&mut bs, 4);
-        //assert_eq!(bs.slot, 6);
+        assert_eq!(bs.slot, 4);
     }
+
+    #[test]
+    fn process_epoch() {
+        let mut vec_1: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+        let mut vec_2: Vec<u64> = iter::repeat(0).take(8192).collect();
+        let mut vec_3: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(65536).collect();
+        let mut bs: BeaconState<MainnetConfig> = BeaconState {
+            block_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            state_roots: FixedVector::new(vec_1.clone()).unwrap(),
+            slashings: FixedVector::new(vec_2.clone()).unwrap(),
+            randao_mixes: FixedVector::new(vec_3.clone()).unwrap(),
+            slot: 0,
+            ..BeaconState::default()
+        };
+        process_slots(&mut bs, 32);
+        assert_eq!(get_current_epoch(&bs), 1);
+    }
+
+    // #[test]
+    // fn transition_state() {
+    //     let mut vec_1: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(8192).collect();
+    //     let mut vec_2: Vec<u64> = iter::repeat(0).take(8192).collect();
+    //     let mut vec_3: Vec<H256> = iter::repeat(H256::from_low_u64_be(0)).take(65536).collect();
+    //     let mut bs: BeaconState<MainnetConfig> = BeaconState {
+    //         block_roots: FixedVector::new(vec_1.clone()).unwrap(),
+    //         state_roots: FixedVector::new(vec_1.clone()).unwrap(),
+    //         slashings: FixedVector::new(vec_2.clone()).unwrap(),
+    //         randao_mixes: FixedVector::new(vec_3.clone()).unwrap(),
+    //         slot: 0,
+    //         ..BeaconState::default()
+    //     };
+    //     let mut bb = BeaconBlock {
+    //         slot: 1,
+    //         ..BeaconBlock::default()
+    //     };
+    //     state_transition(&mut bs, &bb, true);
+    // }
 }

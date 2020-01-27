@@ -36,7 +36,7 @@ pub struct Attestation<C: Config> {
 )]
 pub struct AttestationData {
     pub slot: Slot,
-    pub index: u64,
+    pub index: CommitteeIndex,
     pub beacon_block_root: H256,
     pub source: Checkpoint,
     pub target: Checkpoint,
@@ -127,6 +127,23 @@ impl<C: Config> Default for BeaconBlockBody<C> {
         }
     }
 }
+
+// impl<C: Config> Default for BeaconBlockBody<C> {
+//     fn default() -> Self {
+//         #[allow(clippy::default_trait_access)]
+//         Self {
+//             randao_reveal: Signature::empty_signature(),
+//             eth1_data: Default::default(),
+//             graffiti: Default::default(),
+//             proposer_slashings: Default::default(),
+//             attester_slashings: Default::default(),
+//             attestations: Default::default(),
+//             deposits: Default::default(),
+//             voluntary_exits: Default::default(),
+//             transfers: Default::default(),
+//         }
+//     }
+// }
 
 #[derive(
     Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
@@ -256,8 +273,22 @@ pub struct PendingAttestation<C: Config> {
     pub proposer_index: u64,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+impl<C> Default for PendingAttestation<C>
+where
+    C: Config,
+{
+    fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
+        Self {
+            aggregation_bits: BitList::with_capacity(2048).expect("Error initializing BitList"),
+            data: Default::default(),
+            inclusion_delay: Default::default(),
+            proposer_index: Default::default(),
+        }
+    }
+}
 
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
 pub struct ProposerSlashing {
     pub proposer_index: u64,
     pub header_1: BeaconBlockHeader,
