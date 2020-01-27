@@ -57,11 +57,17 @@ pub fn validate_indexed_attestation<C: Config>(
         }
     }
 
-    let pubkeys_bytes =
-        PublicKeyBytes::from_bytes(pubkeys.as_raw().as_bytes().as_slice()).expect("Invalid pubkey");
+    let pubkeys_bytes = match PublicKeyBytes::from_bytes(pubkeys.as_raw().as_bytes().as_slice()) {
+        Ok(value) => value,
+        Err(_) => return Err(Error::PubKeyConversionError),
+    };
+
     let signature_bytes =
-        SignatureBytes::from_bytes(indexed_attestation.signature.as_bytes().as_slice())
-            .expect("Invalid signature");
+        match SignatureBytes::from_bytes(indexed_attestation.signature.as_bytes().as_slice()) {
+            Ok(value) => value,
+            Err(_) => return Err(Error::SignatureConversionError),
+        };
+
     let is_valid = match bls_verify(
         &pubkeys_bytes,
         &indexed_attestation.data.tree_hash_root(),

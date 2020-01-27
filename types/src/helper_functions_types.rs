@@ -11,4 +11,6 @@ pub enum Error {
     AttestationBitsInvalid,
     ConversionToUsize,
     ValidatorExitAlreadyInitiated,
+    PubKeyConversionError,
+    SignatureConversionError,
 }
