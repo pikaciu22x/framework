@@ -217,9 +217,11 @@ fn build_beaconState_from_yaml<T: Config>(
             .to_vec(),
         ),
         balances: VariableList::from(
-            (d["balances"].as_vec().unwrap().iter().map(|x| {
-                x.as_i64().unwrap() as u64
-            }))
+            (d["balances"]
+                .as_vec()
+                .unwrap()
+                .iter()
+                .map(|x| x.as_i64().unwrap() as u64))
             .collect::<Vec<_>>(),
         ),
         randao_mixes: FixedVector::from(
@@ -233,9 +235,11 @@ fn build_beaconState_from_yaml<T: Config>(
             .to_vec(),
         ),
         slashings: FixedVector::from(
-            (d["slashings"].as_vec().unwrap().iter().map(|x| {
-                x.as_i64().unwrap() as u64
-            }))
+            (d["slashings"]
+                .as_vec()
+                .unwrap()
+                .iter()
+                .map(|x| x.as_i64().unwrap() as u64))
             .collect::<Vec<_>>(),
         ),
         // justification_bits: BitVector::from_bytes(
