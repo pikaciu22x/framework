@@ -137,22 +137,15 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
     let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
     assert!(!proposer.slashed);
     //# Verify proposer signature
-    println!("{}", bls_verify(
-        &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
-        signed_root(block).as_bytes(),
-        &block.signature.clone().try_into().unwrap(),
-        get_domain(&state, T::domain_beacon_proposer() as u32, None)
-    )
-
-    if !cfg!(test) {
-    assert!(bls_verify(
-        &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
-        signed_root(block).as_bytes(),
-        &block.signature.clone().try_into().unwrap(),
-        get_domain(&state, T::domain_beacon_proposer() as u32, None)
-    )
-    .unwrap());
-}
+    if cfg!(not(test)) {
+        assert!(bls_verify(
+            &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
+            signed_root(block).as_bytes(),
+            &block.signature.clone().try_into().unwrap(),
+            get_domain(&state, T::domain_beacon_proposer() as u32, None)
+        )
+        .unwrap());
+    }
 }
 
 fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
