@@ -1,6 +1,7 @@
-// use crate::crypto::{bls_aggregate_pubkeys, bls_verify, hash, hash_tree_root};
-use crate::crypto::hash;
+use crate::beacon_state_accessors::get_domain;
+use crate::crypto::{bls_verify, hash};
 use std::convert::TryFrom;
+use tree_hash::TreeHash;
 use typenum::marker_traits::Unsigned;
 use types::helper_functions_types::Error;
 use types::{
@@ -28,7 +29,7 @@ pub fn is_slashable_attestation_data(data_1: &AttestationData, data_2: &Attestat
 }
 
 pub fn validate_indexed_attestation<C: Config>(
-    _state: &BeaconState<C>,
+    state: &BeaconState<C>,
     indexed_attestation: &IndexedAttestation<C>,
 ) -> Result<(), Error> {
     let indices = &indexed_attestation.attesting_indices;
@@ -44,26 +45,40 @@ pub fn validate_indexed_attestation<C: Config>(
         return Err(Error::IndicesNotSorted);
     }
 
-    // let pubkeys = state
-    //     .validators
-    //     .into_iter()
-    //     .enumerate()
-    //     .filter_map(|(i, v)| {
-    //         if indices.contains(&i) {
-    //             None
-    //         } else {
-    //             Some(v.pubkey)
-    //         }
-    //     });
+    let mut pubkeys = AggregatePublicKey::new();
 
-    // if !bls_verify(
-    //     bls_aggregate_pubkeys(pubkeys),
-    //     message_hash=hash_tree_root(indexed_attestation.data),
-    //     signature=indexed_attestation.signature,
-    //     domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
-    // ) {
+    for i in indices.iter() {
+        match usize::try_from(*i) {
+            Err(_) => return Err(Error::IndexOutOfRange),
+            Ok(id) => match state.validators.get(id) {
+                None => return Err(Error::IndexOutOfRange),
+                Some(validator) => pubkeys.add(&validator.pubkey),
+            },
+        }
+    }
 
-    // }
+    let pubkeys_bytes =
+        PublicKeyBytes::from_bytes(pubkeys.as_raw().as_bytes().as_slice()).expect("Invalid pubkey");
+    let signature_bytes =
+        SignatureBytes::from_bytes(indexed_attestation.signature.as_bytes().as_slice())
+            .expect("Invalid signature");
+    let is_valid = match bls_verify(
+        &pubkeys_bytes,
+        &indexed_attestation.data.tree_hash_root(),
+        &signature_bytes,
+        get_domain(
+            state,
+            C::domain_attestation(),
+            Some(indexed_attestation.data.target.epoch),
+        ),
+    ) {
+        Ok(value) => value,
+        Err(_) => return Err(Error::InvalidSignature),
+    };
+
+    if !is_valid {
+        return Err(Error::InvalidSignature);
+    }
 
     Ok(())
 }
@@ -103,6 +118,8 @@ fn join_hashes<'a>(hash1: &'a H256, hash2: &H256) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ssz_types::VariableList;
+    use types::config::MainnetConfig;
     use types::types::Checkpoint;
 
     #[test]
@@ -253,35 +270,31 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_is_valid_indexed_attestation_max_indices_exceeded() {
-    //     let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-    //     let bit_0_indices: Vec<u64> = (0_u64..4096_u64).collect();
-    //     let bit_1_indices: Vec<u64> = vec![1];
-    //     let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
-    //         custody_bit_0_indices: VariableList::from(bit_0_indices),
-    //         custody_bit_1_indices: VariableList::from(bit_1_indices),
-    //         ..IndexedAttestation::default()
-    //     };
-    //     assert_eq!(
-    //         is_valid_indexed_attestation::<MainnetConfig>(&state, &attestation),
-    //         Err(Error::MaxIndicesExceeded)
-    //     );
-    // }
+    #[test]
+    fn test_is_valid_indexed_attestation_max_indices_exceeded() {
+        let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
+        let indices: Vec<u64> = (0_u64..4097_u64).collect();
+        let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
+            attesting_indices: VariableList::from(indices),
+            ..IndexedAttestation::default()
+        };
+        assert_eq!(
+            validate_indexed_attestation::<MainnetConfig>(&state, &attestation),
+            Err(Error::IndicesExceedMaxValidators)
+        );
+    }
 
-    // #[test]
-    // fn test_is_valid_indexed_attestation_bad_validator_indices_ordering() {
-    //     let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
-    //     let bit_0_indices: Vec<u64> = (0_u64..64_u64).collect();
-    //     let bit_1_indices: Vec<u64> = vec![66_u64, 65_u64];
-    //     let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
-    //         custody_bit_0_indices: VariableList::from(bit_0_indices),
-    //         custody_bit_1_indices: VariableList::from(bit_1_indices),
-    //         ..IndexedAttestation::default()
-    //     };
-    //     assert_eq!(
-    //         is_valid_indexed_attestation::<MainnetConfig>(&state, &attestation),
-    //         Err(Error::BadValidatorIndicesOrdering)
-    //     );
-    // }
+    #[test]
+    fn test_is_valid_indexed_attestation_bad_validator_indices_ordering() {
+        let state: BeaconState<MainnetConfig> = BeaconState::<MainnetConfig>::default();
+        let indices = vec![66_u64, 65_u64];
+        let attestation: IndexedAttestation<MainnetConfig> = IndexedAttestation {
+            attesting_indices: VariableList::from(indices),
+            ..IndexedAttestation::default()
+        };
+        assert_eq!(
+            validate_indexed_attestation::<MainnetConfig>(&state, &attestation),
+            Err(Error::IndicesNotSorted)
+        );
+    }
 }
