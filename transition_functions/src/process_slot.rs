@@ -1,4 +1,4 @@
-use crate::blocks::block_processing::process_block;
+use crate::block_processing::process_block;
 use crate::*;
 use epochs::process_epoch::process_epoch;
 use helper_functions;

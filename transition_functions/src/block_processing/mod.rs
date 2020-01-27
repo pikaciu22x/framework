@@ -26,7 +26,7 @@ use types::{
 };
 
 pub fn process_block<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
-    process_block_header(state, &block);
+    process_block_header(state, block);
     process_randao(state, &block.body);
     process_eth1_data(state, &block.body);
     process_operations(state, &block.body);
@@ -35,7 +35,7 @@ pub fn process_block<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<
 fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &VoluntaryExit) {
     let validator = &state.validators[exit.validator_index as usize];
     // Verify the validator is active
-    assert!(is_active_validator(&validator, get_current_epoch(state)));
+    assert!(is_active_validator(validator, get_current_epoch(state)));
     // Verify the validator has not yet exited
     assert!(validator.exit_epoch == FAR_FUTURE_EPOCH);
     // Exits must specify an epoch when they become valid; they are not valid before then
@@ -47,19 +47,19 @@ fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &Voluntar
     // Verify signature
     let domain = get_domain(state, T::domain_voluntary_exit(), Some(exit.epoch));
     assert!(bls_verify(
-        &(bls::PublicKeyBytes::from_bytes(&validator.pubkey.as_bytes()).unwrap()),
+        &(bls::PublicKeyBytes::from_bytes(&validator.pubkey.as_bytes()).expect("Conversion error")),
         signed_root(exit).as_bytes(),
-        &(exit.signature.clone()).try_into().unwrap(),
+        &(exit.signature.clone())
+            .try_into()
+            .expect("Conversion error"),
         domain
     )
-    .unwrap());
+    .expect("BLS error"));
     // Initiate exit
-    initiate_validator_exit(state, exit.validator_index).unwrap();
+    initiate_validator_exit(state, exit.validator_index).expect("Exit error");
 }
 
 fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
-    //# Verify the Merkle branch  is_valid_merkle_branch
-
     assert!(is_valid_merkle_branch(
         &hash_tree_root(&deposit.data),
         &deposit.proof,
@@ -67,20 +67,18 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
         state.eth1_deposit_index,
         &state.eth1_data.deposit_root
     )
-    .unwrap());
+    .expect("BLS error"));
 
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = (&deposit.data.pubkey).try_into().unwrap();
-    // let pubkey = bls::PublicKey::from_bytes(&deposit.data.pubkey.clone().as_bytes()).unwrap();
+    let pubkey = (&deposit.data.pubkey).try_into().expect("Conversion error");
     let amount = deposit.data.amount;
 
     for (index, validator) in state.validators.iter_mut().enumerate() {
-        // if bls::PublicKeyBytes::from_bytes(&v.pubkey.as_bytes()).unwrap() == *pubkey {
         if validator.pubkey == pubkey {
             //# Increase balance by deposit amount
-            increase_balance(state, index as u64, amount).unwrap();
+            increase_balance(state, index as u64, amount).expect("Conversion error");
             return;
         }
     }
@@ -90,22 +88,21 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     let domain = compute_domain(T::domain_deposit(), None);
 
     if !bls_verify(
-        &pubkey.clone().try_into().unwrap(),
+        &pubkey.clone().try_into().expect("Conversion error"),
         signed_root(&deposit.data).as_bytes(),
         &deposit.data.signature,
         domain,
     )
-    .unwrap()
+    .expect("BLS error")
     {
         return;
     }
 
     //# Add validator and balance entries
-    // bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap()
     state
         .validators
         .push(Validator {
-            pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
+            pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).expect("Conversion error"),
             withdrawal_credentials: deposit.data.withdrawal_credentials,
             activation_eligibility_epoch: FAR_FUTURE_EPOCH,
             activation_epoch: FAR_FUTURE_EPOCH,
@@ -117,8 +114,8 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
             ),
             slashed: false,
         })
-        .unwrap();
-    &state.balances.push(amount);
+        .expect("Push error");
+    state.balances.push(amount).expect("Push error");
 }
 
 fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<T>) {
@@ -136,44 +133,57 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
         ..BeaconBlockHeader::default()
     };
     //# Verify proposer is not slashed
-    let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
+    let proposer =
+        &state.validators[get_beacon_proposer_index(state).expect("Conversion error") as usize];
     assert!(!proposer.slashed);
     //# Verify proposer signature
     if cfg!(not(test)) {
         assert!(bls_verify(
-            &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes()).unwrap(),
+            &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes())
+                .expect("Conversion error"),
             signed_root(block).as_bytes(),
-            &block.signature.clone().try_into().unwrap(),
-            get_domain(&state, T::domain_beacon_proposer(), None)
+            &block
+                .signature
+                .clone()
+                .try_into()
+                .expect("Conversion error"),
+            get_domain(state, T::domain_beacon_proposer(), None)
         )
-        .unwrap());
+        .expect("BLS error"));
     }
 }
 
 fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
-    let epoch = get_current_epoch(&state);
+    let epoch = get_current_epoch(state);
     //# Verify RANDAO reveal
-    let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
+    let proposer =
+        &state.validators[get_beacon_proposer_index(state).expect("Proposer error") as usize];
     assert!(bls_verify(
-        &(proposer.pubkey.clone()).try_into().unwrap(),
+        &(proposer.pubkey.clone())
+            .try_into()
+            .expect("Conversion error"),
         hash_tree_root(&epoch).as_bytes(),
-        &(body.randao_reveal.clone()).try_into().unwrap(),
-        get_domain(&state, T::domain_randao(), None)
+        &(body.randao_reveal.clone())
+            .try_into()
+            .expect("Conversion error"),
+        get_domain(state, T::domain_randao(), None)
     )
-    .unwrap());
+    .expect("BLS error"));
     //# Mix in RANDAO reveal
     let mix = xor(
-        get_randao_mix(&state, epoch).unwrap().as_fixed_bytes(),
+        get_randao_mix(state, epoch)
+            .expect("Randao error")
+            .as_fixed_bytes(),
         &hash(&body.randao_reveal.as_bytes())
             .as_slice()
             .try_into()
-            .unwrap(),
+            .expect("Conversion error"),
     );
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
     array.copy_from_slice(mix);
     state.randao_mixes[(epoch % T::EpochsPerHistoricalVector::U64) as usize] =
-        array.try_into().unwrap();
+        array.try_into().expect("Conversion error");
 }
 
 fn process_proposer_slashing<T: Config>(
@@ -189,7 +199,7 @@ fn process_proposer_slashing<T: Config>(
     // But the headers are different
     assert_ne!(proposer_slashing.header_1, proposer_slashing.header_2);
     // Check proposer is slashable
-    assert!(is_slashable_validator(&proposer, get_current_epoch(state)));
+    assert!(is_slashable_validator(proposer, get_current_epoch(state)));
     // Signatures are valid
     let headers: [BeaconBlockHeader; 2] = [
         proposer_slashing.header_1.clone(),
@@ -201,17 +211,20 @@ fn process_proposer_slashing<T: Config>(
             T::domain_beacon_proposer(),
             Some(compute_epoch_at_slot::<T>(header.slot)),
         );
-        //# Sekanti eilutė tai ******* amazing. signed_root helperiuose užkomentuota
         assert!(bls_verify(
-            &(proposer.pubkey.clone()).try_into().unwrap(),
+            &(proposer.pubkey.clone())
+                .try_into()
+                .expect("Conversion error"),
             signed_root(header).as_bytes(),
-            &(header.signature.clone()).try_into().unwrap(),
+            &(header.signature.clone())
+                .try_into()
+                .expect("Conversion error"),
             domain
         )
-        .unwrap());
+        .expect("BLS error"));
     }
 
-    slash_validator(state, proposer_slashing.proposer_index, None).unwrap();
+    slash_validator(state, proposer_slashing.proposer_index, None).expect("Slash error");
 }
 
 fn process_attester_slashing<T: Config>(
@@ -224,8 +237,8 @@ fn process_attester_slashing<T: Config>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(validate_indexed_attestation(state, &attestation_1).is_ok());
-    assert!(validate_indexed_attestation(state, &attestation_2).is_ok());
+    assert!(validate_indexed_attestation(state, attestation_1).is_ok());
+    assert!(validate_indexed_attestation(state, attestation_2).is_ok());
 
     let mut slashed_any = false;
 
@@ -246,8 +259,8 @@ fn process_attester_slashing<T: Config>(
     for index in &attesting_indices_1 & &attesting_indices_2 {
         let validator = &state.validators[index as usize];
 
-        if is_slashable_validator(&validator, get_current_epoch(state)) {
-            slash_validator(state, index, None).unwrap();
+        if is_slashable_validator(validator, get_current_epoch(state)) {
+            slash_validator(state, index, None).expect("Slash error");
             slashed_any = true;
         }
     }
@@ -257,7 +270,9 @@ fn process_attester_slashing<T: Config>(
 fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Attestation<T>) {
     let data = &attestation.data;
     let attestation_slot = data.slot;
-    assert!(data.index < get_committee_count_at_slot(state, attestation_slot).unwrap()); //# Nėra index ir slot. ¯\_(ツ)_/¯
+    assert!(
+        data.index < get_committee_count_at_slot(state, attestation_slot).expect("Committee error")
+    ); //# Nėra index ir slot. ¯\_(ツ)_/¯
     assert!(
         data.target.epoch == get_previous_epoch(state)
             || data.target.epoch == get_current_epoch(state)
@@ -267,14 +282,14 @@ fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Atte
             && state.slot <= attestation_slot + T::SlotsPerEpoch::U64
     );
 
-    let committee = get_beacon_committee(state, attestation_slot, data.index).unwrap();
+    let committee =
+        get_beacon_committee(state, attestation_slot, data.index).expect("Beacon committee error");
     assert_eq!(attestation.aggregation_bits.len(), committee.len());
-
     let pending_attestation = PendingAttestation {
         data: attestation.data.clone(),
         aggregation_bits: attestation.aggregation_bits.clone(),
         inclusion_delay: (state.slot - attestation_slot),
-        proposer_index: get_beacon_proposer_index(state).unwrap(),
+        proposer_index: get_beacon_proposer_index(state).expect("Index error"),
     };
 
     if data.target.epoch == get_current_epoch(state) {
@@ -282,25 +297,28 @@ fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Atte
         state
             .current_epoch_attestations
             .push(pending_attestation)
-            .unwrap();
+            .expect("Push error");
     } else {
         assert_eq!(data.source, state.previous_justified_checkpoint);
         state
             .previous_epoch_attestations
             .push(pending_attestation)
-            .unwrap();
+            .expect("Push error");
     }
 
     //# Check signature
     assert!(validate_indexed_attestation(
-        &state,
-        &get_indexed_attestation(&state, &attestation).unwrap()
+        state,
+        &get_indexed_attestation(state, attestation).expect("Attestation error")
     )
     .is_ok());
 }
 
 fn process_eth1_data<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
-    state.eth1_data_votes.push(body.eth1_data.clone()).unwrap();
+    state
+        .eth1_data_votes
+        .push(body.eth1_data.clone())
+        .expect("Push error");
     let num_votes = state
         .eth1_data_votes
         .iter()
@@ -377,10 +395,10 @@ mod block_processing_tests {
             .take(0x0001_0000)
             .collect();
         let mut bs: BeaconState<MainnetConfig> = BeaconState {
-            block_roots: FixedVector::new(vec_1.clone()).unwrap(),
-            state_roots: FixedVector::new(vec_1.clone()).unwrap(),
-            slashings: FixedVector::new(vec_2.clone()).unwrap(),
-            randao_mixes: FixedVector::new(vec_3.clone()).unwrap(),
+            block_roots: FixedVector::new(vec_1.clone()).expect("Conversion error"),
+            state_roots: FixedVector::new(vec_1.clone()).expect("Conversion error"),
+            slashings: FixedVector::new(vec_2.clone()).expect("Conversion error"),
+            randao_mixes: FixedVector::new(vec_3.clone()).expect("Conversion error"),
             slot: 0,
             latest_block_header: BeaconBlockHeader {
                 slot: 0,

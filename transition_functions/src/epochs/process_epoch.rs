@@ -1,5 +1,5 @@
-use crate::attestations::attestations::AttestableBlock;
-use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
+use crate::attestations::AttestableBlock;
+use crate::rewards_and_penalties::StakeholderBlock;
 use helper_functions::{
     beacon_state_accessors::{
         get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
@@ -22,8 +22,9 @@ use types::{
 };
 
 pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {
-    process_justification_and_finalization(state);
-    process_rewards_and_penalties(state);
+    process_justification_and_finalization(state)
+        .expect("Error during justification and finalization");
+    process_rewards_and_penalties(state).expect("Error durng rewards and penalties");
     process_registry_updates(state);
     process_slashings(state);
     process_final_updates(state);
@@ -38,11 +39,11 @@ fn process_justification_and_finalization<T: Config>(
 
     let previous_epoch = get_previous_epoch(state);
     let current_epoch = get_current_epoch(state);
-    let old_previous_justified_checkpoint = state.previous_justified_checkpoint.clone();
-    let old_current_justified_checkpoint = state.current_justified_checkpoint.clone();
+    let old_previous_justified_checkpoint = state.previous_justified_checkpoint;
+    let old_current_justified_checkpoint = state.current_justified_checkpoint;
 
     // Process justifications
-    state.previous_justified_checkpoint = state.current_justified_checkpoint.clone();
+    state.previous_justified_checkpoint = state.current_justified_checkpoint;
     state.justification_bits.shift_up(1)?;
     // Previous epoch
     let matching_target_attestations = state.get_matching_target_attestations(previous_epoch);
@@ -126,7 +127,7 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
         state.validators[index].activation_eligibility_epoch = get_current_epoch(&state_copy);
     }
     for index in exiting {
-        initiate_validator_exit(state, index as u64).unwrap();
+        initiate_validator_exit(state, index as u64).expect("validator exit error");
     }
 
     // Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
@@ -134,7 +135,7 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
         .validators
         .iter()
         .enumerate()
-        .filter(|(index, validator)| {
+        .filter(|(_, validator)| {
             validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
                 && validator.activation_epoch
                     >= compute_activation_exit_epoch::<T>(state.finalized_checkpoint.epoch)
@@ -144,7 +145,7 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
         .collect_vec();
     // Dequeued validators for activation up to churn limit (without resetting activation epoch)
 
-    let churn_limit = get_validator_churn_limit(&state).unwrap();
+    let churn_limit = get_validator_churn_limit(state).expect("Validator churn limit error");
     let delayed_activation_epoch = compute_activation_exit_epoch::<T>(get_current_epoch(state));
     for index in activation_queue.into_iter().take(churn_limit as usize) {
         let validator = &mut state.validators[index];
@@ -159,16 +160,16 @@ fn process_rewards_and_penalties<T: Config>(state: &mut BeaconState<T>) -> Resul
         return Ok(());
     }
     let (rewards, penalties) = state.get_attestation_deltas();
-    for (index, validator) in state.validators.clone().iter_mut().enumerate() {
-        increase_balance(state, index as u64, rewards[index]).unwrap();
-        decrease_balance(state, index as u64, penalties[index]).unwrap();
+    for (index, _) in state.validators.clone().iter_mut().enumerate() {
+        increase_balance(state, index as u64, rewards[index]).expect("Balance error");
+        decrease_balance(state, index as u64, penalties[index]).expect("Balance error");
     }
     Ok(())
 }
 
 fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
     let epoch = get_current_epoch(state);
-    let total_balance = get_total_active_balance(state).unwrap();
+    let total_balance = get_total_active_balance(state).expect("Balance error");
 
     for (index, validator) in state.validators.clone().iter_mut().enumerate() {
         if validator.slashed
@@ -179,13 +180,13 @@ fn process_slashings<T: Config>(state: &mut BeaconState<T>) {
             let penalty_numerator = validator.effective_balance / increment
                 * cmp::min(slashings_sum * 3, total_balance);
             let penalty = penalty_numerator / total_balance * increment;
-            decrease_balance(state, index as u64, penalty).unwrap();
+            decrease_balance(state, index as u64, penalty).expect("Balance error");
         }
     }
 }
 
 fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
-    let current_epoch = get_current_epoch(&state);
+    let current_epoch = get_current_epoch(state);
     let next_epoch = current_epoch + 1;
     //# Reset eth1 data votes
     if (state.slot + 1) % T::SlotsPerEth1VotingPeriod::U64 == 0 {
@@ -208,7 +209,7 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
     state.slashings[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] = 0;
     //# Set randao mix
     state.randao_mixes[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] =
-        get_randao_mix(&state, current_epoch).unwrap();
+        get_randao_mix(state, current_epoch).expect("Randao error");
     //# Set historical root accumulator
     if next_epoch % (T::SlotsPerHistoricalRoot::U64 / T::SlotsPerEpoch::U64) == 0 {
         let historical_batch = HistoricalBatch::<T> {
@@ -218,7 +219,7 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
         state
             .historical_roots
             .push(hash_tree_root(&historical_batch))
-            .unwrap();
+            .expect("Push error");
     }
     //# Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations.clone();
@@ -251,7 +252,7 @@ mod process_epoch_tests {
         };
         val.effective_balance = 5;
         val.slashed = false;
-        bs.validators.push(val).unwrap();
+        bs.validators.push(val).expect("Push error");
         let index = 0;
         assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
     }
