@@ -1,6 +1,7 @@
 use bls::{PublicKey, Signature};
 use hex;
 use ssz_types::{FixedVector, VariableList};
+use std::convert::TryInto;
 use std::io::prelude::*;
 use types::{
     beacon_state::*,
