@@ -4,7 +4,7 @@ use ssz_types::{BitVector, Error as SzzError, FixedVector, VariableList};
 use types::{
     beacon_state::*,
     config::{Config, MainnetConfig, MinimalConfig},
-    types::{BeaconBlockHeader, Eth1Data, Fork, Validator},
+    types::{BeaconBlockHeader, Eth1Data, Fork, Validator, PendingAttestation},
 };
 use yaml_rust::{yaml::Yaml, YamlEmitter, YamlLoader};
 
@@ -25,6 +25,20 @@ pub fn compare_states<T: Config>(
     compare_slice_eth1_data(&st1.eth1_data_votes[..], &st2.eth1_data_votes[..]);
     assert_eq!(st1.eth1_deposit_index, st2.eth1_deposit_index);
     
+    compare_slice_validator(&st1.validators[..], &st2.validators[..]);
+    compare_slice_u64(&st1.balances[..], &st2.balances[..]);
+
+    compare_slice_H256(&st1.randao_mixes[..], &st2.randao_mixes[..]);
+
+    compare_slice_u64(&st1.slashings[..], &st2.slashings[..]);
+
+    compare_slice_pending_attestation(&st1.previous_epoch_attestations[..], &st2.previous_epoch_attestations[..]);
+    compare_slice_pending_attestation(&st1.current_epoch_attestations[..], &st2.current_epoch_attestations[..]);
+
+    assert_eq!(st1.justification_bits, st2.justification_bits);
+    assert_eq!(st1.previous_justified_checkpoint, st2.previous_justified_checkpoint);
+    assert_eq!(st1.current_justified_checkpoint, st2.current_justified_checkpoint);
+    assert_eq!(st1.finalized_checkpoint, st2.finalized_checkpoint);
 }
 
 fn compare_headers(
@@ -68,6 +82,26 @@ fn compare_slice_validator(
     }
 }
 
+fn compare_slice_u64(
+    v1: &[u64],
+    v2: &[u64],
+) {
+    assert_eq!(v1.len(), v2.len());
+    for (a, b) in v1.iter().zip(v2.iter()) {
+        assert_eq!(a, b);
+    }
+}
+
+fn compare_slice_pending_attestation<T: Config>(
+    v1: &[PendingAttestation<T>],
+    v2: &[PendingAttestation<T>],
+) {
+    assert_eq!(v1.len(), v2.len());
+    for (a, b) in v1.iter().zip(v2.iter()) {
+        assert_eq!(a, b);
+    }
+}
+
 fn compare_eth1_data(
     d1: &Eth1Data,
     d2: &Eth1Data,
@@ -90,3 +124,11 @@ fn compare_validator(
     assert_eq!(v1.exit_epoch, v2.exit_epoch);
     assert_eq!(v1.withdrawable_epoch, v2.withdrawable_epoch);
 }
+
+// fn compadre_pending_attestations<T: Config>(
+//     a1: &PendingAttestation<T>,
+//     a2: &PendingAttestation<T>,
+// ) {
+//     assert_eq!(a1.aggregation_bits, a2.aggregation_bits);
+//     assert_eq!(a1, a2);
+// }
