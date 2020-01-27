@@ -1,6 +1,5 @@
 use crate::attestations::attestations::AttestableBlock;
 use crate::rewards_and_penalties::rewards_and_penalties::StakeholderBlock;
-use helper_functions::beacon_state_accessors::*;
 use helper_functions::{
     beacon_state_accessors::{
         get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
@@ -16,12 +15,10 @@ use ssz_types::VariableList;
 use std::cmp;
 use typenum::Unsigned as _;
 use types::consts::*;
-use types::primitives::*;
 use types::{
     beacon_state::{BeaconState, Error},
     config::Config,
-    primitives::{Epoch, Gwei, ValidatorIndex},
-    types::{Checkpoint, Eth1Data, HistoricalBatch, Validator},
+    types::{Checkpoint, HistoricalBatch, Validator},
 };
 
 pub fn process_epoch<T: Config>(state: &mut BeaconState<T>) {

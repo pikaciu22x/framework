@@ -1,12 +1,9 @@
-use bls::{PublicKey, SecretKey};
-use ssz_types::{BitVector, Error as SzzError, FixedVector, VariableList};
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig, MinimalConfig},
+    config::Config,
     primitives::H256,
-    types::{BeaconBlockHeader, Eth1Data, Fork, PendingAttestation, Validator},
+    types::{BeaconBlockHeader, Eth1Data, PendingAttestation, Validator},
 };
-use yaml_rust::{yaml::Yaml, YamlEmitter, YamlLoader};
 
 pub fn compare_states<T: Config>(st1: &BeaconState<T>, st2: &BeaconState<T>) {
     assert_eq!(st1.genesis_time, st2.genesis_time);

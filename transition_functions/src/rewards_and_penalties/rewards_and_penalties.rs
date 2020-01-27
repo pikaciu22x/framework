@@ -1,9 +1,6 @@
 use helper_functions;
 use types::consts::*;
-use types::{
-    beacon_state::*,
-    config::{Config, MainnetConfig},
-};
+use types::{beacon_state::*, config::Config};
 // use types::types::*;
 use crate::attestations::attestations::AttestableBlock;
 use helper_functions::beacon_state_accessors::*;
@@ -64,7 +61,7 @@ where
             for &index in &eligible_validator_indices {
                 if unslashed_attesting_indices.contains(&index) {
                     let temp_var: ValidatorIndex =
-                        ((self.get_base_reward(index) * attesting_balance) / total_balance);
+                        (self.get_base_reward(index) * attesting_balance) / total_balance;
                     rewards[index as usize] += temp_var;
                 } else {
                     penalties[index as usize] += self.get_base_reward(index);

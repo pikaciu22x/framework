@@ -1,12 +1,6 @@
-use helper_functions::{
-    beacon_state_accessors::{
-        get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
-        get_previous_epoch, get_randao_mix, get_total_active_balance, get_total_balance,
-        get_validator_churn_limit,
-    },
-    beacon_state_mutators::{decrease_balance, initiate_validator_exit},
-    misc::compute_activation_exit_epoch,
-    predicates::is_active_validator,
+use helper_functions::beacon_state_accessors::{
+    get_attesting_indices, get_block_root, get_block_root_at_slot, get_current_epoch,
+    get_previous_epoch, get_total_balance,
 };
 use ssz_types::VariableList;
 use types::{
@@ -118,13 +112,7 @@ where
 
 mod attestations_tests {
     use crate::attestations::attestations::AttestableBlock;
-    use ssz_types::{BitList, FixedVector, VariableList};
-    use types::{
-        beacon_state::BeaconState,
-        config::{Config, MainnetConfig},
-        primitives::{Epoch, Gwei, ValidatorIndex},
-        types::PendingAttestation,
-    };
+    use types::{beacon_state::BeaconState, config::MainnetConfig, types::PendingAttestation};
 
     #[test]
     fn test_get_matching_source_attestations_1() {

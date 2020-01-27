@@ -1,12 +1,9 @@
+use crate::blocks::block_processing::process_block;
 use crate::*;
-use blocks::block_processing::*;
 use epochs::process_epoch::process_epoch;
-use ethereum_types::H256 as Hash256;
 use helper_functions;
 use helper_functions::crypto::*;
 use typenum::Unsigned as _;
-use types::primitives::*;
-use types::types::*;
 use types::{
     beacon_state::BeaconState,
     config::Config,
@@ -24,7 +21,7 @@ pub fn state_transition<T: Config>(
     //# Process slots (including those with no blocks) since block
     process_slots(state, block.slot);
     //# Process block
-    blocks::block_processing::process_block(state, block);
+    process_block(state, block);
     //# Validate state root (`validate_state_root == True` in production)
     if validate_state_root {
         assert!(block.state_root == hash_tree_root(state));

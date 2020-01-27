@@ -1,16 +1,14 @@
 use bls::{PublicKey, Signature};
-use ethereum_types::H256 as Hash256;
 use hex;
-use ssz_types::{BitVector, Error as SzzError, FixedVector, VariableList};
-use std::fs::File;
+use ssz_types::{FixedVector, VariableList};
 use std::io::prelude::*;
 use types::{
     beacon_state::*,
-    config::{Config, MainnetConfig, MinimalConfig},
+    config::Config,
     primitives::H256,
     types::{BeaconBlockHeader, Eth1Data, Fork, Validator},
 };
-use yaml_rust::{yaml::Yaml, YamlEmitter, YamlLoader};
+use yaml_rust::{yaml::Yaml, YamlLoader};
 
 fn build_beaconState_from_yaml<T: Config>(
     from: String,
@@ -153,74 +151,79 @@ fn build_beaconState_from_yaml<T: Config>(
             ),
         },
         eth1_data_votes: VariableList::from(
-            (d["eth1_data_votes"]
+            d["eth1_data_votes"]
                 .as_vec()
                 .unwrap()
                 .iter()
                 .map(|x| Eth1Data {
                     deposit_root: H256::from_slice(
                         &hex::decode(
-                            (x["deposit_root"]
+                            x["deposit_root"]
                                 .as_str()
                                 .unwrap()
                                 .chars()
                                 .skip(2)
-                                .collect::<String>()),
+                                .collect::<String>(),
                         )
                         .expect("Decoding failed")[..],
                     ),
                     deposit_count: x["deposit_count"].as_i64().unwrap() as u64,
                     block_hash: H256::from_slice(
                         &hex::decode(
-                            (x["block_hash"]
+                            x["block_hash"]
                                 .as_str()
                                 .unwrap()
                                 .chars()
                                 .skip(2)
-                                .collect::<String>()),
+                                .collect::<String>(),
                         )
                         .expect("Decoding failed")[..],
                     ),
-                }))
-            .collect::<Vec<_>>()
-            .to_vec(),
+                })
+                .collect::<Vec<_>>()
+                .to_vec(),
         ),
         eth1_deposit_index: d["eth1_deposit_index"].as_i64().unwrap() as u64,
         validators: VariableList::from(
-            (d["validators"].as_vec().unwrap().iter().map(|x| Validator {
-                pubkey: PublicKey::from_bytes(
-                    &hex::decode(
-                        x["pubkey"]
-                            .as_str()
-                            .unwrap()
-                            .chars()
-                            .skip(2)
-                            .collect::<String>(),
+            d["validators"]
+                .as_vec()
+                .unwrap()
+                .iter()
+                .map(|x| Validator {
+                    pubkey: PublicKey::from_bytes(
+                        &hex::decode(
+                            x["pubkey"]
+                                .as_str()
+                                .unwrap()
+                                .chars()
+                                .skip(2)
+                                .collect::<String>(),
+                        )
+                        .expect("Decoding failed")[..],
                     )
-                    .expect("Decoding failed")[..],
-                )
-                .unwrap(),
-                withdrawal_credentials: H256::from_slice(
-                    &hex::decode(
-                        x["withdrawal_credentials"]
-                            .as_str()
-                            .unwrap()
-                            .chars()
-                            .skip(2)
-                            .collect::<String>(),
-                    )
-                    .expect("Decoding failed")[..],
-                ),
-                effective_balance: x["effective_balance"].as_i64().unwrap() as u64,
-                slashed: x["slashed"].as_bool().unwrap(),
-                activation_eligibility_epoch: x["activation_eligibility_epoch"].as_i64().unwrap()
-                    as u64,
-                activation_epoch: x["activation_epoch"].as_i64().unwrap() as u64,
-                exit_epoch: x["exit_epoch"].as_i64().unwrap() as u64,
-                withdrawable_epoch: x["withdrawable_epoch"].as_i64().unwrap() as u64,
-            }))
-            .collect::<Vec<_>>()
-            .to_vec(),
+                    .unwrap(),
+                    withdrawal_credentials: H256::from_slice(
+                        &hex::decode(
+                            x["withdrawal_credentials"]
+                                .as_str()
+                                .unwrap()
+                                .chars()
+                                .skip(2)
+                                .collect::<String>(),
+                        )
+                        .expect("Decoding failed")[..],
+                    ),
+                    effective_balance: x["effective_balance"].as_i64().unwrap() as u64,
+                    slashed: x["slashed"].as_bool().unwrap(),
+                    activation_eligibility_epoch: x["activation_eligibility_epoch"]
+                        .as_i64()
+                        .unwrap() as u64,
+                    activation_epoch: x["activation_epoch"].as_i64().unwrap() as u64,
+                    exit_epoch: x["exit_epoch"].as_i64().unwrap() as u64,
+                    withdrawable_epoch: x["withdrawable_epoch"].as_i64().unwrap() as u64,
+                })
+                .collect::<Vec<_>>()
+                .to_vec(),
         ),
         balances: VariableList::from(
             d["balances"]

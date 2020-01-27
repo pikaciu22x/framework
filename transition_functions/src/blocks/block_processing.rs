@@ -11,15 +11,14 @@ use std::collections::BTreeSet;
 use std::convert::TryInto;
 use typenum::Unsigned as _;
 use types::consts::*;
-use types::types::*;
 use types::{
-    beacon_state::{BeaconState, Error},
+    beacon_state::BeaconState,
     config::Config,
     consts::DEPOSIT_CONTRACT_TREE_DEPTH,
     primitives::H256,
     types::{
-        Attestation, AttestationData, AttesterSlashing, BeaconBlock, BeaconBlockBody,
-        BeaconBlockHeader, Deposit, PendingAttestation, ProposerSlashing, Validator, VoluntaryExit,
+        Attestation, AttesterSlashing, BeaconBlock, BeaconBlockBody, BeaconBlockHeader, Deposit,
+        PendingAttestation, ProposerSlashing, Validator, VoluntaryExit,
     },
 };
 
