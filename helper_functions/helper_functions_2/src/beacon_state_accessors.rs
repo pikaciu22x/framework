@@ -400,8 +400,8 @@ mod tests {
         validator2.effective_balance = 15;
         let mut validator3 = Validator::default();
         validator3.effective_balance = 10;
-        state.validators =
-            VariableList::new([validator1, validator2, validator3].to_vec()).expect("Expected success");
+        state.validators = VariableList::new([validator1, validator2, validator3].to_vec())
+            .expect("Expected success");
         let result = get_total_balance::<MinimalConfig>(&state, &[0, 2]);
         assert_eq!(result.is_ok(), true);
         assert_eq!(result.expect("Expected success"), 27);
@@ -420,8 +420,8 @@ mod tests {
         validator3.exit_epoch = 10;
 
         let mut state = BeaconState::<MinimalConfig>::default();
-        state.validators =
-            VariableList::new([validator1, validator2, validator3].to_vec()).expect("Expected success");
+        state.validators = VariableList::new([validator1, validator2, validator3].to_vec())
+            .expect("Expected success");
         let result = get_active_validator_indices::<MinimalConfig>(&state, 3);
         assert_eq!(result, [0, 2].to_vec());
     }
