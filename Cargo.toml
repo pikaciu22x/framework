@@ -5,6 +5,7 @@ members = [
     'error_utils',
     'eth2_network',
     'eth2_network_libp2p',
+    'spec_test_utils',
     'types',
     'transition_functions',
     'helper_functions/helper_functions_2',

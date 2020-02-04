@@ -1,4 +1,7 @@
-#[derive(PartialEq, Debug)]
+use derive_more::From;
+use ssz::DecodeError;
+
+#[derive(PartialEq, Debug, From)]
 pub enum Error {
     SlotOutOfRange,
     IndexOutOfRange,
@@ -8,4 +11,5 @@ pub enum Error {
     NumberExceedsCapacity,
     ArrayIsEmpty,
     NotAHash,
+    SszDecode(DecodeError),
 }

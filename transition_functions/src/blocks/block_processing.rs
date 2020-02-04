@@ -96,7 +96,7 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     state
         .validators
         .push(Validator {
-            pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).unwrap(),
+            pubkey: pubkey.clone(),
             withdrawal_credentials: deposit.data.withdrawal_credentials,
             activation_eligibility_epoch: FAR_FUTURE_EPOCH,
             activation_epoch: FAR_FUTURE_EPOCH,
@@ -212,8 +212,8 @@ fn process_attester_slashing<T: Config>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(validate_indexed_attestation(state, &attestation_1).is_ok());
-    assert!(validate_indexed_attestation(state, &attestation_2).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_1, true).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_2, true).is_ok());
 
     let mut slashed_any = false;
 
@@ -242,7 +242,11 @@ fn process_attester_slashing<T: Config>(
     assert!(slashed_any);
 }
 
-fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Attestation<T>) {
+fn process_attestation<T: Config>(
+    state: &mut BeaconState<T>,
+    attestation: &Attestation<T>,
+    verify_signature: bool,
+) {
     let data = &attestation.data;
     let attestation_slot = data.slot;
     assert!(data.index < get_committee_count_at_slot(state, attestation_slot).unwrap()); //# Nėra index ir slot. ¯\_(ツ)_/¯
@@ -282,7 +286,8 @@ fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Atte
     //# Check signature
     assert!(validate_indexed_attestation(
         &state,
-        &get_indexed_attestation(&state, &attestation).unwrap()
+        &get_indexed_attestation(&state, &attestation).unwrap(),
+        verify_signature,
     )
     .is_ok());
 }
@@ -317,7 +322,7 @@ fn process_operations<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockB
         process_attester_slashing(state, attester_slashing);
     }
     for attestation in body.attestations.iter() {
-        process_attestation(state, attestation);
+        process_attestation(state, attestation, true);
     }
     for deposit in body.deposits.iter() {
         process_deposit(state, deposit);
@@ -347,24 +352,17 @@ mod spec_tests {
     use test_generator::test_resources;
     use types::{beacon_state::BeaconState, config::MinimalConfig};
 
-    use crate::spec_test_utils;
-
     use super::*;
 
-    // We do not honor `bls_setting` in operation tests. Some attestation tests set it to 2.
-    // This may result in tests falsely succeeding or failing.
+    // We only honor `bls_setting` in `Attestation` tests. They are the only ones that set it to 2.
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/pyspec_tests/*"
-    )]
-    fn minimal_block_header(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/*/*")]
+    fn block_header(case_directory: &str) {
         run_case(case_directory, "block", process_block_header);
     }
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/pyspec_tests/*"
-    )]
-    fn minimal_proposer_slashing(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/*/*")]
+    fn proposer_slashing(case_directory: &str) {
         run_case(
             case_directory,
             "proposer_slashing",
@@ -372,10 +370,8 @@ mod spec_tests {
         );
     }
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/pyspec_tests/*"
-    )]
-    fn minimal_attester_slashing(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/*/*")]
+    fn attester_slashing(case_directory: &str) {
         run_case(
             case_directory,
             "attester_slashing",
@@ -383,22 +379,21 @@ mod spec_tests {
         );
     }
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/pyspec_tests/*"
-    )]
-    fn minimal_attestation(case_directory: &str) {
-        run_case(case_directory, "attestation", process_attestation);
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/*/*")]
+    fn attestation(case_directory: &str) {
+        let verify_signature = spec_test_utils::bls_setting(case_directory).unwrap_or(true);
+        run_case(case_directory, "attestation", |state, attestation| {
+            process_attestation(state, attestation, verify_signature)
+        });
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/pyspec_tests/*")]
-    fn minimal_deposit(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/*/*")]
+    fn deposit(case_directory: &str) {
         run_case(case_directory, "deposit", process_deposit);
     }
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/pyspec_tests/*"
-    )]
-    fn minimal_voluntary_exit(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/*/*")]
+    fn voluntary_exit(case_directory: &str) {
         run_case(case_directory, "voluntary_exit", process_voluntary_exit);
     }
 

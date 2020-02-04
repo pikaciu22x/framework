@@ -2,14 +2,14 @@ use crate::{beacon_state_accessors as accessors, crypto};
 use bls::AggregatePublicKey;
 use itertools::Itertools;
 use ssz_types::VariableList;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto as _};
 use tree_hash::TreeHash;
 use typenum::Unsigned;
 use types::{
     beacon_state::BeaconState,
     config::Config,
     helper_functions_types::Error,
-    primitives::{Epoch, H256},
+    primitives::{AggregateSignature, Epoch, H256},
     types::{AttestationData, IndexedAttestation, Validator},
 };
 
@@ -52,7 +52,7 @@ fn aggregate_validator_public_keys<C: Config>(
         if state.validators.len() <= ind {
             return Err(Error::IndexOutOfRange);
         }
-        aggr_pkey.add(&state.validators[ind].pubkey);
+        aggr_pkey.add(&(&state.validators[ind].pubkey).try_into()?);
     }
     Ok(aggr_pkey)
 }
@@ -60,6 +60,7 @@ fn aggregate_validator_public_keys<C: Config>(
 pub fn validate_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     indexed_attestation: &IndexedAttestation<C>,
+    verify_signature: bool,
 ) -> Result<(), Error> {
     let indices = &indexed_attestation.attesting_indices;
 
@@ -72,23 +73,27 @@ pub fn validate_indexed_attestation<C: Config>(
         return Err(Error::IndicesNotSorted);
     }
 
+    let signature: AggregateSignature = (&indexed_attestation.signature).try_into()?;
+
     let aggr_pubkey = aggregate_validator_public_keys(indices, state)?;
 
     let hash = indexed_attestation.data.tree_hash_root();
 
-    if indexed_attestation.signature.verify_multiple(
-        &[hash.as_slice()],
-        accessors::get_domain(
-            state,
-            C::domain_attestation(),
-            Some(indexed_attestation.data.target.epoch),
-        ),
-        &[&aggr_pubkey],
-    ) {
-        Ok(())
-    } else {
-        Err(Error::InvalidSignature)
+    if verify_signature
+        && !signature.verify_multiple(
+            &[hash.as_slice()],
+            accessors::get_domain(
+                state,
+                C::domain_attestation(),
+                Some(indexed_attestation.data.target.epoch),
+            ),
+            &[&aggr_pubkey],
+        )
+    {
+        return Err(Error::InvalidSignature);
     }
+
+    Ok(())
 
     // Check signature
     // Since bit_1_indices is empty (because of the first `if`) we only check that
@@ -160,7 +165,7 @@ mod tests {
             exit_epoch: EPOCH_MAX,
             withdrawable_epoch: EPOCH_MAX,
             withdrawal_credentials: H256([0; 32]),
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
         }
     }
 
@@ -423,7 +428,7 @@ mod tests {
                 .expect("Unable to add attesting index");
 
             assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
+                validate_indexed_attestation(&state, &attestation, true),
                 Err(Error::IndicesNotSorted)
             );
         }
@@ -438,7 +443,7 @@ mod tests {
                 .expect("Unable to add attesting index");
 
             assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
+                validate_indexed_attestation(&state, &attestation, true),
                 Err(Error::IndexOutOfRange)
             );
         }
@@ -475,7 +480,7 @@ mod tests {
                 .expect("Expected successfull push to validator collection");
 
             assert_eq!(
-                validate_indexed_attestation(&state, &attestation),
+                validate_indexed_attestation(&state, &attestation, true),
                 Err(Error::InvalidSignature)
             );
         }
@@ -490,14 +495,14 @@ mod tests {
                 .expect("Unable to add attesting index");
 
             let skey1 = SecretKey::random();
-            let pkey1 = PublicKey::from_secret_key(&skey1);
+            let pkey1 = PublicKey::from_secret_key(&skey1).into();
             let v1 = Validator {
                 pubkey: pkey1,
                 ..default_validator()
             };
 
             let skey2 = SecretKey::random();
-            let pkey2 = PublicKey::from_secret_key(&skey2);
+            let pkey2 = PublicKey::from_secret_key(&skey2).into();
             let v2 = Validator {
                 pubkey: pkey2,
                 ..default_validator()
@@ -539,12 +544,12 @@ mod tests {
             asig.add(&sig1);
             asig.add(&sig2);
 
-            attestation.signature = asig;
+            attestation.signature = (&asig).into();
 
             let aggr_pubkey =
                 aggregate_validator_public_keys(&attestation.attesting_indices, &state)
                     .expect("Success");
-            assert!(attestation.signature.verify(
+            assert!(asig.verify(
                 &digest1,
                 accessors::get_domain(
                     &state,
@@ -554,7 +559,10 @@ mod tests {
                 &aggr_pubkey,
             ));
 
-            assert_eq!(validate_indexed_attestation(&state, &attestation), Ok(()));
+            assert_eq!(
+                validate_indexed_attestation(&state, &attestation, true),
+                Ok(())
+            );
         }
     }
 }

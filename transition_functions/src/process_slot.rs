@@ -129,28 +129,28 @@ mod spec_tests {
     use test_generator::test_resources;
     use types::config::MinimalConfig;
 
-    use crate::spec_test_utils;
-
     use super::*;
 
     // We do not honor `bls_setting` in sanity tests because none of them customize it.
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/slots/pyspec_tests/*")]
-    fn minimal_slots(case_directory: &str) {
-        let mut state = spec_test_utils::pre(case_directory);
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/slots/*/*")]
+    fn slots(case_directory: &str) {
+        let mut state: BeaconState<MinimalConfig> = spec_test_utils::pre(case_directory);
         let last_slot = state.slot + spec_test_utils::slots(case_directory);
         let expected_post = spec_test_utils::post(case_directory)
             .expect("every slot sanity test should have a post-state");
-        process_slots::<MinimalConfig>(&mut state, last_slot);
+
+        process_slots(&mut state, last_slot);
+
         assert_eq!(state, expected_post);
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/blocks/pyspec_tests/*")]
-    fn minimal_blocks(case_directory: &str) {
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/blocks/*/*")]
+    fn blocks(case_directory: &str) {
         let process_blocks = || {
-            let mut state = spec_test_utils::pre(case_directory);
+            let mut state: BeaconState<MinimalConfig> = spec_test_utils::pre(case_directory);
             for block in spec_test_utils::blocks(case_directory) {
-                state_transition::<MinimalConfig>(&mut state, &block, true);
+                state_transition(&mut state, &block, true);
             }
             state
         };

@@ -8,6 +8,3 @@ pub mod blocks;
 pub mod epochs;
 pub mod process_slot;
 pub mod rewards_and_penalties;
-
-#[cfg(test)]
-mod spec_test_utils;

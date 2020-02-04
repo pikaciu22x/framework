@@ -22,7 +22,6 @@ mockall = "0.5.2"
 
 [dev-dependencies]
 eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
-serde = '1.0'
-serde_yaml = '0.8.11'
+spec_test_utils = { path = '../spec_test_utils' }
 test-generator = '0.3.0'
 void = '1.0.2'

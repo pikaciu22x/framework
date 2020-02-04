@@ -1,3 +1,5 @@
+#![allow(clippy::default_trait_access)]
+
 //temporary Lighthouse SSZ and hashing implementation
 use bls::PublicKeyBytes;
 use ethereum_types::H256 as Hash256;
@@ -17,7 +19,7 @@ pub struct Attestation<C: Config> {
     pub aggregation_bits: BitList<C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
-    pub signature: AggregateSignature,
+    pub signature: AggregateSignatureBytes,
 }
 
 #[derive(
@@ -84,27 +86,26 @@ pub struct BeaconBlock<C: Config> {
     pub state_root: H256,
     pub body: BeaconBlockBody<C>,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }
 
 impl<C: Config> Default for BeaconBlock<C> {
     fn default() -> Self {
-        #[allow(clippy::default_trait_access)]
         Self {
             slot: Default::default(),
             parent_root: Default::default(),
             state_root: Default::default(),
             body: Default::default(),
-            signature: Signature::empty_signature(),
+            signature: SignatureBytes::empty(),
         }
     }
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
 pub struct BeaconBlockBody<C: Config> {
-    pub randao_reveal: Signature,
+    pub randao_reveal: SignatureBytes,
     pub eth1_data: Eth1Data,
-    pub graffiti: [u8; 32],
+    pub graffiti: H256,
     pub proposer_slashings: VariableList<ProposerSlashing, C::MaxProposerSlashings>,
     pub attester_slashings: VariableList<AttesterSlashing<C>, C::MaxAttesterSlashings>,
     pub attestations: VariableList<Attestation<C>, C::MaxAttestations>,
@@ -114,9 +115,8 @@ pub struct BeaconBlockBody<C: Config> {
 
 impl<C: Config> Default for BeaconBlockBody<C> {
     fn default() -> Self {
-        #[allow(clippy::default_trait_access)]
         Self {
-            randao_reveal: Signature::empty_signature(),
+            randao_reveal: SignatureBytes::empty(),
             eth1_data: Default::default(),
             graffiti: Default::default(),
             proposer_slashings: Default::default(),
@@ -137,18 +137,17 @@ pub struct BeaconBlockHeader {
     pub state_root: H256,
     pub body_root: H256,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }
 
 impl Default for BeaconBlockHeader {
     fn default() -> Self {
-        #[allow(clippy::default_trait_access)]
         Self {
             slot: Default::default(),
             parent_root: Default::default(),
             state_root: Default::default(),
             body_root: Default::default(),
-            signature: Signature::empty_signature(),
+            signature: SignatureBytes::empty(),
         }
     }
 }
@@ -245,7 +244,7 @@ pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
-    pub signature: AggregateSignature,
+    pub signature: AggregateSignatureBytes,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
@@ -273,14 +272,14 @@ pub struct Transfer {
     pub amount: u64,
     pub fee: u64,
     pub slot: Slot,
-    pub pubkey: PublicKey,
+    pub pubkey: PublicKeyBytes,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, Default)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
 pub struct Validator {
-    pub pubkey: PublicKey,
+    pub pubkey: PublicKeyBytes,
     pub withdrawal_credentials: H256,
     pub effective_balance: u64,
     pub slashed: bool,
@@ -290,6 +289,21 @@ pub struct Validator {
     pub withdrawable_epoch: Epoch,
 }
 
+impl Default for Validator {
+    fn default() -> Self {
+        Self {
+            pubkey: PublicKeyBytes::empty(),
+            withdrawal_credentials: Default::default(),
+            effective_balance: Default::default(),
+            slashed: Default::default(),
+            activation_eligibility_epoch: Default::default(),
+            activation_epoch: Default::default(),
+            exit_epoch: Default::default(),
+            withdrawable_epoch: Default::default(),
+        }
+    }
+}
+
 #[derive(
     Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
 )]
@@ -297,5 +311,5 @@ pub struct VoluntaryExit {
     pub epoch: Epoch,
     pub validator_index: u64,
     #[signed_root(skip_hashing)]
-    pub signature: Signature,
+    pub signature: SignatureBytes,
 }

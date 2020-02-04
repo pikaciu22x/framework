@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_compute_domain() {
-        let domain: Domain = compute_domain(1, Some(&[0, 0, 0, 1]));
+        let domain: Domain = compute_domain(1, Some(&[0, 0, 0, 1].into()));
         assert_eq!(domain, 0x0001_0000_0001);
         // 1 * 256 ^ 4 + 1 = 4294967297 = 0x0001_0000_0001
     }
@@ -210,7 +210,7 @@ mod tests {
             activation_epoch: 3,
             effective_balance: 0,
             exit_epoch: 4,
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
             slashed: false,
             withdrawable_epoch: 9999,
 
@@ -222,7 +222,7 @@ mod tests {
             activation_epoch: 3,
             effective_balance: 24,
             exit_epoch: FAR_FUTURE_EPOCH,
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
             slashed: false,
             withdrawable_epoch: 9999,
             withdrawal_credentials: H256([0; 32]),
