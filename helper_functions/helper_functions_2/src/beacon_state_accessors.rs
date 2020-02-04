@@ -291,35 +291,57 @@ mod tests {
     use types::types::Validator;
 
     #[test]
-    fn test_get_current_epoch() {
+    fn test_get_current_zero_epoch() {
         let state = BeaconState::<MinimalConfig>::default();
         assert_eq!(get_current_epoch::<MinimalConfig>(&state), 0);
     }
 
     #[test]
-    fn test_get_previous_epoch() {
+    fn test_get_current_epoch() {
+        let mut state = BeaconState::<MinimalConfig>::default();
+        state.slot = 35;
+        assert_eq!(get_current_epoch::<MinimalConfig>(&state), 4);
+    }
+
+    #[test]
+    fn test_get_previous_zero_epoch() {
         let state = BeaconState::<MinimalConfig>::default();
         assert_eq!(get_previous_epoch::<MinimalConfig>(&state), 0);
     }
 
     #[test]
+    fn test_get_previous_epoch() {
+        let mut state = BeaconState::<MinimalConfig>::default();
+        state.slot = 35;
+        assert_eq!(get_previous_epoch::<MinimalConfig>(&state), 3);
+    }
+
+    #[test]
     fn test_get_block_root() {
         let mut state = BeaconState::<MinimalConfig>::default();
-        let base: Vec<H256> = vec![H256::from([0; 32])];
+        state.slot = 20;
+        // let base: Vec<H256> = vec![H256::from([0; 32]), H256::from([1; 32])];
+        let mut base: Vec<H256> = vec![];
+        for x in 0..19 {
+            base.push(H256::from([x; 32]));
+        }
         let roots: FixedVector<_, typenum::U64> = FixedVector::from(base);
         state.block_roots = roots;
-        let result = get_block_root::<MinimalConfig>(&state, 0);
-        assert_eq!(result.is_ok(), false);
+        let result = get_block_root::<MinimalConfig>(&state, 1);
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(result.expect("Expected success"), H256::from([8; 32]));
     }
 
     #[test]
     fn test_get_block_root_at_slot() {
         let mut state = BeaconState::<MinimalConfig>::default();
-        let base: Vec<H256> = vec![H256::from([0; 32])];
+        state.slot = 2;
+        let base: Vec<H256> = vec![H256::from([0; 32]), H256::from([1; 32])];
         let roots: FixedVector<_, typenum::U64> = FixedVector::from(base);
         state.block_roots = roots;
-        let result = get_block_root_at_slot::<MinimalConfig>(&state, 0);
-        assert_eq!(result.is_ok(), false);
+        let result = get_block_root_at_slot::<MinimalConfig>(&state, 1);
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(result.expect("Expected success"), H256::from([1; 32]));
     }
 
     #[test]
@@ -330,10 +352,11 @@ mod tests {
         state.randao_mixes = mixes;
         let result = get_randao_mix::<MinimalConfig>(&state, 0);
         assert_eq!(result.is_ok(), true);
+        assert_eq!(result.expect("Expected success"), H256::from([0; 32]));
     }
 
     #[test]
-    fn test_get_validator_churn_limit() {
+    fn test_get_minimal_validator_churn_limit() {
         let state = BeaconState::<MinimalConfig>::default();
         let result = get_validator_churn_limit::<MinimalConfig>(&state);
         assert_eq!(
@@ -342,13 +365,64 @@ mod tests {
         );
     }
 
+    // churn_limit_quotient 0x0001_0000 -> 0x0000_0010
+    // #[test]
+    // fn test_get_validator_churn_limit() {
+    //     let mut state = BeaconState::<MinimalConfig>::default();
+    //     state.slot = 12;
+    //     for x in 0..82 {
+    //         let mut validator = Validator::default();
+    //         validator.activation_epoch = 0;
+    //         validator.exit_epoch = 10;
+    //         state.validators.push(validator);
+    //     }
+    //     let result = get_validator_churn_limit::<MinimalConfig>(&state);
+    //     assert_eq!(result.is_ok(), true);
+    //     assert_eq!(result.expect("Expected success"), 5);
+    // }
+
     #[test]
-    fn test_get_total_balance() {
+    fn test_get_total_minimal_balance() {
         let mut state = BeaconState::<MinimalConfig>::default();
         state.validators =
             VariableList::new([Validator::default()].to_vec()).expect("Expected success");
         let result = get_total_balance::<MinimalConfig>(&state, &[0]);
         assert_eq!(result.is_ok(), true);
         assert_eq!(result.expect("Expected success"), 1);
+    }
+
+    #[test]
+    fn test_get_total_balance() {
+        let mut state = BeaconState::<MinimalConfig>::default();
+        let mut validator1 = Validator::default();
+        validator1.effective_balance = 17;
+        let mut validator2 = Validator::default();
+        validator2.effective_balance = 15;
+        let mut validator3 = Validator::default();
+        validator3.effective_balance = 10;
+        state.validators =
+            VariableList::new([validator1, validator2, validator3].to_vec()).expect("Expected success");
+        let result = get_total_balance::<MinimalConfig>(&state, &[0, 2]);
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(result.expect("Expected success"), 27);
+    }
+
+    #[test]
+    fn test_get_active_validators() {
+        let mut validator1 = Validator::default();
+        validator1.activation_epoch = 0;
+        validator1.exit_epoch = 10;
+        let mut validator2 = Validator::default();
+        validator2.activation_epoch = 0;
+        validator2.exit_epoch = 1;
+        let mut validator3 = Validator::default();
+        validator3.activation_epoch = 0;
+        validator3.exit_epoch = 10;
+
+        let mut state = BeaconState::<MinimalConfig>::default();
+        state.validators =
+            VariableList::new([validator1, validator2, validator3].to_vec()).expect("Expected success");
+        let result = get_active_validator_indices::<MinimalConfig>(&state, 3);
+        assert_eq!(result, [0, 2].to_vec());
     }
 }
