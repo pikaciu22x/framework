@@ -133,9 +133,28 @@ mod spec_tests {
 
     // We do not honor `bls_setting` in sanity tests because none of them customize it.
 
+    #[test_resources("eth2.0-spec-tests/tests/mainnet/phase0/sanity/slots/*/*")]
+    fn mainnet_slots(case_directory: &str) {
+        run_slots_case::<MainnetConfig>(case_directory);
+    }
+
     #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/slots/*/*")]
-    fn slots(case_directory: &str) {
-        let mut state: BeaconState<MinimalConfig> = spec_test_utils::pre(case_directory);
+    fn minimal_slots(case_directory: &str) {
+        run_slots_case::<MinimalConfig>(case_directory);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/mainnet/phase0/sanity/blocks/*/*")]
+    fn mainnet_blocks(case_directory: &str) {
+        run_blocks_case::<MainnetConfig>(case_directory);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/blocks/*/*")]
+    fn minimal_blocks(case_directory: &str) {
+        run_blocks_case::<MinimalConfig>(case_directory);
+    }
+
+    fn run_slots_case<C: Config>(case_directory: &str) {
+        let mut state: BeaconState<C> = spec_test_utils::pre(case_directory);
         let last_slot = state.slot + spec_test_utils::slots(case_directory);
         let expected_post = spec_test_utils::post(case_directory)
             .expect("every slot sanity test should have a post-state");
@@ -145,12 +164,11 @@ mod spec_tests {
         assert_eq!(state, expected_post);
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/blocks/*/*")]
-    fn blocks(case_directory: &str) {
+    fn run_blocks_case<C: Config>(case_directory: &str) {
         let process_blocks = || {
-            let mut state: BeaconState<MinimalConfig> = spec_test_utils::pre(case_directory);
+            let mut state = spec_test_utils::pre(case_directory);
             for block in spec_test_utils::blocks(case_directory) {
-                state_transition(&mut state, &block, true);
+                state_transition::<C>(&mut state, &block, true);
             }
             state
         };

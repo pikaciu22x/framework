@@ -267,33 +267,63 @@ mod spec_tests {
 
     // We do not honor `bls_setting` in epoch processing tests because none of them customize it.
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/*/*")]
-    fn justification_and_finalization(case_directory: &str) {
-        run_case(case_directory, process_justification_and_finalization);
+    macro_rules! tests_for_sub_transition {
+        (
+            $module_name: ident,
+            $sub_transition: expr,
+            $mainnet_glob: literal,
+            $minimal_glob: literal,
+        ) => {
+            mod $module_name {
+                use super::*;
+
+                #[test_resources($mainnet_glob)]
+                fn mainnet(case_directory: &str) {
+                    run_case::<MainnetConfig, _, _>(case_directory, $sub_transition);
+                }
+
+                #[test_resources($minimal_glob)]
+                fn minimal(case_directory: &str) {
+                    run_case::<MinimalConfig, _, _>(case_directory, $sub_transition);
+                }
+            }
+        };
     }
 
+    tests_for_sub_transition! {
+        justification_and_finalization,
+        process_justification_and_finalization,
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/justification_and_finalization/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/*/*",
+    }
+
+    // There are no mainnet test cases for the `rewards_and_penalties` sub-transition.
     #[test_resources(
         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/rewards_and_penalties/*/*"
     )]
-    fn rewards_and_penalties(case_directory: &str) {
-        run_case(case_directory, process_rewards_and_penalties);
+    fn minimal_rewards_and_penalties(case_directory: &str) {
+        run_case::<MinimalConfig, _, _>(case_directory, process_rewards_and_penalties);
     }
 
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/*/*"
-    )]
-    fn registry_updates(case_directory: &str) {
-        run_case(case_directory, wrap_in_ok(process_registry_updates));
+    tests_for_sub_transition! {
+        registry_updates,
+        wrap_in_ok(process_registry_updates),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/registry_updates/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/*/*")]
-    fn slashings(case_directory: &str) {
-        run_case(case_directory, wrap_in_ok(process_slashings));
+    tests_for_sub_transition! {
+        slashings,
+        wrap_in_ok(process_slashings),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/slashings/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/*/*")]
-    fn final_updates(case_directory: &str) {
-        run_case(case_directory, wrap_in_ok(process_final_updates));
+    tests_for_sub_transition! {
+        final_updates,
+        wrap_in_ok(process_final_updates),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/final_updates/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/*/*",
     }
 
     fn wrap_in_ok<T>(
@@ -302,15 +332,17 @@ mod spec_tests {
         |argument| Ok(infallible_function(argument))
     }
 
-    fn run_case<E: Debug>(
-        case_directory: &str,
-        processing_function: impl FnOnce(&mut BeaconState<MinimalConfig>) -> Result<(), E>,
-    ) {
+    fn run_case<C, E, F>(case_directory: &str, sub_transition: F)
+    where
+        C: Config,
+        E: Debug,
+        F: FnOnce(&mut BeaconState<C>) -> Result<(), E>,
+    {
         let mut state = spec_test_utils::pre(case_directory);
         let expected_post = spec_test_utils::post(case_directory)
             .expect("every epoch processing test should have a post-state");
 
-        processing_function(&mut state).expect("every epoch processing test should succeed");
+        sub_transition(&mut state).expect("every epoch processing test should succeed");
 
         assert_eq!(state, expected_post);
     }

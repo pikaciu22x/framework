@@ -356,55 +356,98 @@ mod spec_tests {
 
     // We only honor `bls_setting` in `Attestation` tests. They are the only ones that set it to 2.
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/*/*")]
-    fn block_header(case_directory: &str) {
-        run_case(case_directory, "block", process_block_header);
+    macro_rules! tests_for_operation {
+        (
+            $operation_name: ident,
+            $processing_function: expr,
+            $mainnet_glob: literal,
+            $minimal_glob: literal,
+        ) => {
+            mod $operation_name {
+                use super::*;
+
+                #[test_resources($mainnet_glob)]
+                fn mainnet(case_directory: &str) {
+                    run_case_specialized::<MainnetConfig>(case_directory);
+                }
+
+                #[test_resources($minimal_glob)]
+                fn minimal(case_directory: &str) {
+                    run_case_specialized::<MinimalConfig>(case_directory);
+                }
+
+                fn run_case_specialized<C: Config>(case_directory: &str) {
+                    run_case::<C, _, _>(
+                        case_directory,
+                        stringify!($operation_name),
+                        |state, operation| $processing_function(case_directory, state, operation),
+                    );
+                }
+            }
+        };
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/*/*")]
-    fn proposer_slashing(case_directory: &str) {
-        run_case(
-            case_directory,
-            "proposer_slashing",
-            process_proposer_slashing,
-        );
+    tests_for_operation! {
+        // Test files for `block_header` are named `block.*` and contain `BeaconBlock`s.
+        block,
+        ignore_case_directory(process_block_header),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/block_header/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/*/*")]
-    fn attester_slashing(case_directory: &str) {
-        run_case(
-            case_directory,
-            "attester_slashing",
-            process_attester_slashing,
-        );
+    tests_for_operation! {
+        proposer_slashing,
+        ignore_case_directory(process_proposer_slashing),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/proposer_slashing/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/*/*")]
-    fn attestation(case_directory: &str) {
-        let verify_signature = spec_test_utils::bls_setting(case_directory).unwrap_or(true);
-        run_case(case_directory, "attestation", |state, attestation| {
+    tests_for_operation! {
+        attester_slashing,
+        ignore_case_directory(process_attester_slashing),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/attester_slashing/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/*/*",
+    }
+
+    tests_for_operation! {
+        attestation,
+        |case_directory, state, attestation| {
+            let verify_signature = spec_test_utils::bls_setting(case_directory).unwrap_or(true);
             process_attestation(state, attestation, verify_signature)
-        });
+        },
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/attestation/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/*/*")]
-    fn deposit(case_directory: &str) {
-        run_case(case_directory, "deposit", process_deposit);
+    tests_for_operation! {
+        deposit,
+        ignore_case_directory(process_deposit),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/deposit/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/*/*",
     }
 
-    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/*/*")]
-    fn voluntary_exit(case_directory: &str) {
-        run_case(case_directory, "voluntary_exit", process_voluntary_exit);
+    tests_for_operation! {
+        voluntary_exit,
+        ignore_case_directory(process_voluntary_exit),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/voluntary_exit/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/*/*",
     }
 
-    fn run_case<D: Decode + UnwindSafe>(
-        case_directory: &str,
-        operation_file_name: &str,
-        processing_function: impl FnOnce(&mut BeaconState<MinimalConfig>, &D) + UnwindSafe,
-    ) {
+    fn ignore_case_directory<T, U, V>(
+        processing_function: impl FnOnce(&mut U, &V),
+    ) -> impl FnOnce(T, &mut U, &V) {
+        |_, state, operation| processing_function(state, operation)
+    }
+
+    fn run_case<C, D, F>(case_directory: &str, operation_name: &str, processing_function: F)
+    where
+        C: Config,
+        D: Decode,
+        F: FnOnce(&mut BeaconState<C>, &D) + UnwindSafe,
+    {
         let process_operation = || {
             let mut state = spec_test_utils::pre(case_directory);
-            let operation = spec_test_utils::operation(case_directory, operation_file_name);
+            let operation = spec_test_utils::operation(case_directory, operation_name);
             processing_function(&mut state, &operation);
             state
         };
