@@ -1,0 +1,27 @@
+[package]
+name = "transition_functions"
+version = "0.1.0"
+authors = ["pikaciu22x <bratcikov@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+bls = { path = "../utils/bls" }
+integer-sqrt = "0.1"
+itertools = "0.8"
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
+merkle_proof = { git = "https://github.com/sigp/lighthouse" }
+helper_functions = { path = "../helper_functions/helper_functions_2" }
+log = "0.4"
+tree_hash = { git = 'https://github.com/sigp/lighthouse' }
+tree_hash_derive = { git = 'https://github.com/sigp/lighthouse' }
+typenum = '1.11.2'
+types = { path = "../types" }
+rayon = "1.0"
+ethereum-types = "0.6"
+mockall = "0.5.2"
+
+[dev-dependencies]
+ssz_new = { path = '../utils/ssz_new' }
+spec_test_utils = { path = '../spec_test_utils' }
+test-generator = '0.3.0'
+void = '1.0.2'

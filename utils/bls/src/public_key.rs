@@ -2,9 +2,8 @@ use super::{SecretKey, BLS_PUBLIC_KEY_BYTE_SIZE};
 use milagro_bls::PublicKey as RawPublicKey;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_hex::{encode as hex_encode, HexVisitor};
-use ssz::{Decode, DecodeError, Encode};
-use std::default;
+use serde_hex::{encode as hex_encode, PrefixedHexVisitor};
+use ssz::{SszDecode, SszDecodeError, SszEncode};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -17,15 +16,15 @@ pub struct PublicKey(RawPublicKey);
 
 impl PublicKey {
     pub fn from_secret_key(secret_key: &SecretKey) -> Self {
-        PublicKey(RawPublicKey::from_secret_key(secret_key.as_raw()))
+        Self(RawPublicKey::from_secret_key(secret_key.as_raw()))
     }
 
-    pub fn from_raw(raw: RawPublicKey) -> Self {
+    pub const fn from_raw(raw: RawPublicKey) -> Self {
         Self(raw)
     }
 
     /// Returns the underlying signature.
-    pub fn as_raw(&self) -> &RawPublicKey {
+    pub const fn as_raw(&self) -> &RawPublicKey {
         &self.0
     }
 
@@ -37,12 +36,12 @@ impl PublicKey {
     }
 
     /// Converts compressed bytes to PublicKey
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
-        let pubkey = RawPublicKey::from_bytes(&bytes).map_err(|_| {
-            DecodeError::BytesInvalid(format!("Invalid PublicKey bytes: {:?}", bytes).to_string())
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
+        let pubkey = RawPublicKey::from_bytes(bytes).map_err(|_| {
+            SszDecodeError::BytesInvalid(format!("Invalid PublicKey bytes: {:?}", bytes))
         })?;
 
-        Ok(PublicKey(pubkey))
+        Ok(Self(pubkey))
     }
 
     /// Returns the PublicKey as (x, y) bytes
@@ -51,11 +50,11 @@ impl PublicKey {
     }
 
     /// Converts (x, y) bytes to PublicKey
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
-        let pubkey = RawPublicKey::from_uncompressed_bytes(&bytes).map_err(|_| {
-            DecodeError::BytesInvalid("Invalid PublicKey uncompressed bytes.".to_string())
+    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
+        let pubkey = RawPublicKey::from_uncompressed_bytes(bytes).map_err(|_| {
+            SszDecodeError::BytesInvalid("Invalid PublicKey uncompressed bytes.".to_string())
         })?;
-        Ok(PublicKey(pubkey))
+        Ok(Self(pubkey))
     }
 
     /// Returns the last 6 bytes of the SSZ encoding of the public key, as a hex string.
@@ -85,16 +84,16 @@ impl fmt::Debug for PublicKey {
     }
 }
 
-impl default::Default for PublicKey {
+impl Default for PublicKey {
     fn default() -> Self {
         let secret_key = SecretKey::random();
-        PublicKey::from_secret_key(&secret_key)
+        Self::from_secret_key(&secret_key)
     }
 }
 
 impl_ssz!(PublicKey, BLS_PUBLIC_KEY_BYTE_SIZE, "PublicKey");
 
-impl_tree_hash!(PublicKey, U48);
+impl_tree_hash!(PublicKey, BLS_PUBLIC_KEY_BYTE_SIZE);
 
 impl Serialize for PublicKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -110,7 +109,7 @@ impl<'de> Deserialize<'de> for PublicKey {
     where
         D: Deserializer<'de>,
     {
-        let bytes = deserializer.deserialize_str(HexVisitor)?;
+        let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
         let pubkey = Self::from_ssz_bytes(&bytes[..])
             .map_err(|e| serde::de::Error::custom(format!("invalid pubkey ({:?})", e)))?;
         Ok(pubkey)
@@ -118,7 +117,7 @@ impl<'de> Deserialize<'de> for PublicKey {
 }
 
 impl PartialEq for PublicKey {
-    fn eq(&self, other: &PublicKey) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.as_ssz_bytes() == other.as_ssz_bytes()
     }
 }
@@ -129,7 +128,7 @@ impl Hash for PublicKey {
     /// This method uses the uncompressed bytes, which are much faster to obtain than the
     /// compressed bytes required for consensus serialization.
     ///
-    /// Use `ssz::Encode` to obtain the bytes required for consensus hashing.
+    /// Use `ssz::SszEncode` to obtain the bytes required for consensus hashing.
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.as_uncompressed_bytes().hash(state)
     }
@@ -146,7 +145,7 @@ mod tests {
         let original = PublicKey::from_secret_key(&sk);
 
         let bytes = ssz_encode(&original);
-        let decoded = PublicKey::from_ssz_bytes(&bytes).unwrap();
+        let decoded = PublicKey::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

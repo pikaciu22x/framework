@@ -3,8 +3,8 @@ use hex::encode as hex_encode;
 use milagro_bls::G2Point;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_hex::HexVisitor;
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
+use serde_hex::PrefixedHexVisitor;
+use ssz::{ssz_encode, SszDecode, SszDecodeError, SszEncode};
 
 /// A single BLS signature.
 ///
@@ -58,9 +58,9 @@ impl FakeSignature {
     }
 
     /// Convert bytes to fake BLS Signature
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
         if bytes.len() != BLS_SIG_BYTE_SIZE {
-            Err(DecodeError::InvalidByteLength {
+            Err(SszDecodeError::InvalidByteLength {
                 len: bytes.len(),
                 expected: BLS_SIG_BYTE_SIZE,
             })
@@ -91,7 +91,7 @@ impl FakeSignature {
 
 impl_ssz!(FakeSignature, BLS_SIG_BYTE_SIZE, "FakeSignature");
 
-impl_tree_hash!(FakeSignature, U96);
+impl_tree_hash!(FakeSignature, BLS_SIG_BYTE_SIZE);
 
 impl Serialize for FakeSignature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -107,7 +107,7 @@ impl<'de> Deserialize<'de> for FakeSignature {
     where
         D: Deserializer<'de>,
     {
-        let bytes = deserializer.deserialize_str(HexVisitor)?;
+        let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
         let pubkey = <_>::from_ssz_bytes(&bytes[..])
             .map_err(|e| serde::de::Error::custom(format!("invalid ssz ({:?})", e)))?;
         Ok(pubkey)
@@ -127,7 +127,7 @@ mod tests {
         let original = FakeSignature::new(&[42, 42], 0, &keypair.sk);
 
         let bytes = ssz_encode(&original);
-        let decoded = FakeSignature::from_ssz_bytes(&bytes).unwrap();
+        let decoded = FakeSignature::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

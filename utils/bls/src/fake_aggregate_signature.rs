@@ -6,7 +6,7 @@ use milagro_bls::G2Point;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 use serde_hex::{encode as hex_encode, PrefixedHexVisitor};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
+use ssz::{ssz_encode, SszDecode, SszDecodeError, SszEncode};
 
 /// A BLS aggregate signature.
 ///
@@ -68,9 +68,9 @@ impl FakeAggregateSignature {
     }
 
     /// Convert bytes to fake BLS aggregate signature
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
         if bytes.len() != BLS_AGG_SIG_BYTE_SIZE {
-            Err(DecodeError::InvalidByteLength {
+            Err(SszDecodeError::InvalidByteLength {
                 len: bytes.len(),
                 expected: BLS_AGG_SIG_BYTE_SIZE,
             })
@@ -93,7 +93,7 @@ impl_ssz!(
     "FakeAggregateSignature"
 );
 
-impl_tree_hash!(FakeAggregateSignature, U96);
+impl_tree_hash!(FakeAggregateSignature, BLS_AGG_SIG_BYTE_SIZE);
 
 impl Serialize for FakeAggregateSignature {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -130,7 +130,7 @@ mod tests {
         original.add(&Signature::new(&[42, 42], 0, &keypair.sk));
 
         let bytes = ssz_encode(&original);
-        let decoded = FakeAggregateSignature::from_ssz_bytes(&bytes).unwrap();
+        let decoded = FakeAggregateSignature::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

@@ -2,8 +2,8 @@ use super::{PublicKey, SecretKey, BLS_SIG_BYTE_SIZE};
 use milagro_bls::Signature as RawSignature;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_hex::{encode as hex_encode, HexVisitor};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
+use serde_hex::{encode as hex_encode, PrefixedHexVisitor};
+use ssz::{ssz_encode, SszDecode, SszDecodeError, SszEncode};
 
 /// A single BLS signature.
 ///
@@ -18,7 +18,7 @@ pub struct Signature {
 impl Signature {
     /// Instantiate a new Signature from a message and a SecretKey.
     pub fn new(msg: &[u8], domain: u64, sk: &SecretKey) -> Self {
-        Signature {
+        Self {
             signature: RawSignature::new(msg, domain, sk.as_raw()),
             is_empty: false,
         }
@@ -27,7 +27,7 @@ impl Signature {
     /// Instantiate a new Signature from a message and a SecretKey, where the message has already
     /// been hashed.
     pub fn new_hashed(x_real_hashed: &[u8], x_imaginary_hashed: &[u8], sk: &SecretKey) -> Self {
-        Signature {
+        Self {
             signature: RawSignature::new_hashed(x_real_hashed, x_imaginary_hashed, sk.as_raw()),
             is_empty: false,
         }
@@ -53,7 +53,7 @@ impl Signature {
     }
 
     /// Returns the underlying signature.
-    pub fn as_raw(&self) -> &RawSignature {
+    pub const fn as_raw(&self) -> &RawSignature {
         &self.signature
     }
 
@@ -62,8 +62,8 @@ impl Signature {
         // Set RawSignature = infinity
         let mut empty: Vec<u8> = vec![0; BLS_SIG_BYTE_SIZE];
         empty[0] += u8::pow(2, 6) + u8::pow(2, 7);
-        Signature {
-            signature: RawSignature::from_bytes(&empty).unwrap(),
+        Self {
+            signature: RawSignature::from_bytes(&empty).expect("Test"),
             is_empty: true,
         }
     }
@@ -77,25 +77,23 @@ impl Signature {
     }
 
     // Convert bytes to BLS Signature
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
         for byte in bytes {
             if *byte != 0 {
-                let raw_signature = RawSignature::from_bytes(&bytes).map_err(|_| {
-                    DecodeError::BytesInvalid(
-                        format!("Invalid Signature bytes: {:?}", bytes).to_string(),
-                    )
+                let raw_signature = RawSignature::from_bytes(bytes).map_err(|_| {
+                    SszDecodeError::BytesInvalid(format!("Invalid Signature bytes: {:?}", bytes))
                 })?;
-                return Ok(Signature {
+                return Ok(Self {
                     signature: raw_signature,
                     is_empty: false,
                 });
             }
         }
-        Ok(Signature::empty_signature())
+        Ok(Self::empty_signature())
     }
 
     // Check for empty Signature
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.is_empty
     }
 
@@ -108,7 +106,7 @@ impl Signature {
 
 impl_ssz!(Signature, BLS_SIG_BYTE_SIZE, "Signature");
 
-impl_tree_hash!(Signature, U96);
+impl_tree_hash!(Signature, BLS_SIG_BYTE_SIZE);
 
 impl Serialize for Signature {
     /// Serde serialization is compliant the Ethereum YAML test format.
@@ -126,7 +124,7 @@ impl<'de> Deserialize<'de> for Signature {
     where
         D: Deserializer<'de>,
     {
-        let bytes = deserializer.deserialize_str(HexVisitor)?;
+        let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
         let signature = Self::from_ssz_bytes(&bytes[..])
             .map_err(|e| serde::de::Error::custom(format!("invalid ssz ({:?})", e)))?;
         Ok(signature)
@@ -146,7 +144,7 @@ mod tests {
         let original = Signature::new(&[42, 42], 0, &keypair.sk);
 
         let bytes = ssz_encode(&original);
-        let decoded = Signature::from_ssz_bytes(&bytes).unwrap();
+        let decoded = Signature::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

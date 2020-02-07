@@ -5,8 +5,8 @@ use milagro_bls::{
 };
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_hex::{encode as hex_encode, HexVisitor};
-use ssz::{Decode, DecodeError, Encode};
+use serde_hex::{encode as hex_encode, PrefixedHexVisitor};
+use ssz::{SszDecode, SszDecodeError, SszEncode};
 
 /// A BLS aggregate signature.
 ///
@@ -38,7 +38,7 @@ impl AggregateSignature {
     }
 
     /// Add (aggregate) another `AggregateSignature`.
-    pub fn add_aggregate(&mut self, agg_signature: &AggregateSignature) {
+    pub fn add_aggregate(&mut self, agg_signature: &Self) {
         self.aggregate_signature
             .add_aggregate(&agg_signature.aggregate_signature)
     }
@@ -95,13 +95,14 @@ impl AggregateSignature {
     }
 
     /// Convert bytes to AggregateSignature
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
         for byte in bytes {
             if *byte != 0 {
-                let sig = RawAggregateSignature::from_bytes(&bytes).map_err(|_| {
-                    DecodeError::BytesInvalid(
-                        format!("Invalid AggregateSignature bytes: {:?}", bytes).to_string(),
-                    )
+                let sig = RawAggregateSignature::from_bytes(bytes).map_err(|_| {
+                    SszDecodeError::BytesInvalid(format!(
+                        "Invalid AggregateSignature bytes: {:?}",
+                        bytes
+                    ))
                 })?;
 
                 return Ok(Self {
@@ -114,12 +115,12 @@ impl AggregateSignature {
     }
 
     /// Returns the underlying signature.
-    pub fn as_raw(&self) -> &RawAggregateSignature {
+    pub const fn as_raw(&self) -> &RawAggregateSignature {
         &self.aggregate_signature
     }
 
     /// Returns the underlying signature.
-    pub fn from_point(point: G2Point) -> Self {
+    pub const fn from_point(point: G2Point) -> Self {
         Self {
             aggregate_signature: RawAggregateSignature { point },
             is_empty: false,
@@ -127,7 +128,7 @@ impl AggregateSignature {
     }
 
     /// Returns if the AggregateSignature `is_empty`
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.is_empty
     }
 
@@ -155,7 +156,7 @@ impl_ssz!(
     "AggregateSignature"
 );
 
-impl_tree_hash!(AggregateSignature, U96);
+impl_tree_hash!(AggregateSignature, BLS_AGG_SIG_BYTE_SIZE);
 
 impl Serialize for AggregateSignature {
     /// Serde serialization is compliant the Ethereum YAML test format.
@@ -173,8 +174,8 @@ impl<'de> Deserialize<'de> for AggregateSignature {
     where
         D: Deserializer<'de>,
     {
-        let bytes = deserializer.deserialize_str(HexVisitor)?;
-        let agg_sig = AggregateSignature::from_ssz_bytes(&bytes)
+        let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
+        let agg_sig = Self::from_ssz_bytes(&bytes)
             .map_err(|e| serde::de::Error::custom(format!("invalid ssz ({:?})", e)))?;
 
         Ok(agg_sig)
@@ -185,7 +186,7 @@ impl<'de> Deserialize<'de> for AggregateSignature {
 mod tests {
     use super::super::{Keypair, Signature};
     use super::*;
-    use ssz::Encode;
+    use ssz::SszEncode;
 
     #[test]
     pub fn test_ssz_round_trip() {
@@ -195,7 +196,7 @@ mod tests {
         original.add(&Signature::new(&[42, 42], 0, &keypair.sk));
 
         let bytes = original.as_ssz_bytes();
-        let decoded = AggregateSignature::from_ssz_bytes(&bytes).unwrap();
+        let decoded = AggregateSignature::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

@@ -5,8 +5,8 @@ use hex::encode as hex_encode;
 use milagro_bls::SecretKey as RawSecretKey;
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_hex::HexVisitor;
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
+use serde_hex::PrefixedHexVisitor;
+use ssz::{ssz_encode, SszDecode, SszDecodeError, SszEncode};
 
 /// A single BLS signature.
 ///
@@ -17,7 +17,7 @@ pub struct SecretKey(RawSecretKey);
 
 impl SecretKey {
     pub fn random() -> Self {
-        SecretKey(RawSecretKey::random(&mut rand::thread_rng()))
+        Self(RawSecretKey::random(&mut rand::thread_rng()))
     }
 
     pub fn from_raw(raw: RawSecretKey) -> Self {
@@ -32,9 +32,9 @@ impl SecretKey {
     /// Instantiate a SecretKey from existing bytes.
     ///
     /// Note: this is _not_ SSZ decoding.
-    pub fn from_bytes(bytes: &[u8]) -> Result<SecretKey, DecodeError> {
-        Ok(SecretKey(RawSecretKey::from_bytes(bytes).map_err(|e| {
-            DecodeError::BytesInvalid(format!(
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
+        Ok(Self(RawSecretKey::from_bytes(bytes).map_err(|e| {
+            SszDecodeError::BytesInvalid(format!(
                 "Invalid SecretKey bytes: {:?} Error: {:?}",
                 bytes, e
             ))
@@ -42,14 +42,14 @@ impl SecretKey {
     }
 
     /// Returns the underlying secret key.
-    pub fn as_raw(&self) -> &RawSecretKey {
+    pub const fn as_raw(&self) -> &RawSecretKey {
         &self.0
     }
 }
 
 impl_ssz!(SecretKey, BLS_SECRET_KEY_BYTE_SIZE, "SecretKey");
 
-impl_tree_hash!(SecretKey, U48);
+impl_tree_hash!(SecretKey, BLS_SECRET_KEY_BYTE_SIZE);
 
 impl Serialize for SecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -65,8 +65,8 @@ impl<'de> Deserialize<'de> for SecretKey {
     where
         D: Deserializer<'de>,
     {
-        let bytes = deserializer.deserialize_str(HexVisitor)?;
-        let secret_key = SecretKey::from_ssz_bytes(&bytes[..])
+        let bytes = deserializer.deserialize_str(PrefixedHexVisitor)?;
+        let secret_key = Self::from_ssz_bytes(&bytes[..])
             .map_err(|e| serde::de::Error::custom(format!("invalid ssz ({:?})", e)))?;
         Ok(secret_key)
     }
@@ -79,11 +79,11 @@ mod tests {
 
     #[test]
     pub fn test_ssz_round_trip() {
-        let original =
-            SecretKey::from_bytes(b"jzjxxgjajfjrmgodszzsgqccmhnyvetcuxobhtynojtpdtbj").unwrap();
+        let original = SecretKey::from_bytes(b"jzjxxgjajfjrmgodszzsgqccmhnyvetcuxobhtynojtpdtbj")
+            .expect("Test");
 
         let bytes = ssz_encode(&original);
-        let decoded = SecretKey::from_ssz_bytes(&bytes).unwrap();
+        let decoded = SecretKey::from_ssz_bytes(&bytes).expect("Test");
 
         assert_eq!(original, decoded);
     }

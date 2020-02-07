@@ -1,24 +1,16 @@
 macro_rules! impl_ssz {
     ($type: ident, $byte_size: expr, $item_str: expr) => {
-        impl ssz::Encode for $type {
+        impl SszEncode for $type {
+            fn as_ssz_bytes(&self) -> Vec<u8> {
+                self.as_bytes()
+            }
+
             fn is_ssz_fixed_len() -> bool {
                 true
-            }
-
-            fn ssz_fixed_len() -> usize {
-                $byte_size
-            }
-
-            fn ssz_bytes_len(&self) -> usize {
-                $byte_size
-            }
-
-            fn ssz_append(&self, buf: &mut Vec<u8>) {
-                buf.append(&mut self.as_bytes())
             }
         }
 
-        impl ssz::Decode for $type {
+        impl SszDecode for $type {
             fn is_ssz_fixed_len() -> bool {
                 true
             }
@@ -27,14 +19,14 @@ macro_rules! impl_ssz {
                 $byte_size
             }
 
-            fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+            fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
                 let len = bytes.len();
-                let expected = <Self as ssz::Decode>::ssz_fixed_len();
+                let expected = <Self as SszDecode>::ssz_fixed_len();
 
-                if len != expected {
-                    Err(ssz::DecodeError::InvalidByteLength { len, expected })
+                if len == expected {
+                    Self::from_bytes(bytes)
                 } else {
-                    $type::from_bytes(bytes)
+                    Err(SszDecodeError::InvalidByteLength { len, expected })
                 }
             }
         }
@@ -42,7 +34,7 @@ macro_rules! impl_ssz {
 }
 
 macro_rules! impl_tree_hash {
-    ($type: ty, $byte_size: ident) => {
+    ($type: ty, $byte_size: expr) => {
         impl tree_hash::TreeHash for $type {
             fn tree_hash_type() -> tree_hash::TreeHashType {
                 tree_hash::TreeHashType::Vector
@@ -57,16 +49,19 @@ macro_rules! impl_tree_hash {
             }
 
             fn tree_hash_root(&self) -> Vec<u8> {
-                let vector: ssz_types::FixedVector<u8, ssz_types::typenum::$byte_size> =
-                    ssz_types::FixedVector::from(self.as_ssz_bytes());
-                vector.tree_hash_root()
+                // We could use the tree hash implementation for `FixedVec<u8, $byte_size>`,
+                // but benchmarks have show that to be at least 15% slower because of the
+                // unnecessary copying and allocation (one Vec per byte)
+                let values_per_chunk = tree_hash::BYTES_PER_CHUNK;
+                let minimum_chunk_count = ($byte_size + values_per_chunk - 1) / values_per_chunk;
+                tree_hash::merkle_root(&self.as_ssz_bytes(), minimum_chunk_count)
             }
         }
     };
 }
 
 macro_rules! bytes_struct {
-    ($name: ident, $type: ty, $byte_size: expr, $small_name: expr, $ssz_type_size: ident,
+    ($name: ident, $type: ty, $byte_size: expr, $small_name: expr,
      $type_str: expr, $byte_size_str: expr) => {
         #[doc = "Stores `"]
         #[doc = $byte_size_str]
@@ -80,71 +75,95 @@ macro_rules! bytes_struct {
         #[doc = $small_name]
         #[doc = " (e.g., from the deposit contract)."]
         #[derive(Clone)]
-        pub struct $name([u8; $byte_size]);
+        pub struct $name {
+            bytes: [u8; $byte_size],
+            decompressed: Option<$type>
+        }
     };
-    ($name: ident, $type: ty, $byte_size: expr, $small_name: expr, $ssz_type_size: ident) => {
-        bytes_struct!($name, $type, $byte_size, $small_name, $ssz_type_size, stringify!($type),
-        stringify!($byte_size));
+    ($name: ident, $type: ty, $byte_size: expr, $small_name: expr) => {
+        bytes_struct!($name, $type, $byte_size, $small_name, stringify!($type),
+                      stringify!($byte_size));
 
         impl $name {
-            pub fn from_bytes(bytes: &[u8]) -> Result<Self, ssz::DecodeError> {
-                Ok(Self(Self::get_bytes(bytes)?))
+            pub fn from_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
+                Ok(Self {
+                    bytes: Self::get_bytes(bytes)?,
+                    decompressed: None
+                })
             }
 
-            pub fn empty() -> Self {
-                Self([0; $byte_size])
+            pub const fn empty() -> Self {
+                Self {
+                    bytes: [0; $byte_size],
+                    decompressed: None
+                }
             }
 
             pub fn as_bytes(&self) -> Vec<u8> {
-                self.0.to_vec()
+                self.bytes.to_vec()
             }
 
-            fn get_bytes(bytes: &[u8]) -> Result<[u8; $byte_size], ssz::DecodeError> {
+            fn get_bytes(bytes: &[u8]) -> Result<[u8; $byte_size], SszDecodeError> {
                 let mut result = [0; $byte_size];
-                if bytes.len() != $byte_size {
-                    Err(ssz::DecodeError::InvalidByteLength {
+                if bytes.len() == $byte_size {
+                    result[..].copy_from_slice(bytes);
+                    Ok(result)
+                } else {
+                    Err(SszDecodeError::InvalidByteLength {
                         len: bytes.len(),
                         expected: $byte_size,
                     })
-                } else {
-                    result[..].copy_from_slice(bytes);
-                    Ok(result)
                 }
+            }
+
+            pub fn decompress(&mut self) -> Result<(), SszDecodeError> {
+                self.decompressed = Some(<&Self as std::convert::TryInto<$type>>::try_into(self)?);
+                Ok(())
+            }
+
+            pub const fn decompressed(&self) -> &Option<$type> {
+                &self.decompressed
             }
         }
 
         impl std::fmt::Debug for $name {
             fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                self.0[..].fmt(formatter)
+                self.bytes[..].fmt(formatter)
             }
         }
 
         impl PartialEq for $name {
             fn eq(&self, other: &Self) -> bool {
-                &self.0[..] == &other.0[..]
+                &self.bytes[..] == &other.bytes[..]
+            }
+        }
+
+        impl std::hash::Hash for $name {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+                self.bytes.hash(state)
             }
         }
 
         impl Eq for $name {}
 
         impl std::convert::TryInto<$type> for &$name {
-            type Error = ssz::DecodeError;
+            type Error = SszDecodeError;
 
             fn try_into(self) -> Result<$type, Self::Error> {
-                <$type>::from_bytes(&self.0[..])
+                <$type>::from_bytes(&self.bytes[..])
             }
         }
 
-        impl std::convert::From<$type> for $name {
+        impl From<$type> for $name {
             fn from(obj: $type) -> Self {
-                // We know that obj.as_bytes() always has exactly $byte_size many bytes.
-                Self::from_bytes(obj.as_ssz_bytes().as_slice()).unwrap()
+                Self::from_bytes(obj.as_ssz_bytes().as_slice())
+                    .expect("We know that obj.as_bytes() always has exactly $byte_size many bytes")
             }
         }
 
         impl_ssz!($name, $byte_size, "$type");
 
-        impl_tree_hash!($name, $ssz_type_size);
+        impl_tree_hash!($name, $byte_size);
 
         impl serde::ser::Serialize for $name {
             /// Serde serialization is compliant the Ethereum YAML test format.
@@ -152,7 +171,7 @@ macro_rules! bytes_struct {
             where
                 S: serde::ser::Serializer,
             {
-                serializer.serialize_str(&hex::encode(ssz::ssz_encode(self)))
+                serializer.serialize_str(&serde_hex::encode(ssz::ssz_encode(self)))
             }
         }
 
@@ -162,7 +181,7 @@ macro_rules! bytes_struct {
             where
                 D: serde::de::Deserializer<'de>,
             {
-                let bytes = deserializer.deserialize_str(serde_hex::HexVisitor)?;
+                let bytes = deserializer.deserialize_str(serde_hex::PrefixedHexVisitor)?;
                 let signature = Self::from_ssz_bytes(&bytes[..])
                     .map_err(|e| serde::de::Error::custom(format!("invalid ssz ({:?})", e)))?;
                 Ok(signature)

@@ -10,7 +10,7 @@ pub struct AggregatePublicKey(RawAggregatePublicKey);
 
 impl AggregatePublicKey {
     pub fn new() -> Self {
-        AggregatePublicKey(RawAggregatePublicKey::new())
+        Self(RawAggregatePublicKey::new())
     }
 
     pub fn add_without_affine(&mut self, public_key: &PublicKey) {
@@ -30,11 +30,11 @@ impl AggregatePublicKey {
     }
 
     /// Returns the underlying public key.
-    pub fn as_raw(&self) -> &RawAggregatePublicKey {
+    pub const fn as_raw(&self) -> &RawAggregatePublicKey {
         &self.0
     }
 
-    pub fn into_raw(self) -> RawAggregatePublicKey {
+    pub const fn into_raw(self) -> RawAggregatePublicKey {
         self.0
     }
 

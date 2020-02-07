@@ -4,13 +4,13 @@ use core::fmt::Debug;
 use core::hash::Hash;
 
 use serde::{Deserialize, Serialize};
-use typenum::Unsigned;
+use typenum::{NonZero, Prod, Unsigned};
 
-use crate::primitives::ValidatorIndex;
+use crate::primitives::DomainType;
 
 pub trait Config
 where
-    Self: Clone + Copy + PartialEq + Eq + Hash + PartialOrd + Ord + Default + Debug,
+    Self: Clone + Copy + PartialEq + Eq + Hash + PartialOrd + Ord + Default + Debug + 'static,
 {
     type EpochsPerSlashingsVector: Unsigned
         + Clone
@@ -51,7 +51,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxAttestations: Unsigned
         + Clone
         + Copy
@@ -61,7 +63,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxAttestationsPerEpoch: Unsigned
         + Clone
         + Copy
@@ -81,7 +85,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxProposerSlashings: Unsigned
         + Clone
         + Copy
@@ -91,17 +97,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
-    type MaxTransfers: Unsigned
-        + Clone
-        + Copy
-        + PartialEq
-        + Eq
-        + Hash
-        + PartialOrd
-        + Ord
-        + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxValidatorsPerCommittee: Unsigned
         + Clone
         + Copy
@@ -111,7 +109,9 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     type MaxVoluntaryExits: Unsigned
         + Clone
         + Copy
@@ -121,17 +121,10 @@ where
         + PartialOrd
         + Ord
         + Default
-        + Debug;
-    type ShardCount: Unsigned
-        + Clone
-        + Copy
-        + PartialEq
-        + Eq
-        + Hash
-        + PartialOrd
-        + Ord
-        + Default
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
+    type SecondsPerSlot: Unsigned + NonZero;
     type SlotsPerEpoch: Unsigned
         + Clone
         + Copy
@@ -185,22 +178,19 @@ where
     fn churn_limit_quotient() -> u64 {
         0x0001_0000
     }
-    fn domain_attestation() -> u64 {
-        2
-    }
-    fn domain_beacon_proposer() -> u64 {
+    fn domain_beacon_proposer() -> DomainType {
         0
     }
-    fn domain_deposit() -> u64 {
-        3
-    }
-    fn domain_randao() -> u64 {
+    fn domain_attestation() -> DomainType {
         1
     }
-    fn domain_transfer() -> u64 {
-        5
+    fn domain_randao() -> DomainType {
+        2
     }
-    fn domain_voluntary_exit() -> u64 {
+    fn domain_deposit() -> DomainType {
+        3
+    }
+    fn domain_voluntary_exit() -> DomainType {
         4
     }
     fn effective_balance_increment() -> u64 {
@@ -217,6 +207,9 @@ where
     }
     fn inactivity_penalty_quotient() -> u64 {
         2_u64.pow(25)
+    }
+    fn max_committees_per_slot() -> u64 {
+        64
     }
     fn max_effective_balance() -> u64 {
         32_000_000_000
@@ -263,7 +256,7 @@ where
         10
     }
     fn target_committee_size() -> u64 {
-        4
+        128
     }
     fn whistleblower_reward_quotient() -> u64 {
         512
@@ -276,21 +269,20 @@ where
 pub struct MainnetConfig {}
 
 impl Config for MainnetConfig {
-    type EpochsPerSlashingsVector = typenum::U64;
-    type EpochsPerHistoricalVector = typenum::U64;
+    type EpochsPerSlashingsVector = typenum::U8192;
+    type EpochsPerHistoricalVector = typenum::U65536;
     type HistoricalRootsLimit = typenum::U16777216;
     type MaxAttesterSlashings = typenum::U1;
     type MaxAttestations = typenum::U128;
-    type MaxAttestationsPerEpoch = typenum::U1024;
+    type MaxAttestationsPerEpoch = Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
     type MaxDeposits = typenum::U16;
     type MaxProposerSlashings = typenum::U16;
-    type MaxTransfers = typenum::U0;
-    type MaxValidatorsPerCommittee = typenum::U4096;
+    type MaxValidatorsPerCommittee = typenum::U2048;
     type MaxVoluntaryExits = typenum::U16;
-    type ShardCount = typenum::U8;
-    type SlotsPerEpoch = typenum::U8;
-    type SlotsPerEth1VotingPeriod = typenum::U16;
-    type SlotsPerHistoricalRoot = typenum::U64;
+    type SecondsPerSlot = typenum::U12;
+    type SlotsPerEpoch = typenum::U32;
+    type SlotsPerEth1VotingPeriod = typenum::U1024;
+    type SlotsPerHistoricalRoot = typenum::U8192;
     type ValidatorRegistryLimit = typenum::U1099511627776;
 }
 
@@ -305,46 +297,21 @@ impl Config for MinimalConfig {
     type HistoricalRootsLimit = typenum::U16777216;
     type MaxAttesterSlashings = typenum::U1;
     type MaxAttestations = typenum::U128;
-    type MaxAttestationsPerEpoch = typenum::U1024;
+    type MaxAttestationsPerEpoch = Prod<Self::MaxAttestations, Self::SlotsPerEpoch>;
     type MaxDeposits = typenum::U16;
     type MaxProposerSlashings = typenum::U16;
-    type MaxTransfers = typenum::U0;
-    type MaxValidatorsPerCommittee = typenum::U4096;
+    type MaxValidatorsPerCommittee = typenum::U2048;
     type MaxVoluntaryExits = typenum::U16;
-    type ShardCount = typenum::U8;
+    type SecondsPerSlot = typenum::U6;
     type SlotsPerEpoch = typenum::U8;
     type SlotsPerEth1VotingPeriod = typenum::U16;
     type SlotsPerHistoricalRoot = typenum::U64;
     type ValidatorRegistryLimit = typenum::U1099511627776;
-}
 
-#[derive(
-    Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Debug, Deserialize, Serialize,
-)]
-pub struct QuickConfig;
-
-impl Config for QuickConfig {
-    type EpochsPerSlashingsVector = typenum::U64;
-    type EpochsPerHistoricalVector = typenum::U64;
-    type HistoricalRootsLimit = typenum::U16777216;
-    type MaxAttesterSlashings = typenum::U1;
-    type MaxAttestations = typenum::U128;
-    type MaxAttestationsPerEpoch = typenum::U1024;
-    type MaxDeposits = typenum::U16;
-    type MaxProposerSlashings = typenum::U16;
-    type MaxTransfers = typenum::U0;
-    type MaxValidatorsPerCommittee = typenum::U4096;
-    type MaxVoluntaryExits = typenum::U16;
-    type ShardCount = typenum::U8;
-    type SlotsPerEpoch = typenum::U1;
-    type SlotsPerEth1VotingPeriod = typenum::U16;
-    type SlotsPerHistoricalRoot = typenum::U64;
-    type ValidatorRegistryLimit = typenum::U1099511627776;
-
-    fn min_genesis_active_validator_count() -> ValidatorIndex {
-        1
+    fn max_committees_per_slot() -> u64 {
+        4
     }
-    fn min_genesis_time() -> u64 {
-        9_476_400
+    fn target_committee_size() -> u64 {
+        4
     }
 }
