@@ -283,7 +283,6 @@ pub struct PendingAttestation<C: Config> {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
-
 pub struct ProposerSlashing {
     pub proposer_index: u64,
     pub header_1: BeaconBlockHeader,

@@ -1,20 +1,20 @@
 [package]
-name = "helper_functions"
-version = "0.1.0"
-authors = ["BCHF1"]
-edition = "2018"
+name = 'helper_functions'
+version = '0.1.0'
+authors = ['BCHF1']
+edition = '2018'
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ring = "0.16.9"
+ring = '0.16.9'
 typenum = '1.11.2'
 types = { path = '../../types' }
 eth2_ssz_types = { git = 'https://github.com/sigp/lighthouse' }
-bls = { path = "../../utils/bls" }
-ssz_new = { path = "../../utils/ssz_new" }
-mockall = "0.5.2"
-ethereum-types = "0.6"
+bls = { path = '../../utils/bls' }
+ssz_new = { path = '../../utils/ssz_new' }
+mockall = '0.5.2'
+ethereum-types = '0.6'
 tree_hash = { git = 'https://github.com/sigp/lighthouse' }
 
 [dev-dependencies]

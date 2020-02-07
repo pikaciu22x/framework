@@ -1,3 +1,5 @@
+use crate::primitives::*;
+
 pub use crate::primitives::Gwei;
 
 pub const BASE_REWARDS_PER_EPOCH: u64 = 4;
