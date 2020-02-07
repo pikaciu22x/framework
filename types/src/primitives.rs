@@ -34,7 +34,7 @@ type VersionAsArray = [u8; 4];
 pub struct Version(H32);
 
 impl Version {
-    fn as_array(&self) -> &VersionAsArray {
+    pub fn as_array(&self) -> &VersionAsArray {
         self.0.as_fixed_bytes()
     }
 }
@@ -48,6 +48,14 @@ impl From<VersionAsArray> for Version {
 impl From<Version> for VersionAsArray {
     fn from(version: Version) -> Self {
         version.0.to_fixed_bytes()
+    }
+}
+
+impl Index<usize> for Version {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.as_array().index(index)
     }
 }
 
@@ -107,14 +115,6 @@ impl TreeHash for Version {
     }
 }
 
-impl Index<usize> for Version {
-    type Output = u8;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        self.as_array().index(index)
-    }
-}
-
 // The `bls` crate from Lighthouse does not define a `*Bytes` counterpart to `AggregateSignature`,
 // so we have to implement our own.
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Decode, Encode, TreeHash)]
@@ -122,6 +122,12 @@ impl Index<usize> for Version {
 pub struct AggregateSignatureBytes {
     // This must be a named field because `ssz_derive` cannot handle tuple structs.
     inner: SignatureBytes,
+}
+
+impl AggregateSignatureBytes {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.inner.as_bytes()
+    }
 }
 
 impl Default for AggregateSignatureBytes {

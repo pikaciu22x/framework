@@ -8,6 +8,7 @@ members = [
     'spec_test_utils',
     'types',
     'transition_functions',
+    'helper_functions/helper_functions_1',
     'helper_functions/helper_functions_2',
 ]
 

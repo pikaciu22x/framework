@@ -160,10 +160,10 @@ mod tests {
 
     #[test]
     fn test_epoch_at_slot() {
-        // Minimalconfig: SlotsPerEpoch = 8; epochs indexed from 0
-        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(9), 1);
-        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(8), 1);
-        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(7), 0);
+        // Minimalconfig: SlotsPerEpoch = 32; epochs indexed from 0
+        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(33), 1);
+        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(32), 1);
+        assert_eq!(compute_epoch_at_slot::<MinimalConfig>(31), 0);
     }
 
     #[test]

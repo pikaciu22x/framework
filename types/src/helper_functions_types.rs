@@ -11,5 +11,12 @@ pub enum Error {
     NumberExceedsCapacity,
     ArrayIsEmpty,
     NotAHash,
+
+    AttestationBitsInvalid,
+    ConversionToUsize,
+    ValidatorExitAlreadyInitiated,
+    PubKeyConversionError,
+    SignatureConversionError,
+
     SszDecode(DecodeError),
 }
