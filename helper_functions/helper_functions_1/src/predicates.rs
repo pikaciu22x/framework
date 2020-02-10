@@ -31,6 +31,7 @@ pub fn is_slashable_attestation_data(data_1: &AttestationData, data_2: &Attestat
 pub fn validate_indexed_attestation<C: Config>(
     state: &BeaconState<C>,
     indexed_attestation: &IndexedAttestation<C>,
+    verify_signature: bool,
 ) -> Result<(), Error> {
     let indices = &indexed_attestation.attesting_indices;
 
@@ -68,22 +69,24 @@ pub fn validate_indexed_attestation<C: Config>(
             Err(_) => return Err(Error::SignatureConversionError),
         };
 
-    let is_valid = match bls_verify(
-        &pubkeys_bytes,
-        &indexed_attestation.data.tree_hash_root(),
-        &signature_bytes,
-        get_domain(
-            state,
-            C::domain_attestation(),
-            Some(indexed_attestation.data.target.epoch),
-        ),
-    ) {
-        Ok(value) => value,
-        Err(_) => return Err(Error::InvalidSignature),
-    };
+    if verify_signature {
+        let is_valid = match bls_verify(
+            &pubkeys_bytes,
+            &indexed_attestation.data.tree_hash_root(),
+            &signature_bytes,
+            get_domain(
+                state,
+                C::domain_attestation(),
+                Some(indexed_attestation.data.target.epoch),
+            ),
+        ) {
+            Ok(value) => value,
+            Err(_) => return Err(Error::InvalidSignature),
+        };
 
-    if !is_valid {
-        return Err(Error::InvalidSignature);
+        if !is_valid {
+            return Err(Error::InvalidSignature);
+        }
     }
 
     Ok(())
