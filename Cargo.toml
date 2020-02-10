@@ -8,8 +8,6 @@ members = [
     'spec_test_utils',
     'types',
     'transition_functions',
-    'helper_functions/helper_functions_1',
-    'helper_functions/helper_functions_2',
 ]
 
 [profile.release]
@@ -23,3 +21,5 @@ eth2_ssz = { git = "https://github.com/sigp/lighthouse" }
 eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse" }
 eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
 eth2_hashing = { git = "https://github.com/sigp/lighthouse" }
+
+helper_functions = { path = 'helper_functions/helper_functions_2' }

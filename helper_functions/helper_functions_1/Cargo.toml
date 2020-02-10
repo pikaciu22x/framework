@@ -1,6 +1,6 @@
   
 [package]
-name = "helper_functions_1"
+name = "helper_functions"
 version = "0.1.0"
 authors = ["BCHF1"]
 edition = "2018"
