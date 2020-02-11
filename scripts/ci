@@ -10,6 +10,7 @@
 # >     zlib1g-dev
 
 set -o errexit
+shopt -s extglob globstar
 
 export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 
@@ -37,7 +38,10 @@ fi
 cargo install-update --allow-no-update cargo-tarpaulin cargo-update
 
 cargo update --locked
-cargo fmt --all -- --check
+
+# cargo-fmt only formats crates listed in workspace.members in Cargo.toml.
+rustfmt --check -- "$(dirname "$0")"/../!(lighthouse|target)/**/*.rs
+
 cargo clippy                                      \
     --profile test                                \
     --                                            \
