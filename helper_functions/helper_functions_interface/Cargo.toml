@@ -10,11 +10,11 @@ edition = "2018"
 ring = "0.16.9"
 typenum = '1.11.2'
 types = { path = '../../types' }
-eth2_ssz_types = { git = 'https://github.com/sigp/lighthouse' }
-bls = { git = 'https://github.com/sigp/lighthouse' }
-eth2_ssz = { git = 'https://github.com/sigp/lighthouse' }
+eth2_ssz_types = '0.2.0'
+bls = '0.1.0'
+eth2_ssz = '0.1.2'
 mockall = "0.5.2"
 ethereum-types = "0.6"
-tree_hash = { git = 'https://github.com/sigp/lighthouse' }
+tree_hash = '0.1.1'
 
 [dev-dependencies]

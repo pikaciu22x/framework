@@ -13,13 +13,25 @@ members = [
 [profile.release]
 overflow-checks = true
 
-[patch]
 [patch.crates-io]
-tree_hash = { git = "https://github.com/sigp/lighthouse" }
-tree_hash_derive = { git = "https://github.com/sigp/lighthouse" }
-eth2_ssz = { git = "https://github.com/sigp/lighthouse" }
-eth2_ssz_derive = { git = "https://github.com/sigp/lighthouse" }
-eth2_ssz_types = { git = "https://github.com/sigp/lighthouse" }
-eth2_hashing = { git = "https://github.com/sigp/lighthouse" }
+# We have to override the following crates because Lighthouse does it for some
+# reason. We depend on a specific commit because later ones are not compatible
+# with specification version 0.9.1.
+eth2_hashing     = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+eth2_ssz         = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+eth2_ssz_derive  = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+eth2_ssz_types   = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+tree_hash        = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+tree_hash_derive = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
 
+# Unlike the crates above, these do not need to be overridden, but we do it
+# anyway to keep all references to the Lighthouse commit in one place.
+bls              = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+eth2-libp2p      = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+merkle_proof     = { git = 'https://github.com/sigp/lighthouse', rev = '03e77390a3ef2163e76703bc79c2227c5c18597d' }
+
+# This can be used to switch between the two helper function implementations.
+# Using `package` in the `[patch]` section does not actually result in the crate
+# being renamed. To make this work, all implementations must have the same name.
+# As a result, they cannot be included in `workspace.members`.
 helper_functions = { path = 'helper_functions/helper_functions_2' }
