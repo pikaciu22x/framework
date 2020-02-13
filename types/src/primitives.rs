@@ -14,6 +14,7 @@ pub use bls::{AggregatePublicKey, AggregateSignature, PublicKey, SecretKey, Sign
 pub use bls::{PublicKeyBytes, SignatureBytes};
 pub use ethereum_types::{H256, H32};
 
+pub type AggregateSignatureBytes = SignatureBytes;
 pub type Epoch = u64;
 pub type Gwei = u64;
 pub type Shard = u64;
@@ -112,45 +113,5 @@ impl TreeHash for Version {
 
     fn tree_hash_root(&self) -> Vec<u8> {
         self.as_array().tree_hash_root()
-    }
-}
-
-// The `bls` crate from Lighthouse does not define a `*Bytes` counterpart to `AggregateSignature`,
-// so we have to implement our own.
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Decode, Encode, TreeHash)]
-#[serde(transparent)]
-pub struct AggregateSignatureBytes {
-    // This must be a named field because `ssz_derive` cannot handle tuple structs.
-    inner: SignatureBytes,
-}
-
-impl AggregateSignatureBytes {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.inner.as_bytes()
-    }
-}
-
-impl Default for AggregateSignatureBytes {
-    fn default() -> Self {
-        Self {
-            inner: SignatureBytes::empty(),
-        }
-    }
-}
-
-impl From<&AggregateSignature> for AggregateSignatureBytes {
-    fn from(aggregate_signature: &AggregateSignature) -> Self {
-        Self {
-            inner: SignatureBytes::from_bytes(aggregate_signature.as_bytes().as_slice())
-                .expect("Signature and AggregateSignature should have the same length"),
-        }
-    }
-}
-
-impl TryFrom<&AggregateSignatureBytes> for AggregateSignature {
-    type Error = DecodeError;
-
-    fn try_from(bytes: &AggregateSignatureBytes) -> Result<Self, Self::Error> {
-        Self::from_bytes(bytes.inner.as_bytes().as_slice())
     }
 }

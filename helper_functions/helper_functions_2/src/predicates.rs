@@ -73,7 +73,8 @@ pub fn validate_indexed_attestation<C: Config>(
         return Err(Error::IndicesNotSorted);
     }
 
-    let signature: AggregateSignature = (&indexed_attestation.signature).try_into()?;
+    let signature =
+        AggregateSignature::from_bytes(indexed_attestation.signature.as_bytes().as_slice())?;
 
     let aggr_pubkey = aggregate_validator_public_keys(indices, state)?;
 

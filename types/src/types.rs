@@ -237,14 +237,22 @@ pub struct HistoricalBatch<C: Config> {
     pub state_roots: FixedVector<H256, C::SlotsPerHistoricalRoot>,
 }
 
-#[derive(
-    Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot, Default,
-)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
 pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
     #[signed_root(skip_hashing)]
     pub signature: AggregateSignatureBytes,
+}
+
+impl<C: Config> Default for IndexedAttestation<C> {
+    fn default() -> Self {
+        Self {
+            attesting_indices: Default::default(),
+            data: Default::default(),
+            signature: AggregateSignatureBytes::empty(),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]

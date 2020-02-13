@@ -64,7 +64,7 @@ pub fn validate_indexed_attestation<C: Config>(
     };
 
     let signature_bytes =
-        match SignatureBytes::from_bytes(indexed_attestation.signature.to_bytes().as_slice()) {
+        match SignatureBytes::from_bytes(indexed_attestation.signature.as_bytes().as_slice()) {
             Ok(value) => value,
             Err(_) => return Err(Error::SignatureConversionError),
         };
