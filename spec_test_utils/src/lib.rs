@@ -6,7 +6,7 @@ use std::{
 use ethereum_types::H256;
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_repr::Deserialize_repr;
-use ssz::Decode;
+use ssz_new::SszDecode;
 
 #[derive(Deserialize_repr)]
 #[repr(u8)]
@@ -42,12 +42,12 @@ pub fn bls_setting(case_directory: impl AsRef<Path>) -> Option<bool> {
         })
 }
 
-pub fn pre<D: Decode>(case_directory: impl AsRef<Path>) -> D {
+pub fn pre<D: SszDecode>(case_directory: impl AsRef<Path>) -> D {
     ssz(resolve(case_directory).join("pre.ssz"))
         .expect("every state transition test should have a pre-state")
 }
 
-pub fn post<D: Decode>(case_directory: impl AsRef<Path>) -> Option<D> {
+pub fn post<D: SszDecode>(case_directory: impl AsRef<Path>) -> Option<D> {
     ssz(resolve(case_directory).join("post.ssz"))
 }
 
@@ -56,7 +56,7 @@ pub fn slots(case_directory: impl AsRef<Path>) -> u64 {
         .expect("every slot sanity test should specify the number of slots")
 }
 
-pub fn blocks<D: Decode>(case_directory: impl AsRef<Path>) -> impl Iterator<Item = D> {
+pub fn blocks<D: SszDecode>(case_directory: impl AsRef<Path>) -> impl Iterator<Item = D> {
     let BlocksMeta { blocks_count } = yaml(resolve(&case_directory).join("meta.yaml"))
         .expect("every block sanity test should specify the number of blocks");
     (0..blocks_count).map(move |index| {
@@ -66,7 +66,7 @@ pub fn blocks<D: Decode>(case_directory: impl AsRef<Path>) -> impl Iterator<Item
     })
 }
 
-pub fn operation<D: Decode>(
+pub fn operation<D: SszDecode>(
     case_directory: impl AsRef<Path>,
     operation_name: impl AsRef<Path>,
 ) -> D {
@@ -106,7 +106,7 @@ fn resolve(case_directory_relative_to_repository_root: impl AsRef<Path>) -> Path
     PathBuf::from("..").join(case_directory_relative_to_repository_root)
 }
 
-fn ssz<D: Decode>(file_path: impl AsRef<Path>) -> Option<D> {
+fn ssz<D: SszDecode>(file_path: impl AsRef<Path>) -> Option<D> {
     let bytes = read_optional(file_path)?;
     let value = D::from_ssz_bytes(bytes.as_slice())
         .expect("the file should contain a value encoded in SSZ");

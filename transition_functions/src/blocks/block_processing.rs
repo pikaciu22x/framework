@@ -348,7 +348,7 @@ mod scessing_tests {
 mod spec_tests {
     use std::panic::UnwindSafe;
 
-    use ssz::Decode;
+    use ssz_new::SszDecode;
     use test_generator::test_resources;
     use types::{beacon_state::BeaconState, config::MinimalConfig};
 
@@ -442,7 +442,7 @@ mod spec_tests {
     fn run_case<C, D, F>(case_directory: &str, operation_name: &str, processing_function: F)
     where
         C: Config,
-        D: Decode,
+        D: SszDecode,
         F: FnOnce(&mut BeaconState<C>, &D) + UnwindSafe,
     {
         let process_operation = || {

@@ -16,7 +16,7 @@ mod spec_tests {
     use core::fmt::Debug;
 
     use serde::de::DeserializeOwned;
-    use ssz::{Decode, Encode};
+    use ssz_new::{SszDecode, SszEncode};
     use test_generator::test_resources;
     use tree_hash::{SignedRoot, TreeHash};
 
@@ -184,7 +184,7 @@ mod spec_tests {
 
     fn run_self_signed_case<D>(case_directory: &str)
     where
-        D: PartialEq + Debug + DeserializeOwned + Decode + Encode + TreeHash + SignedRoot,
+        D: PartialEq + Debug + DeserializeOwned + SszDecode + SszEncode + TreeHash + SignedRoot,
     {
         let signing_root = spec_test_utils::signing_root(case_directory);
 
@@ -195,7 +195,7 @@ mod spec_tests {
 
     fn run_case<D>(case_directory: &str) -> D
     where
-        D: PartialEq + Debug + DeserializeOwned + Decode + Encode + TreeHash,
+        D: PartialEq + Debug + DeserializeOwned + SszDecode + SszEncode + TreeHash,
     {
         let ssz_bytes = spec_test_utils::serialized(case_directory);
         let yaml_value = spec_test_utils::value(case_directory);

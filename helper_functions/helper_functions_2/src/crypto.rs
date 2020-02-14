@@ -3,7 +3,7 @@ use bls::{
 };
 
 use ring::digest::{digest, SHA256};
-use ssz::DecodeError;
+use ssz_new::SszDecodeError;
 use std::convert::TryInto;
 use tree_hash::{SignedRoot, TreeHash};
 use types::primitives::H256;
@@ -17,7 +17,7 @@ pub fn bls_verify(
     message: &[u8],
     signature: &SignatureBytes,
     domain: u64,
-) -> Result<bool, DecodeError> {
+) -> Result<bool, SszDecodeError> {
     let pk: PublicKey = pubkey.try_into()?;
     let sg: Signature = signature.try_into()?;
 
@@ -29,7 +29,7 @@ pub fn bls_verify_multiple(
     messages: &[&[u8]],
     signature: &SignatureBytes,
     domain: u64,
-) -> Result<bool, DecodeError> {
+) -> Result<bool, SszDecodeError> {
     let sg = AggregateSignature::from_bytes(signature.as_bytes().as_slice())?;
 
     let mut apk = AggregatePublicKey::new();
@@ -152,7 +152,7 @@ mod tests {
             SignatureBytes::from_bytes(signature.as_bytes().as_slice()).expect("Expected success");
 
         // Different domain
-        let err = DecodeError::BytesInvalid(format!("Invalid PublicKey bytes: {:?}", pk_bytes));
+        let err = SszDecodeError::BytesInvalid(format!("Invalid PublicKey bytes: {:?}", pk_bytes));
         assert_eq!(bls_verify(&pk_bytes, message, &sg_bytes, 1), Err(err));
     }
 
@@ -221,7 +221,7 @@ mod tests {
         let sg_bytes = SignatureBytes::from_bytes(&[1; 96]).expect("Expected success");
 
         // Different domain
-        let err = DecodeError::BytesInvalid(format!("Invalid Signature bytes: {:?}", sg_bytes));
+        let err = SszDecodeError::BytesInvalid(format!("Invalid Signature bytes: {:?}", sg_bytes));
         assert_eq!(bls_verify(&pk_bytes, b"aaabbb", &sg_bytes, 1), Err(err));
     }
 

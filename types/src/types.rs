@@ -4,7 +4,7 @@
 use bls::PublicKeyBytes;
 use ethereum_types::H256 as Hash256;
 use serde::{Deserialize, Serialize};
-use ssz_derive::{Decode, Encode};
+use ssz_new_derive::{SszDecode, SszEncode};
 use ssz_types::{BitList, FixedVector, VariableList};
 use tree_hash::TreeHash;
 use tree_hash_derive::{SignedRoot, TreeHash};
@@ -14,7 +14,9 @@ use crate::config::*;
 use crate::consts;
 use crate::primitives::*;
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
+)]
 pub struct Attestation<C: Config> {
     pub aggregation_bits: BitList<C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
@@ -30,8 +32,8 @@ pub struct Attestation<C: Config> {
     Hash,
     Deserialize,
     Serialize,
-    Encode,
-    Decode,
+    SszEncode,
+    SszDecode,
     TreeHash,
     SignedRoot,
     Default,
@@ -45,7 +47,7 @@ pub struct AttestationData {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct AttestationDataAndCustodyBit {
     pub data: AttestationData,
@@ -61,8 +63,8 @@ pub struct AttestationDataAndCustodyBit {
     Default,
     Deserialize,
     Serialize,
-    Encode,
-    Decode,
+    SszEncode,
+    SszDecode,
     TreeHash,
     SignedRoot,
 )]
@@ -73,13 +75,15 @@ pub struct AttestationDuty {
     pub committee_len: usize,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct AttesterSlashing<C: Config> {
     pub attestation_1: IndexedAttestation<C>,
     pub attestation_2: IndexedAttestation<C>,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
+)]
 pub struct BeaconBlock<C: Config> {
     pub slot: Slot,
     pub parent_root: H256,
@@ -101,7 +105,9 @@ impl<C: Config> Default for BeaconBlock<C> {
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
+)]
 pub struct BeaconBlockBody<C: Config> {
     pub randao_reveal: SignatureBytes,
     pub eth1_data: Eth1Data,
@@ -129,7 +135,7 @@ impl<C: Config> Default for BeaconBlockBody<C> {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct BeaconBlockHeader {
     pub slot: Slot,
@@ -168,8 +174,8 @@ impl BeaconBlockHeader {
     Hash,
     Deserialize,
     Serialize,
-    Encode,
-    Decode,
+    SszEncode,
+    SszDecode,
     TreeHash,
 )]
 pub struct Checkpoint {
@@ -178,7 +184,17 @@ pub struct Checkpoint {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Default, Hash, Deserialize, Serialize, Encode, Decode, TreeHash,
+    Clone,
+    PartialEq,
+    Eq,
+    Debug,
+    Default,
+    Hash,
+    Deserialize,
+    Serialize,
+    SszEncode,
+    SszDecode,
+    TreeHash,
 )]
 pub struct Crosslink {
     pub shard: u64,
@@ -188,14 +204,14 @@ pub struct Crosslink {
     pub data_root: H256,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct Deposit {
     pub proof: FixedVector<H256, Sum<consts::DepositContractTreeDepth, U1>>,
     pub data: DepositData,
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct DepositData {
     pub pubkey: PublicKeyBytes,
@@ -205,7 +221,9 @@ pub struct DepositData {
     pub signature: SignatureBytes,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(
+    Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize, SszEncode, SszDecode, TreeHash,
+)]
 pub struct Eth1Data {
     pub deposit_root: H256,
     pub deposit_count: u64,
@@ -219,8 +237,8 @@ pub struct Eth1Data {
     Debug,
     Deserialize,
     Serialize,
-    Encode,
-    Decode,
+    SszEncode,
+    SszDecode,
     TreeHash,
     SignedRoot,
     Default,
@@ -231,13 +249,23 @@ pub struct Fork {
     pub epoch: Epoch,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct HistoricalBatch<C: Config> {
     pub block_roots: FixedVector<H256, C::SlotsPerHistoricalRoot>,
     pub state_roots: FixedVector<H256, C::SlotsPerHistoricalRoot>,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot)]
+#[derive(
+    Clone,
+    PartialEq,
+    Debug,
+    Deserialize,
+    Serialize,
+    SszEncode,
+    SszDecode,
+    TreeHash,
+    SignedRoot,
+)]
 pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
@@ -255,7 +283,7 @@ impl<C: Config> Default for IndexedAttestation<C> {
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct PendingAttestation<C: Config> {
     pub aggregation_bits: BitList<C::MaxValidatorsPerCommittee>,
     pub data: AttestationData,
@@ -263,8 +291,7 @@ pub struct PendingAttestation<C: Config> {
     pub proposer_index: u64,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
-
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct ProposerSlashing {
     pub proposer_index: u64,
     pub header_1: BeaconBlockHeader,
@@ -272,7 +299,7 @@ pub struct ProposerSlashing {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct Transfer {
     pub sender: u64,
@@ -285,7 +312,7 @@ pub struct Transfer {
     pub signature: SignatureBytes,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash)]
 pub struct Validator {
     pub pubkey: PublicKeyBytes,
     pub withdrawal_credentials: H256,
@@ -313,7 +340,7 @@ impl Default for Validator {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, Encode, Decode, TreeHash, SignedRoot,
+    Clone, PartialEq, Eq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct VoluntaryExit {
     pub epoch: Epoch,

@@ -1,12 +1,9 @@
-use core::{
-    convert::{TryFrom, TryInto},
-    ops::Index,
-};
+use core::{convert::TryFrom, ops::Index};
 
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use ssz::{Decode, DecodeError, Encode};
-use ssz_derive::{Decode, Encode};
+use ssz_new::{SszDecode, SszDecodeError, SszEncode};
+use ssz_new_derive::{SszDecode, SszEncode};
 use tree_hash::{TreeHash, TreeHashType};
 use tree_hash_derive::TreeHash;
 
@@ -29,7 +26,7 @@ type VersionAsArray = [u8; 4];
 
 // `ssz_static` tests contain YAML files that represent `Version` with strings of the form "0x…".
 // `H32` has the `Deserialize` and `Serialize` impls we need, but `eth2_ssz` does not implement
-// `Decode` and `Encode` for `H32`, so we have wrap it and implement those traits ourselves.
+// `SszDecode` and `SszEncode` for `H32`, so we have wrap it and implement those traits ourselves.
 #[derive(Clone, Copy, PartialEq, Eq, Default, Debug, Display, Deserialize, Serialize)]
 #[display(fmt = "{}", _0)]
 pub struct Version(H32);
@@ -60,37 +57,25 @@ impl Index<usize> for Version {
     }
 }
 
-impl Decode for Version {
+impl SszDecode for Version {
     fn is_ssz_fixed_len() -> bool {
-        <VersionAsArray as Decode>::is_ssz_fixed_len()
+        <VersionAsArray as SszDecode>::is_ssz_fixed_len()
     }
 
     fn ssz_fixed_len() -> usize {
-        <VersionAsArray as Decode>::ssz_fixed_len()
+        <VersionAsArray as SszDecode>::ssz_fixed_len()
     }
 
-    fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+    fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
         VersionAsArray::from_ssz_bytes(bytes)
             .map(H32::from)
             .map(Self)
     }
 }
 
-impl Encode for Version {
+impl SszEncode for Version {
     fn is_ssz_fixed_len() -> bool {
-        <VersionAsArray as Encode>::is_ssz_fixed_len()
-    }
-
-    fn ssz_append(&self, buf: &mut Vec<u8>) {
-        self.as_array().ssz_append(buf)
-    }
-
-    fn ssz_fixed_len() -> usize {
-        <VersionAsArray as Encode>::ssz_fixed_len()
-    }
-
-    fn ssz_bytes_len(&self) -> usize {
-        self.as_array().ssz_bytes_len()
+        <VersionAsArray as SszEncode>::is_ssz_fixed_len()
     }
 
     fn as_ssz_bytes(&self) -> Vec<u8> {

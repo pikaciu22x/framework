@@ -1,6 +1,6 @@
 use bls::{AggregatePublicKey, PublicKey, PublicKeyBytes, Signature, SignatureBytes};
 use ring::digest::{digest, SHA256};
-use ssz::DecodeError;
+use ssz_new::SszDecodeError;
 use std::convert::TryInto;
 use tree_hash::{SignedRoot, TreeHash};
 use types::primitives::*;
@@ -14,7 +14,7 @@ pub fn bls_verify(
     message: &[u8],
     signature: &SignatureBytes,
     domain: Domain,
-) -> Result<bool, DecodeError> {
+) -> Result<bool, SszDecodeError> {
     let public_key: PublicKey = pubkey.try_into()?;
     let signature: Signature = signature.try_into()?;
 

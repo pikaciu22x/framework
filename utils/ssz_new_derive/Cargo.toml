@@ -1,0 +1,13 @@
+[package]
+name = "ssz_new_derive"
+version = "0.1.0"
+authors = ["Faustas <faustas.butkus@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "ssz_new_derive"
+proc-macro = true
+
+[dependencies]
+syn = "0.15"
+quote = "0.6"

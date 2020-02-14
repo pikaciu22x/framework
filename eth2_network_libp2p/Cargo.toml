@@ -8,7 +8,7 @@ anyhow = '1.0.25'
 error_utils = { path = '../error_utils' }
 eth2-libp2p = '0.1.0'
 eth2_network = { path = '../eth2_network' }
-eth2_ssz = '0.1.2'
+ssz_new = { path = '../utils/ssz_new' }
 ethereum-types = '0.8.0'
 fmt-extra = '0.2.1'
 futures = '0.1.29'

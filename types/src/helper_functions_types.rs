@@ -1,5 +1,5 @@
 use derive_more::From;
-use ssz::DecodeError;
+use ssz_new::SszDecodeError;
 
 #[derive(PartialEq, Debug, From)]
 pub enum Error {
@@ -18,5 +18,5 @@ pub enum Error {
     PubKeyConversionError,
     SignatureConversionError,
 
-    SszDecode(DecodeError),
+    SszDecode(SszDecodeError),
 }

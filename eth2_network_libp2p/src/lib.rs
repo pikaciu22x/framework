@@ -21,7 +21,7 @@ use helper_functions::misc;
 use log::info;
 use slog::{o, Drain as _, Logger};
 use slog_stdlog::StdLog;
-use ssz::{Decode as _, Encode as _};
+use ssz_new::{SszDecode as _, SszEncode as _};
 use thiserror::Error;
 use types::{
     config::Config,
