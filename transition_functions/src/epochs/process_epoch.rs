@@ -226,27 +226,27 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
     state.current_epoch_attestations = VariableList::from(vec![]);
 }
 
-#[cfg(test)]
-mod process_epoch_tests {
-    use super::*;
-    // use mockall::mock;
-    use types::config::MainnetConfig;
-    /*
-    mock! {
-        BeaconState<C: Config + 'static> {}
-        trait BeaconStateAccessor {
-            fn get_current_epoch(&self) -> Epoch;
-            fn get_previous_epoch(&self) -> Epoch;
-            fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
-        }
-    }
-    */
+// #[cfg(test)]
+// mod process_epoch_tests {
+//     use super::*;
+//     // use mockall::mock;
+//     use types::config::MainnetConfig;
+//     /*
+//     mock! {
+//         BeaconState<C: Config + 'static> {}
+//         trait BeaconStateAccessor {
+//             fn get_current_epoch(&self) -> Epoch;
+//             fn get_previous_epoch(&self) -> Epoch;
+//             fn get_block_root(&self, _epoch: Epoch) -> Result<H256, hfError>;
+//         }
+//     */
+//     }
 
-//     //     let mut bs = MockBeaconState::<MainnetConfig>::new();
-//     //     bs.expect_get_current_epoch().return_const(5_u64);
-//     //     assert_eq!(5, bs.get_current_epoch());
-//     // }
-// }
+// //     //     let mut bs = MockBeaconState::<MainnetConfig>::new();
+// //     //     bs.expect_get_current_epoch().return_const(5_u64);
+// //     //     assert_eq!(5, bs.get_current_epoch());
+// //     // }
+// // }
 
 #[cfg(test)]
 mod spec_tests {

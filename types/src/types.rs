@@ -273,15 +273,7 @@ pub struct HistoricalBatch<C: Config> {
 }
 
 #[derive(
-    Clone,
-    PartialEq,
-    Debug,
-    Deserialize,
-    Serialize,
-    SszEncode,
-    SszDecode,
-    TreeHash,
-    SignedRoot,
+    Clone, PartialEq, Debug, Deserialize, Serialize, SszEncode, SszDecode, TreeHash, SignedRoot,
 )]
 pub struct IndexedAttestation<C: Config> {
     pub attesting_indices: VariableList<u64, C::MaxValidatorsPerCommittee>,
