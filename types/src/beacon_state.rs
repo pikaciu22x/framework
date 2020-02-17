@@ -44,7 +44,7 @@ pub enum Error {
 
 impl From<SszError> for Error {
     fn from(error: SszError) -> Self {
-        Error::SszTypes(error)
+        Self::SszTypes(error)
     }
 }
 

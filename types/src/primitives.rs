@@ -1,11 +1,11 @@
-use core::{convert::TryFrom, ops::Index};
+use core::ops::Index;
 
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use ssz_new::{SszDecode, SszDecodeError, SszEncode};
-use ssz_new_derive::{SszDecode, SszEncode};
+// use ssz_new_derive::{SszDecode, SszEncode};
 use tree_hash::{TreeHash, TreeHashType};
-use tree_hash_derive::TreeHash;
+// use tree_hash_derive::TreeHash;
 
 pub use bls::{AggregatePublicKey, AggregateSignature, PublicKey, SecretKey, Signature};
 pub use bls::{PublicKeyBytes, SignatureBytes};
