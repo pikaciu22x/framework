@@ -148,3 +148,61 @@ mod process_slot_tests {
     //     state_transition(&mut bs, &bb, true);
     // }
 }
+
+#[cfg(test)]
+mod spec_tests {
+    use test_generator::test_resources;
+    use types::config::MinimalConfig;
+
+    use super::*;
+
+    // We do not honor `bls_setting` in sanity tests because none of them customize it.
+
+    #[test_resources("eth2.0-spec-tests/tests/mainnet/phase0/sanity/slots/*/*")]
+    fn mainnet_slots(case_directory: &str) {
+        run_slots_case::<MainnetConfig>(case_directory);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/slots/*/*")]
+    fn minimal_slots(case_directory: &str) {
+        run_slots_case::<MinimalConfig>(case_directory);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/mainnet/phase0/sanity/blocks/*/*")]
+    fn mainnet_blocks(case_directory: &str) {
+        run_blocks_case::<MainnetConfig>(case_directory);
+    }
+
+    #[test_resources("eth2.0-spec-tests/tests/minimal/phase0/sanity/blocks/*/*")]
+    fn minimal_blocks(case_directory: &str) {
+        run_blocks_case::<MinimalConfig>(case_directory);
+    }
+
+    fn run_slots_case<C: Config>(case_directory: &str) {
+        let mut state: BeaconState<C> = spec_test_utils::pre(case_directory);
+        let last_slot = state.slot + spec_test_utils::slots(case_directory);
+        let expected_post = spec_test_utils::post(case_directory)
+            .expect("every slot sanity test should have a post-state");
+
+        process_slots(&mut state, last_slot);
+
+        assert_eq!(state, expected_post);
+    }
+
+    fn run_blocks_case<C: Config>(case_directory: &str) {
+        let process_blocks = || {
+            let mut state = spec_test_utils::pre(case_directory);
+            for block in spec_test_utils::blocks(case_directory) {
+                state_transition::<C>(&mut state, &block, true);
+            }
+            state
+        };
+        match spec_test_utils::post(case_directory) {
+            Some(expected_post) => assert_eq!(process_blocks(), expected_post),
+            // The state transition code as it is now panics on error instead of returning `Result`.
+            // We have to use `std::panic::catch_unwind` to verify that state transitions fail.
+            // This may result in tests falsely succeeding.
+            None => assert!(std::panic::catch_unwind(process_blocks).is_err()),
+        }
+    }
+}

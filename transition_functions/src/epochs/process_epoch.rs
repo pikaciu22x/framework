@@ -242,18 +242,101 @@ mod process_epoch_tests {
     }
     */
 
-    // #[test]
-    fn test_process_rewards_and_penalties() {
-        let mut bs: BeaconState<MainnetConfig> = BeaconState {
-            ..BeaconState::default()
+//     //     let mut bs = MockBeaconState::<MainnetConfig>::new();
+//     //     bs.expect_get_current_epoch().return_const(5_u64);
+//     //     assert_eq!(5, bs.get_current_epoch());
+//     // }
+// }
+
+#[cfg(test)]
+mod spec_tests {
+    use core::fmt::Debug;
+
+    use test_generator::test_resources;
+    use types::{beacon_state::BeaconState, config::MinimalConfig};
+    use void::Void;
+
+    use super::*;
+
+    // We do not honor `bls_setting` in epoch processing tests because none of them customize it.
+
+    macro_rules! tests_for_sub_transition {
+        (
+            $module_name: ident,
+            $sub_transition: expr,
+            $mainnet_glob: literal,
+            $minimal_glob: literal,
+        ) => {
+            mod $module_name {
+                use super::*;
+
+                #[test_resources($mainnet_glob)]
+                fn mainnet(case_directory: &str) {
+                    run_case::<MainnetConfig, _, _>(case_directory, $sub_transition);
+                }
+
+                #[test_resources($minimal_glob)]
+                fn minimal(case_directory: &str) {
+                    run_case::<MinimalConfig, _, _>(case_directory, $sub_transition);
+                }
+            }
         };
-        let mut val: Validator = Validator {
-            ..Validator::default()
-        };
-        val.effective_balance = 5;
-        val.slashed = false;
-        bs.validators.push(val).expect("Push error");
-        let index = 0;
-        assert_eq!(5 * 64 / 4, bs.get_base_reward(index));
+    }
+
+    tests_for_sub_transition! {
+        justification_and_finalization,
+        process_justification_and_finalization,
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/justification_and_finalization/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/*/*",
+    }
+
+    // There are no mainnet test cases for the `rewards_and_penalties` sub-transition.
+    #[test_resources(
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/rewards_and_penalties/*/*"
+    )]
+    fn minimal_rewards_and_penalties(case_directory: &str) {
+        run_case::<MinimalConfig, _, _>(case_directory, process_rewards_and_penalties);
+    }
+
+    tests_for_sub_transition! {
+        registry_updates,
+        wrap_in_ok(process_registry_updates),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/registry_updates/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/*/*",
+    }
+
+    tests_for_sub_transition! {
+        slashings,
+        wrap_in_ok(process_slashings),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/slashings/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/*/*",
+    }
+
+    tests_for_sub_transition! {
+        final_updates,
+        wrap_in_ok(process_final_updates),
+        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/final_updates/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/*/*",
+    }
+
+    fn wrap_in_ok<T>(
+        infallible_function: impl FnOnce(&mut T),
+    ) -> impl FnOnce(&mut T) -> Result<(), Void> {
+        |argument| Ok(infallible_function(argument))
+    }
+
+    fn run_case<C, E, F>(case_directory: &str, sub_transition: F)
+    where
+        C: Config,
+        E: Debug,
+        F: FnOnce(&mut BeaconState<C>) -> Result<(), E>,
+    {
+        let mut state = spec_test_utils::pre(case_directory);
+        let expected_post = spec_test_utils::post(case_directory)
+            .expect("every epoch processing test should have a post-state");
+
+        sub_transition(&mut state).expect("every epoch processing test should succeed");
+
+        assert_eq!(state, expected_post);
     }
 }

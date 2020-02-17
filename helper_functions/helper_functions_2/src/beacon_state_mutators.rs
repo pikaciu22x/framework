@@ -141,7 +141,7 @@ mod tests {
             exit_epoch: EPOCH_MAX,
             withdrawable_epoch: EPOCH_MAX,
             withdrawal_credentials: H256([0; 32]),
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
         }
     }
 
@@ -181,7 +181,7 @@ mod tests {
             activation_epoch: 3,
             effective_balance: 24,
             exit_epoch: 4,
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
             slashed: false,
             withdrawable_epoch: 9999,
             withdrawal_credentials: H256([0; 32]),
@@ -192,7 +192,7 @@ mod tests {
             activation_epoch: 3,
             effective_balance: 24,
             exit_epoch: FAR_FUTURE_EPOCH,
-            pubkey: PublicKey::from_secret_key(&SecretKey::random()),
+            pubkey: PublicKey::from_secret_key(&SecretKey::random()).into(),
             slashed: false,
             withdrawable_epoch: 9999,
             withdrawal_credentials: H256([0; 32]),

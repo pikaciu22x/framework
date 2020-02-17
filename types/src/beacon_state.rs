@@ -3,8 +3,8 @@ use crate::{
 };
 use ethereum_types::H256 as Hash256;
 use serde::{Deserialize, Serialize};
-use ssz_derive::{Decode, Encode};
-use ssz_types::{BitVector, Error as SzzError, FixedVector, VariableList};
+use ssz_new_derive::{SszDecode, SszEncode};
+use ssz_types::{BitVector, Error as SszError, FixedVector, VariableList};
 use tree_hash::TreeHash;
 use tree_hash_derive::TreeHash;
 
@@ -38,13 +38,13 @@ pub enum Error {
     CurrentCommitteeCacheUninitialized,
     //RelativeEpochError(RelativeEpochError),
     //CommitteeCacheUninitialized(RelativeEpoch),
-    SszTypes(ssz_types::Error),
-    Helper(HelperError),
+    SszTypesError(SszError),
+    HelperError(HelperError),
 }
 
-impl From<SzzError> for Error {
-    fn from(error: SzzError) -> Self {
-        Self::SszTypes(error)
+impl From<SszError> for Error {
+    fn from(error: SszError) -> Self {
+        Error::SszTypesError(error)
     }
 }
 
@@ -54,7 +54,9 @@ impl From<HelperError> for Error {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Default)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, SszDecode, SszEncode, TreeHash, Default,
+)]
 pub struct BeaconState<C: Config> {
     pub genesis_time: u64,
     pub slot: Slot,

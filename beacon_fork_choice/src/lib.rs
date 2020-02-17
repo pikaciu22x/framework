@@ -235,7 +235,7 @@ impl<C: Config> Store<C> {
             beacon_state_accessors::get_indexed_attestation(target_state, &attestation)
                 .map_err(DebugAsError::new)?;
 
-        predicates::validate_indexed_attestation(target_state, &indexed_attestation)
+        predicates::validate_indexed_attestation(target_state, &indexed_attestation, true)
             .map_err(DebugAsError::new)?;
 
         for index in indexed_attestation.attesting_indices.iter().copied() {

@@ -192,34 +192,30 @@ macro_rules! impl_display {
 
 macro_rules! impl_ssz {
     ($type: ident) => {
-        impl Encode for $type {
+        impl SszEncode for $type {
             fn is_ssz_fixed_len() -> bool {
-                <u64 as Encode>::is_ssz_fixed_len()
+                <u64 as SszEncode>::is_ssz_fixed_len()
             }
 
             fn ssz_fixed_len() -> usize {
-                <u64 as Encode>::ssz_fixed_len()
+                <u64 as SszEncode>::ssz_fixed_len()
             }
 
-            fn ssz_bytes_len(&self) -> usize {
-                0_u64.ssz_bytes_len()
-            }
-
-            fn ssz_append(&self, buf: &mut Vec<u8>) {
+            fn as_ssz_bytes(&self) -> Vec<u8> {
                 self.0.ssz_append(buf)
             }
         }
 
-        impl Decode for $type {
+        impl SszDecode for $type {
             fn is_ssz_fixed_len() -> bool {
-                <u64 as Decode>::is_ssz_fixed_len()
+                <u64 as SszDecode>::is_ssz_fixed_len()
             }
 
             fn ssz_fixed_len() -> usize {
-                <u64 as Decode>::ssz_fixed_len()
+                <u64 as SszDecode>::ssz_fixed_len()
             }
 
-            fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, DecodeError> {
+            fn from_ssz_bytes(bytes: &[u8]) -> Result<Self, SszDecodeError> {
                 Ok($type(u64::from_ssz_bytes(bytes)?))
             }
         }

@@ -102,7 +102,7 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     state
         .validators
         .push(Validator {
-            pubkey: bls::PublicKey::from_bytes(&pubkey.as_bytes()).expect("Conversion error"),
+            pubkey: pubkey.clone(),
             withdrawal_credentials: deposit.data.withdrawal_credentials,
             activation_eligibility_epoch: FAR_FUTURE_EPOCH,
             activation_epoch: FAR_FUTURE_EPOCH,
@@ -237,8 +237,8 @@ fn process_attester_slashing<T: Config>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(validate_indexed_attestation(state, attestation_1).is_ok());
-    assert!(validate_indexed_attestation(state, attestation_2).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_1, true).is_ok());
+    assert!(validate_indexed_attestation(state, &attestation_2, true).is_ok());
 
     let mut slashed_any = false;
 
@@ -267,7 +267,11 @@ fn process_attester_slashing<T: Config>(
     assert!(slashed_any);
 }
 
-fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Attestation<T>) {
+fn process_attestation<T: Config>(
+    state: &mut BeaconState<T>,
+    attestation: &Attestation<T>,
+    verify_signature: bool,
+) {
     let data = &attestation.data;
     let attestation_slot = data.slot;
     assert!(
@@ -308,8 +312,9 @@ fn process_attestation<T: Config>(state: &mut BeaconState<T>, attestation: &Atte
 
     //# Check signature
     assert!(validate_indexed_attestation(
-        state,
-        &get_indexed_attestation(state, attestation).expect("Attestation error")
+        &state,
+        &get_indexed_attestation(&state, &attestation).expect("Attestation error"),
+        verify_signature,
     )
     .is_ok());
 }
@@ -347,7 +352,7 @@ fn process_operations<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockB
         process_attester_slashing(state, attester_slashing);
     }
     for attestation in body.attestations.iter() {
-        process_attestation(state, attestation);
+        process_attestation(state, attestation, true);
     }
     for deposit in body.deposits.iter() {
         process_deposit(state, deposit);
@@ -426,5 +431,122 @@ mod block_processing_tests {
             hash_tree_root(&block.body)
         );
         assert_eq!(bs.latest_block_header.state_root, block.state_root);
+    }
+}
+
+#[cfg(test)]
+mod spec_tests {
+    use std::panic::UnwindSafe;
+
+    use ssz_new::SszDecode;
+    use test_generator::test_resources;
+    use types::{beacon_state::BeaconState, config::MinimalConfig};
+
+    use super::*;
+
+    // We only honor `bls_setting` in `Attestation` tests. They are the only ones that set it to 2.
+
+    macro_rules! tests_for_operation {
+        (
+            $operation_name: ident,
+            $processing_function: expr,
+            $mainnet_glob: literal,
+            $minimal_glob: literal,
+        ) => {
+            mod $operation_name {
+                use super::*;
+
+                #[test_resources($mainnet_glob)]
+                fn mainnet(case_directory: &str) {
+                    run_case_specialized::<MainnetConfig>(case_directory);
+                }
+
+                #[test_resources($minimal_glob)]
+                fn minimal(case_directory: &str) {
+                    run_case_specialized::<MinimalConfig>(case_directory);
+                }
+
+                fn run_case_specialized<C: Config>(case_directory: &str) {
+                    run_case::<C, _, _>(
+                        case_directory,
+                        stringify!($operation_name),
+                        |state, operation| $processing_function(case_directory, state, operation),
+                    );
+                }
+            }
+        };
+    }
+
+    tests_for_operation! {
+        // Test files for `block_header` are named `block.*` and contain `BeaconBlock`s.
+        block,
+        ignore_case_directory(process_block_header),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/block_header/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/block_header/*/*",
+    }
+
+    tests_for_operation! {
+        proposer_slashing,
+        ignore_case_directory(process_proposer_slashing),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/proposer_slashing/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/proposer_slashing/*/*",
+    }
+
+    tests_for_operation! {
+        attester_slashing,
+        ignore_case_directory(process_attester_slashing),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/attester_slashing/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attester_slashing/*/*",
+    }
+
+    tests_for_operation! {
+        attestation,
+        |case_directory, state, attestation| {
+            let verify_signature = spec_test_utils::bls_setting(case_directory).unwrap_or(true);
+            process_attestation(state, attestation, verify_signature)
+        },
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/attestation/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/attestation/*/*",
+    }
+
+    tests_for_operation! {
+        deposit,
+        ignore_case_directory(process_deposit),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/deposit/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/deposit/*/*",
+    }
+
+    tests_for_operation! {
+        voluntary_exit,
+        ignore_case_directory(process_voluntary_exit),
+        "eth2.0-spec-tests/tests/mainnet/phase0/operations/voluntary_exit/*/*",
+        "eth2.0-spec-tests/tests/minimal/phase0/operations/voluntary_exit/*/*",
+    }
+
+    fn ignore_case_directory<T, U, V>(
+        processing_function: impl FnOnce(&mut U, &V),
+    ) -> impl FnOnce(T, &mut U, &V) {
+        |_, state, operation| processing_function(state, operation)
+    }
+
+    fn run_case<C, D, F>(case_directory: &str, operation_name: &str, processing_function: F)
+    where
+        C: Config,
+        D: SszDecode,
+        F: FnOnce(&mut BeaconState<C>, &D) + UnwindSafe,
+    {
+        let process_operation = || {
+            let mut state = spec_test_utils::pre(case_directory);
+            let operation = spec_test_utils::operation(case_directory, operation_name);
+            processing_function(&mut state, &operation);
+            state
+        };
+        match spec_test_utils::post(case_directory) {
+            Some(expected_post) => assert_eq!(process_operation(), expected_post),
+            // The state transition code as it is now panics on error instead of returning `Result`.
+            // We have to use `std::panic::catch_unwind` to verify that state transitions fail.
+            // This may result in tests falsely succeeding.
+            None => assert!(std::panic::catch_unwind(process_operation).is_err()),
+        }
     }
 }

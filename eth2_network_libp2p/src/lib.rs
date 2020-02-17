@@ -11,7 +11,6 @@ use eth2_libp2p::{
     Libp2pEvent, MessageId, PeerId, PubsubMessage, RPCEvent, Service, Topic, TopicHash,
 };
 use eth2_network::{Network, Networked, Status};
-use ethereum_types::H32;
 use fmt_extra::{AsciiStr, Hs};
 use futures::{
     future, try_ready,
@@ -22,7 +21,7 @@ use helper_functions::misc;
 use log::info;
 use slog::{o, Drain as _, Logger};
 use slog_stdlog::StdLog;
-use ssz::{Decode as _, Encode as _};
+use ssz_new::{SszDecode as _, SszEncode as _};
 use thiserror::Error;
 use types::{
     config::Config,
@@ -85,8 +84,8 @@ enum EventHandlerError {
     EndSlotOverflow { start_slot: u64, difference: u64 },
     #[error(
         "local fork version ({}) is different from remote fork version ({})",
-        H32(*local),
-        H32(*remote)
+        local,
+        remote
     )]
     ForkVersionMismatch { local: Version, remote: Version },
     #[error("ran out of request IDs")]
@@ -629,7 +628,7 @@ fn status_message_to_status(status_message: &StatusMessage) -> Status {
         head_slot,
     } = *status_message;
     Status {
-        fork_version,
+        fork_version: fork_version.into(),
         finalized_root,
         finalized_epoch: finalized_epoch.into(),
         head_root,
@@ -646,7 +645,7 @@ fn status_into_status_message(status: Status) -> StatusMessage {
         head_slot,
     } = status;
     StatusMessage {
-        fork_version,
+        fork_version: fork_version.into(),
         finalized_root,
         finalized_epoch: finalized_epoch.into(),
         head_root,
