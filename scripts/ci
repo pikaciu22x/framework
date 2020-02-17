@@ -37,7 +37,7 @@ then
 fi
 cargo install-update --allow-no-update cargo-tarpaulin cargo-update
 
-cargo update --locked
+cargo update
 
 # cargo-fmt only formats crates listed in workspace.members in Cargo.toml.
 rustfmt --check -- "$(dirname "$0")"/../!(lighthouse|target)/**/*.rs
