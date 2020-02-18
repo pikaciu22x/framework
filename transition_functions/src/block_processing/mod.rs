@@ -11,6 +11,7 @@ use helper_functions::predicates::{
     is_valid_merkle_branch, validate_indexed_attestation,
 };
 use std::collections::BTreeSet;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use typenum::Unsigned as _;
 use types::consts::*;
@@ -33,7 +34,8 @@ pub fn process_block<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<
 }
 
 fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &VoluntaryExit) {
-    let validator = &state.validators[exit.validator_index as usize];
+    let validator =
+        &state.validators[usize::try_from(exit.validator_index).expect("Conversion error")];
     // Verify the validator is active
     assert!(is_active_validator(validator, get_current_epoch(state)));
     // Verify the validator has not yet exited
@@ -72,11 +74,11 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = (&deposit.data.pubkey).try_into().expect("Conversion error");
+    let pubkey = &deposit.data.pubkey;
     let amount = deposit.data.amount;
 
     for (index, validator) in state.validators.iter_mut().enumerate() {
-        if validator.pubkey == pubkey {
+        if validator.pubkey == *pubkey {
             //# Increase balance by deposit amount
             increase_balance(state, index as u64, amount).expect("Conversion error");
             return;
@@ -133,8 +135,10 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
         ..BeaconBlockHeader::default()
     };
     //# Verify proposer is not slashed
-    let proposer =
-        &state.validators[get_beacon_proposer_index(state).expect("Conversion error") as usize];
+    let proposer = &state.validators[usize::try_from(
+        get_beacon_proposer_index(state).expect("Conversion error"),
+    )
+    .expect("Conversion error")];
     assert!(!proposer.slashed);
     //# Verify proposer signature
     if cfg!(not(test)) {
@@ -156,8 +160,10 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
 fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
     let epoch = get_current_epoch(state);
     //# Verify RANDAO reveal
-    let proposer =
-        &state.validators[get_beacon_proposer_index(state).expect("Proposer error") as usize];
+    let proposer = &state.validators[usize::try_from(
+        get_beacon_proposer_index(state).expect("Proposer error"),
+    )
+    .expect("Conversion error")];
     assert!(bls_verify(
         &(proposer.pubkey.clone())
             .try_into()
@@ -182,7 +188,8 @@ fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<
     let mut array = [0; 32];
     let mix = &mix[..array.len()]; // panics if not enough data
     array.copy_from_slice(mix);
-    state.randao_mixes[(epoch % T::EpochsPerHistoricalVector::U64) as usize] =
+    state.randao_mixes
+        [usize::try_from(epoch % T::EpochsPerHistoricalVector::U64).expect("Conversion error")] =
         array.try_into().expect("Conversion error");
 }
 
@@ -190,7 +197,8 @@ fn process_proposer_slashing<T: Config>(
     state: &mut BeaconState<T>,
     proposer_slashing: &ProposerSlashing,
 ) {
-    let proposer = &state.validators[proposer_slashing.proposer_index as usize];
+    let proposer = &state.validators
+        [usize::try_from(proposer_slashing.proposer_index).expect("Conversion error")];
     // Verify slots match
     assert_eq!(
         proposer_slashing.header_1.slot,
@@ -237,8 +245,8 @@ fn process_attester_slashing<T: Config>(
         &attestation_1.data,
         &attestation_2.data
     ));
-    assert!(validate_indexed_attestation(state, &attestation_1, true).is_ok());
-    assert!(validate_indexed_attestation(state, &attestation_2, true).is_ok());
+    assert!(validate_indexed_attestation(state, attestation_1, true).is_ok());
+    assert!(validate_indexed_attestation(state, attestation_2, true).is_ok());
 
     let mut slashed_any = false;
 
@@ -257,7 +265,7 @@ fn process_attester_slashing<T: Config>(
     // let mut slashable_indices = Vec::new();
 
     for index in &attesting_indices_1 & &attesting_indices_2 {
-        let validator = &state.validators[index as usize];
+        let validator = &state.validators[usize::try_from(index).expect("Conversion error")];
 
         if is_slashable_validator(validator, get_current_epoch(state)) {
             slash_validator(state, index, None).expect("Slash error");
@@ -312,8 +320,8 @@ fn process_attestation<T: Config>(
 
     //# Check signature
     assert!(validate_indexed_attestation(
-        &state,
-        &get_indexed_attestation(&state, &attestation).expect("Attestation error"),
+        state,
+        &get_indexed_attestation(state, attestation).expect("Attestation error"),
         verify_signature,
     )
     .is_ok());
@@ -341,7 +349,8 @@ fn process_operations<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockB
         body.deposits.len(),
         std::cmp::min(
             T::MaxDeposits::USIZE,
-            (state.eth1_data.deposit_count - state.eth1_deposit_index) as usize
+            usize::try_from(state.eth1_data.deposit_count - state.eth1_deposit_index)
+                .expect("Conversion error")
         )
     );
 
