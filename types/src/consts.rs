@@ -1,6 +1,8 @@
-pub use crate::primitives::Gwei;
+pub use crate::primitives::{Epoch, Gwei, Slot};
 
 pub const BASE_REWARDS_PER_EPOCH: u64 = 4;
+pub const GENESIS_EPOCH: Epoch = 0;
+pub const GENESIS_SLOT: Slot = 0;
 pub const JUSTIFICATION_BITS_LENGTH: usize = 4;
 pub const SECONDS_PER_DAY: u64 = 86400;
 pub const DEPOSIT_CONTRACT_TREE_DEPTH: u64 = 32;

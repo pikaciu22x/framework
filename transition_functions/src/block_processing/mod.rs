@@ -3,9 +3,9 @@ use helper_functions::beacon_state_accessors::{
     get_current_epoch, get_domain, get_indexed_attestation, get_previous_epoch, get_randao_mix,
 };
 use helper_functions::beacon_state_mutators::*;
-use helper_functions::crypto::{bls_verify, hash, hash_tree_root, signed_root};
+use helper_functions::crypto::{bls_verify, hash, hash_tree_root};
 use helper_functions::math::*;
-use helper_functions::misc::{compute_domain, compute_epoch_at_slot};
+use helper_functions::misc::{compute_domain, compute_epoch_at_slot, compute_signing_root};
 use helper_functions::predicates::{
     is_active_validator, is_slashable_attestation_data, is_slashable_validator,
     is_valid_merkle_branch, validate_indexed_attestation,
@@ -33,32 +33,40 @@ pub fn process_block<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlock<
     process_operations(state, &block.body);
 }
 
-fn process_voluntary_exit<T: Config>(state: &mut BeaconState<T>, exit: &VoluntaryExit) {
-    let validator =
-        &state.validators[usize::try_from(exit.validator_index).expect("Conversion error")];
+fn process_voluntary_exit<T: Config>(
+    state: &mut BeaconState<T>,
+    signed_voluntary_exit: &SignedVoluntaryExit,
+) {
+    let voluntary_exit = &signed_voluntary_exit.message;
+    let validator = &state.validators
+        [usize::try_from(voluntary_exit.validator_index).expect("Conversion error")];
     // Verify the validator is active
     assert!(is_active_validator(validator, get_current_epoch(state)));
     // Verify the validator has not yet exited
     assert!(validator.exit_epoch == FAR_FUTURE_EPOCH);
     // Exits must specify an epoch when they become valid; they are not valid before then
-    assert!(get_current_epoch(state) >= exit.epoch);
+    assert!(get_current_epoch(state) >= voluntary_exit.epoch);
     // Verify the validator has been active long enough
     assert!(
         get_current_epoch(state) >= validator.activation_epoch + T::persistent_committee_period()
     );
     // Verify signature
-    let domain = get_domain(state, T::domain_voluntary_exit(), Some(exit.epoch));
+    let domain = get_domain(
+        state,
+        T::domain_voluntary_exit(),
+        Some(voluntary_exit.epoch),
+    );
+    let signing_root = compute_signing_root(voluntary_exit, domain);
     assert!(bls_verify(
         &(bls::PublicKeyBytes::from_bytes(&validator.pubkey.as_bytes()).expect("Conversion error")),
-        signed_root(exit).as_bytes(),
-        &(exit.signature.clone())
+        signing_root.as_bytes(),
+        &(signed_voluntary_exit.signature.clone())
             .try_into()
             .expect("Conversion error"),
-        domain
     )
     .expect("BLS error"));
     // Initiate exit
-    initiate_validator_exit(state, exit.validator_index).expect("Exit error");
+    initiate_validator_exit(state, voluntary_exit.validator_index).expect("Exit error");
 }
 
 fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
@@ -74,8 +82,12 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Deposits must be processed in order
     state.eth1_deposit_index += 1;
 
-    let pubkey = &deposit.data.pubkey;
-    let amount = deposit.data.amount;
+    let DepositData {
+        pubkey,
+        withdrawal_credentials,
+        amount,
+        signature,
+    } = &deposit.data;
 
     for (index, validator) in state.validators.iter_mut().enumerate() {
         if validator.pubkey == *pubkey {
@@ -88,15 +100,14 @@ fn process_deposit<T: Config>(state: &mut BeaconState<T>, deposit: &Deposit) {
     //# Note: The deposit contract does not check signatures.
     //# Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
     let domain = compute_domain(T::domain_deposit(), None);
+    let deposit_message = DepositMessage {
+        pubkey: pubkey.clone(),
+        withdrawal_credentials: *withdrawal_credentials,
+        amount: *amount,
+    };
+    let signing_root = compute_signing_root(&deposit_message, domain);
 
-    if !bls_verify(
-        &pubkey.clone().try_into().expect("Conversion error"),
-        signed_root(&deposit.data).as_bytes(),
-        &deposit.data.signature,
-        domain,
-    )
-    .expect("BLS error")
-    {
+    if !bls_verify(pubkey, signing_root.as_bytes(), signature).expect("BLS error") {
         return;
     }
 
@@ -124,7 +135,7 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
     //# Verify that the slots match
     assert!(block.slot == state.slot);
     //# Verify that the parent matches
-    assert!(block.parent_root == signed_root(&state.latest_block_header));
+    assert!(block.parent_root == hash_tree_root(&state.latest_block_header));
     //# Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader {
         slot: block.slot,
@@ -140,21 +151,6 @@ fn process_block_header<T: Config>(state: &mut BeaconState<T>, block: &BeaconBlo
     )
     .expect("Conversion error")];
     assert!(!proposer.slashed);
-    //# Verify proposer signature
-    if cfg!(not(test)) {
-        assert!(bls_verify(
-            &bls::PublicKeyBytes::from_bytes(&proposer.pubkey.as_bytes())
-                .expect("Conversion error"),
-            signed_root(block).as_bytes(),
-            &block
-                .signature
-                .clone()
-                .try_into()
-                .expect("Conversion error"),
-            get_domain(state, T::domain_beacon_proposer(), None)
-        )
-        .expect("BLS error"));
-    }
 }
 
 fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<T>) {
@@ -164,15 +160,15 @@ fn process_randao<T: Config>(state: &mut BeaconState<T>, body: &BeaconBlockBody<
         get_beacon_proposer_index(state).expect("Proposer error"),
     )
     .expect("Conversion error")];
+    let signing_root = compute_signing_root(&epoch, get_domain(state, T::domain_randao(), None));
     assert!(bls_verify(
         &(proposer.pubkey.clone())
             .try_into()
             .expect("Conversion error"),
-        hash_tree_root(&epoch).as_bytes(),
+        signing_root.as_bytes(),
         &(body.randao_reveal.clone())
             .try_into()
             .expect("Conversion error"),
-        get_domain(state, T::domain_randao(), None)
     )
     .expect("BLS error"));
     //# Mix in RANDAO reveal
@@ -201,33 +197,36 @@ fn process_proposer_slashing<T: Config>(
         [usize::try_from(proposer_slashing.proposer_index).expect("Conversion error")];
     // Verify slots match
     assert_eq!(
-        proposer_slashing.header_1.slot,
-        proposer_slashing.header_2.slot
+        proposer_slashing.signed_header_1.message.slot,
+        proposer_slashing.signed_header_2.message.slot
     );
     // But the headers are different
-    assert_ne!(proposer_slashing.header_1, proposer_slashing.header_2);
+    assert_ne!(
+        proposer_slashing.signed_header_1,
+        proposer_slashing.signed_header_2
+    );
     // Check proposer is slashable
     assert!(is_slashable_validator(proposer, get_current_epoch(state)));
     // Signatures are valid
-    let headers: [BeaconBlockHeader; 2] = [
-        proposer_slashing.header_1.clone(),
-        proposer_slashing.header_2.clone(),
+    let signed_headers: [SignedBeaconBlockHeader; 2] = [
+        proposer_slashing.signed_header_1.clone(),
+        proposer_slashing.signed_header_2.clone(),
     ];
-    for header in &headers {
+    for signed_header in &signed_headers {
         let domain = get_domain(
             state,
             T::domain_beacon_proposer(),
             Some(compute_epoch_at_slot::<T>(header.slot)),
         );
+        let signing_root = compute_signing_root(&signed_header.message, domain);
         assert!(bls_verify(
             &(proposer.pubkey.clone())
                 .try_into()
                 .expect("Conversion error"),
-            signed_root(header).as_bytes(),
+            signing_root.as_bytes(),
             &(header.signature.clone())
                 .try_into()
                 .expect("Conversion error"),
-            domain
         )
         .expect("BLS error"));
     }

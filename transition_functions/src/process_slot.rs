@@ -1,8 +1,10 @@
 use crate::block_processing::process_block;
+use core::convert::TryInto as _;
+
 use crate::*;
 use epochs::process_epoch::process_epoch;
-use helper_functions;
-use helper_functions::crypto::*;
+use ethereum_types::H256 as Hash256;
+use helper_functions::{beacon_state_accessors::*, crypto::*, misc::*};
 use typenum::Unsigned as _;
 use types::{
     beacon_state::BeaconState,
@@ -15,15 +17,20 @@ pub enum Error {}
 
 pub fn state_transition<T: Config>(
     state: &mut BeaconState<T>,
-    block: &BeaconBlock<T>,
-    validate_state_root: bool,
+    signed_block: &SignedBeaconBlock<T>,
+    validate_result: bool,
 ) -> BeaconState<T> {
+    let block = &signed_block.message;
     //# Process slots (including those with no blocks) since block
     process_slots(state, block.slot);
+    //# Verify signature
+    if validate_result {
+        assert!(verify_block_signature(state, signed_block));
+    }
     //# Process block
     process_block(state, block);
     //# Validate state root (`validate_state_root == True` in production)
-    if validate_state_root {
+    if validate_result {
         assert!(block.state_root == hash_tree_root(state));
     }
     //# Return post-state
@@ -53,25 +60,25 @@ fn process_slot<T: Config>(state: &mut BeaconState<T>) {
         state.latest_block_header.state_root = previous_state_root;
     }
     // Cache block root
-    // Old doc
-    let previous_block_root = signed_root(&state.latest_block_header);
+    let previous_block_root = hash_tree_root(&state.latest_block_header);
     state.block_roots[(state.slot as usize) % T::SlotsPerHistoricalRoot::USIZE] =
         previous_block_root;
 }
 
-// pub fn process_slot<T: Config>(state: &mut BeaconState<T>, genesis_slot: u64) -> Result<(), Error> {
-//     cache_state(state)?;
-
-//     if state.slot > genesis_slot
-//     && (state.slot + 1) % T::slots_per_epoch() == 0
-//     {
-//         process_epoch(state);
-//     }
-
-//     state.slot += 1;
-
-//     Ok(())
-// }
+fn verify_block_signature<C: Config>(
+    state: &BeaconState<C>,
+    signed_block: &SignedBeaconBlock<C>,
+) -> bool {
+    let proposer = &state.validators[get_beacon_proposer_index(&state).unwrap() as usize];
+    let domain = get_domain(state, C::domain_beacon_proposer(), None);
+    let signing_root = compute_signing_root(&signed_block.message, domain);
+    bls_verify(
+        &proposer.pubkey,
+        signing_root.as_bytes(),
+        &signed_block.signature,
+    )
+    .unwrap()
+}
 
 #[cfg(test)]
 mod process_slot_tests {
