@@ -3,6 +3,7 @@ use helper_functions::beacon_state_accessors::{
     get_previous_epoch, get_total_balance,
 };
 use ssz_types::VariableList;
+use std::convert::TryFrom;
 use types::{
     beacon_state::BeaconState,
     config::Config,
@@ -97,7 +98,7 @@ where
                 get_attesting_indices(self, &attestation.data, &attestation.aggregation_bits)
                     .expect("Attesting indices error");
             for index in indices {
-                if !(self.validators[index as usize].slashed) {
+                if !(self.validators[usize::try_from(index).expect("Conversion error")].slashed) {
                     output.push(index).expect("Root error");
                 }
             }

@@ -1,15 +1,19 @@
 use crate::attestations::AttestableBlock;
 use crate::rewards_and_penalties::StakeholderBlock;
 use helper_functions::{
-    beacon_state_accessors::{get_randao_mix, get_total_active_balance, get_validator_churn_limit},
+    beacon_state_accessors::{
+        get_block_root, get_current_epoch, get_previous_epoch, get_randao_mix,
+        get_total_active_balance, get_validator_churn_limit,
+    },
     beacon_state_mutators::*,
-    crypto::{bls_verify, hash, hash_tree_root},
+    crypto::hash_tree_root,
     misc::compute_activation_exit_epoch,
     predicates::is_active_validator,
 };
 use itertools::{Either, Itertools};
 use ssz_types::VariableList;
 use std::cmp;
+use std::convert::TryFrom;
 use typenum::Unsigned as _;
 use types::consts::*;
 use types::{
@@ -66,31 +70,24 @@ fn process_justification_and_finalization<T: Config>(
         state.justification_bits.set(0, true)?;
     }
 
-    // The 2nd/3rd/4th most recent epochs are all justified, the 2nd using the 4th as source.
-    if (1..4).all(|i| state.justification_bits.get(i).unwrap_or(false))
-        && old_previous_justified_checkpoint.epoch + 3 == current_epoch
-    {
-        state.finalized_checkpoint = old_previous_justified_checkpoint;
-    }
-    // The 2nd/3rd most recent epochs are both justified, the 2nd using the 3rd as source.
-    else if (1..3).all(|i| state.justification_bits.get(i).unwrap_or(false))
-        && old_previous_justified_checkpoint.epoch + 2 == current_epoch
-    {
-        state.finalized_checkpoint = old_previous_justified_checkpoint;
-    }
-    // The 1st/2nd/3rd most recent epochs are all justified, the 1st using the 3nd as source.
-    if (0..3).all(|i| state.justification_bits.get(i).unwrap_or(false))
-        && old_current_justified_checkpoint.epoch + 2 == current_epoch
-    {
-        state.finalized_checkpoint = old_current_justified_checkpoint;
-    }
-    // The 1st/2nd most recent epochs are both justified, the 1st using the 2nd as source.
-    else if (0..2).all(|i| state.justification_bits.get(i).unwrap_or(false))
-        && old_current_justified_checkpoint.epoch + 1 == current_epoch
+    // The 2nd/3rd/4th most recent epochs are all justified, the 2nd using the 4th as source
+    // or
+    // The 2nd/3rd most recent epochs are both justified, the 2nd using the 3rd as source
+    // or
+    // The 1st/2nd/3rd most recent epochs are all justified, the 1st using the 3nd as source
+    // or
+    // The 1st/2nd most recent epochs are both justified, the 1st using the 2nd as source
+    if ((1..4).all(|i| state.justification_bits.get(i).unwrap_or(false))
+        && old_previous_justified_checkpoint.epoch + 3 == current_epoch)
+        || ((1..3).all(|i| state.justification_bits.get(i).unwrap_or(false))
+            && old_previous_justified_checkpoint.epoch + 2 == current_epoch)
+        || ((0..3).all(|i| state.justification_bits.get(i).unwrap_or(false))
+            && old_current_justified_checkpoint.epoch + 2 == current_epoch)
+        || ((0..2).all(|i| state.justification_bits.get(i).unwrap_or(false))
+            && old_current_justified_checkpoint.epoch + 1 == current_epoch)
     {
         state.finalized_checkpoint = old_current_justified_checkpoint;
     }
-
     Ok(())
 }
 
@@ -144,7 +141,11 @@ fn process_registry_updates<T: Config>(state: &mut BeaconState<T>) {
 
     let churn_limit = get_validator_churn_limit(state).expect("Validator churn limit error");
     let delayed_activation_epoch = compute_activation_exit_epoch::<T>(get_current_epoch(state));
-    for index in activation_queue.into_iter().take(churn_limit as usize) {
+
+    for index in activation_queue
+        .into_iter()
+        .take(usize::try_from(churn_limit).expect("Conversion error"))
+    {
         let validator = &mut state.validators[index];
         if validator.activation_epoch == FAR_FUTURE_EPOCH {
             validator.activation_epoch = delayed_activation_epoch;
@@ -203,10 +204,11 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
         }
     }
     //# Reset slashings
-    state.slashings[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] = 0;
+    let index =
+        usize::try_from(next_epoch % T::EpochsPerHistoricalVector::U64).expect("Conversion error");
+    state.slashings[index] = 0;
     //# Set randao mix
-    state.randao_mixes[(next_epoch % T::EpochsPerHistoricalVector::U64) as usize] =
-        get_randao_mix(state, current_epoch).expect("Randao error");
+    state.randao_mixes[index] = get_randao_mix(state, current_epoch).expect("Randao error");
     //# Set historical root accumulator
     if next_epoch % (T::SlotsPerHistoricalRoot::U64 / T::SlotsPerEpoch::U64) == 0 {
         let historical_batch = HistoricalBatch::<T> {
@@ -245,95 +247,95 @@ fn process_final_updates<T: Config>(state: &mut BeaconState<T>) {
 // //     // }
 // // }
 
-#[cfg(test)]
-mod spec_tests {
-    use core::fmt::Debug;
+// #[cfg(test)]
+// mod spec_tests {
+//     use core::fmt::Debug;
 
-    use test_generator::test_resources;
-    use types::{beacon_state::BeaconState, config::MinimalConfig};
-    use void::Void;
+//     use test_generator::test_resources;
+//     use types::{beacon_state::BeaconState, config::MinimalConfig};
+//     use void::Void;
 
-    use super::*;
+//     use super::*;
 
-    // We do not honor `bls_setting` in epoch processing tests because none of them customize it.
+//     // We do not honor `bls_setting` in epoch processing tests because none of them customize it.
 
-    macro_rules! tests_for_sub_transition {
-        (
-            $module_name: ident,
-            $sub_transition: expr,
-            $mainnet_glob: literal,
-            $minimal_glob: literal,
-        ) => {
-            mod $module_name {
-                use super::*;
+//     macro_rules! tests_for_sub_transition {
+//         (
+//             $module_name: ident,
+//             $sub_transition: expr,
+//             $mainnet_glob: literal,
+//             $minimal_glob: literal,
+//         ) => {
+//             mod $module_name {
+//                 use super::*;
 
-                #[test_resources($mainnet_glob)]
-                fn mainnet(case_directory: &str) {
-                    run_case::<MainnetConfig, _, _>(case_directory, $sub_transition);
-                }
+//                 #[test_resources($mainnet_glob)]
+//                 fn mainnet(case_directory: &str) {
+//                     run_case::<MainnetConfig, _, _>(case_directory, $sub_transition);
+//                 }
 
-                #[test_resources($minimal_glob)]
-                fn minimal(case_directory: &str) {
-                    run_case::<MinimalConfig, _, _>(case_directory, $sub_transition);
-                }
-            }
-        };
-    }
+//                 #[test_resources($minimal_glob)]
+//                 fn minimal(case_directory: &str) {
+//                     run_case::<MinimalConfig, _, _>(case_directory, $sub_transition);
+//                 }
+//             }
+//         };
+//     }
 
-    tests_for_sub_transition! {
-        justification_and_finalization,
-        process_justification_and_finalization,
-        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/justification_and_finalization/*/*",
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/*/*",
-    }
+//     tests_for_sub_transition! {
+//         justification_and_finalization,
+//         process_justification_and_finalization,
+//         "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/justification_and_finalization/*/*",
+//         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/justification_and_finalization/*/*",
+//     }
 
-    // There are no mainnet test cases for the `rewards_and_penalties` sub-transition.
-    #[test_resources(
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/rewards_and_penalties/*/*"
-    )]
-    fn minimal_rewards_and_penalties(case_directory: &str) {
-        run_case::<MinimalConfig, _, _>(case_directory, process_rewards_and_penalties);
-    }
+//     // There are no mainnet test cases for the `rewards_and_penalties` sub-transition.
+//     #[test_resources(
+//         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/rewards_and_penalties/*/*"
+//     )]
+//     fn minimal_rewards_and_penalties(case_directory: &str) {
+//         run_case::<MinimalConfig, _, _>(case_directory, process_rewards_and_penalties);
+//     }
 
-    tests_for_sub_transition! {
-        registry_updates,
-        wrap_in_ok(process_registry_updates),
-        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/registry_updates/*/*",
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/*/*",
-    }
+//     tests_for_sub_transition! {
+//         registry_updates,
+//         wrap_in_ok(process_registry_updates),
+//         "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/registry_updates/*/*",
+//         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/registry_updates/*/*",
+//     }
 
-    tests_for_sub_transition! {
-        slashings,
-        wrap_in_ok(process_slashings),
-        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/slashings/*/*",
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/*/*",
-    }
+//     tests_for_sub_transition! {
+//         slashings,
+//         wrap_in_ok(process_slashings),
+//         "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/slashings/*/*",
+//         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/slashings/*/*",
+//     }
 
-    tests_for_sub_transition! {
-        final_updates,
-        wrap_in_ok(process_final_updates),
-        "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/final_updates/*/*",
-        "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/*/*",
-    }
+//     tests_for_sub_transition! {
+//         final_updates,
+//         wrap_in_ok(process_final_updates),
+//         "eth2.0-spec-tests/tests/mainnet/phase0/epoch_processing/final_updates/*/*",
+//         "eth2.0-spec-tests/tests/minimal/phase0/epoch_processing/final_updates/*/*",
+//     }
 
-    fn wrap_in_ok<T>(
-        infallible_function: impl FnOnce(&mut T),
-    ) -> impl FnOnce(&mut T) -> Result<(), Void> {
-        |argument| Ok(infallible_function(argument))
-    }
+//     fn wrap_in_ok<T>(
+//         infallible_function: impl FnOnce(&mut T),
+//     ) -> impl FnOnce(&mut T) -> Result<(), Void> {
+//         |argument| Ok(infallible_function(argument))
+//     }
 
-    fn run_case<C, E, F>(case_directory: &str, sub_transition: F)
-    where
-        C: Config,
-        E: Debug,
-        F: FnOnce(&mut BeaconState<C>) -> Result<(), E>,
-    {
-        let mut state = spec_test_utils::pre(case_directory);
-        let expected_post = spec_test_utils::post(case_directory)
-            .expect("every epoch processing test should have a post-state");
+//     fn run_case<C, E, F>(case_directory: &str, sub_transition: F)
+//     where
+//         C: Config,
+//         E: Debug,
+//         F: FnOnce(&mut BeaconState<C>) -> Result<(), E>,
+//     {
+//         let mut state = spec_test_utils::pre(case_directory);
+//         let expected_post = spec_test_utils::post(case_directory)
+//             .expect("every epoch processing test should have a post-state");
 
-        sub_transition(&mut state).expect("every epoch processing test should succeed");
+//         sub_transition(&mut state).expect("every epoch processing test should succeed");
 
-        assert_eq!(state, expected_post);
-    }
-}
+//         assert_eq!(state, expected_post);
+//     }
+// }

@@ -1,5 +1,6 @@
 use crate::attestations::AttestableBlock;
 use helper_functions;
+use std::convert::TryFrom;
 use types::consts::*;
 use types::{beacon_state::*, config::Config};
 // use types::types::*;
@@ -25,7 +26,8 @@ where
     fn get_base_reward(&self, index: ValidatorIndex) -> Gwei {
         let total_balance =
             get_total_active_balance(self).expect("Error getting total active balance");
-        let effective_balance = self.validators[index as usize].effective_balance;
+        let effective_balance =
+            self.validators[usize::try_from(index).expect("Conversion error")].effective_balance;
         effective_balance * T::base_reward_factor()
             / integer_squareroot(total_balance)
             / BASE_REWARDS_PER_EPOCH
@@ -56,7 +58,7 @@ where
             matching_head_attestations,
         ];
 
-        for attestations in vec.into_iter() {
+        for attestations in vec {
             let unslashed_attesting_indices = self.get_unslashed_attesting_indices(attestations);
             let attesting_balance = get_total_balance(self, &unslashed_attesting_indices)
                 .expect("Error getting total active balance");
@@ -65,9 +67,10 @@ where
                 if unslashed_attesting_indices.contains(&index) {
                     let temp_var: ValidatorIndex =
                         (self.get_base_reward(index) * attesting_balance) / total_balance;
-                    rewards[index as usize] += temp_var;
+                    rewards[usize::try_from(index).expect("Conversion error")] += temp_var;
                 } else {
-                    penalties[index as usize] += self.get_base_reward(index);
+                    penalties[usize::try_from(index).expect("Conversion error")] +=
+                        self.get_base_reward(index);
                 }
             }
         }
@@ -88,9 +91,11 @@ where
                 .expect("at least one matching attestation should exist");
 
             let proposer_reward = self.get_base_reward(*index) / T::proposer_reward_quotient();
-            rewards[attestation.proposer_index as usize] += proposer_reward;
+            rewards[usize::try_from(attestation.proposer_index).expect("Conversion error")] +=
+                proposer_reward;
             let max_attester_reward = self.get_base_reward(*index) - proposer_reward;
-            rewards[*index as usize] += max_attester_reward / attestation.inclusion_delay;
+            rewards[usize::try_from(*index).expect("Conversion error")] +=
+                max_attester_reward / attestation.inclusion_delay;
         }
         //# Inactivity penalty
         let finality_delay = previous_epoch - self.finalized_checkpoint.epoch;
@@ -98,11 +103,14 @@ where
             let matching_target_attesting_indices =
                 self.get_unslashed_attesting_indices(matching_target_attestations);
             for index in eligible_validator_indices {
-                penalties[index as usize] += BASE_REWARDS_PER_EPOCH * self.get_base_reward(index);
+                penalties[usize::try_from(index).expect("Conversion error")] +=
+                    BASE_REWARDS_PER_EPOCH * self.get_base_reward(index);
                 if !(matching_target_attesting_indices.contains(&index)) {
-                    penalties[index as usize] +=
-                        (self.validators[index as usize].effective_balance * finality_delay)
-                            / T::inactivity_penalty_quotient();
+                    penalties[usize::try_from(index).expect("Conversion error")] += (self
+                        .validators[usize::try_from(index).expect("Conversion error")]
+                    .effective_balance
+                        * finality_delay)
+                        / T::inactivity_penalty_quotient();
                 }
             }
         }
@@ -110,7 +118,7 @@ where
     }
 
     fn process_rewards_and_penalties(&mut self) {
-        if get_current_epoch(self) == T::genesis_epoch() {
+        if get_current_epoch(self) == GENESIS_EPOCH {
             return;
         }
         let (rewards, penalties) = self.get_attestation_deltas();
